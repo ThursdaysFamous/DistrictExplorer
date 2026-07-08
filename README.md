@@ -85,6 +85,7 @@ scripts/ilga_scraper.py     scrapes ilga.gov member rosters
 scripts/build_il_roster.py  rewrites the inline IL rosters in index.html from scraper output
 .github/workflows/          weekly roster refresh — opens a PR for human review, never commits to main
 docs/BUILD_PLAYBOOK_1.md    architecture contract + per-thread build/status log
+docs/MOBILE_APP_RUNBOOK.md  turning index.html into installable iOS/Android apps
 docs/screenshot.png         README screenshot
 ```
 
