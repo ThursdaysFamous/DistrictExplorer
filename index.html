@@ -329,6 +329,7 @@
 
   .layer-block {
     border: 1px solid var(--line);
+    border-left: 4px solid var(--layer-accent, var(--line));
     border-radius: var(--radius);
     margin-bottom: 10px;
     overflow: hidden;
@@ -345,6 +346,12 @@
     font-size: 13.5px;
     flex: 1;
     cursor: pointer;
+  }
+  .layer-color-dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    flex: none;
+    border: 2px solid var(--ink);
+    background: var(--layer-accent, var(--line));
   }
   .layer-block-head input[type="checkbox"] {
     width: 17px; height: 17px;
@@ -973,6 +980,15 @@
    * street address) — a small marker placed at a geocoded location,
    * independent of the polygon highlight above. A module opts in by
    * exposing mod.pointOfInterest(result) => {label, address} | null. ---------- */
+  // a layer's theme color — from its polygon style, its point-marker style
+  // (police/fire stations, which use pointToLayer instead of a flat style
+  // object), or an explicit mod.color fallback for anything with neither.
+  function moduleColor(mod) {
+    var style = mod.overlay && mod.overlay.style;
+    if (style && (style.color || style.fillColor)) return style.color || style.fillColor;
+    return mod.color || "#14181C";
+  }
+
   var poiGeocodeCache = {}; // address string -> {lat,lng} | null, avoids re-geocoding the same address
 
   function geocodePoiAddress(address) {
@@ -1028,9 +1044,8 @@
       clearLayerPoi(mod);
       if (!coords) return; // couldn't geocode — address is still shown as text in the card
       var rt = layerRuntime[mod.id];
-      var color = (mod.overlay.style && mod.overlay.style.color) || "#14181C";
       rt.poiMarker = L.marker([coords.lat, coords.lng], {
-        icon: poiPinIcon(color),
+        icon: poiPinIcon(moduleColor(mod)),
         keyboard: false,
         alt: poi.label + " location"
       })
@@ -1058,6 +1073,10 @@
       groupLayers.forEach(function (mod) {
         var block = document.createElement("div");
         block.className = "layer-block";
+        // ties this card's accent border + dot to the same color used for the
+        // layer's map overlay/pins, so the sidebar reads as "this is the box
+        // for the blue layer" at a glance
+        block.style.setProperty("--layer-accent", moduleColor(mod));
 
         var head = document.createElement("div");
         head.className = "layer-block-head";
@@ -1068,11 +1087,17 @@
         checkbox.id = checkboxId;
         checkbox.checked = false;
 
+        var colorDot = document.createElement("span");
+        colorDot.className = "layer-color-dot";
+        colorDot.setAttribute("aria-hidden", "true");
+        colorDot.title = "Layer color on map";
+
         var label = document.createElement("label");
         label.setAttribute("for", checkboxId);
         label.textContent = mod.label;
 
         head.appendChild(checkbox);
+        head.appendChild(colorDot);
         head.appendChild(label);
         if (mod.stub) {
           var badge = document.createElement("span");
@@ -1483,6 +1508,7 @@
     id: "police-station",
     group: "safety",
     label: "Police Station (nearest " + POLICE_STATION_COUNT + ")",
+    color: "#0B5394", // matches the pointToLayer circleMarker below; overlay has no flat style object for moduleColor() to read
     overlay: {
       load: loadPoliceStations,
       // distinct from Fire Station's red circleMarker — blue, matching the flag-stripe hue
@@ -1548,6 +1574,7 @@
     id: "fire-station",
     group: "safety",
     label: "Fire Station (nearest " + FIRE_STATION_COUNT + ")",
+    color: "#7A0B1E", // matches the pointToLayer circleMarker below; overlay has no flat style object for moduleColor() to read
     overlay: {
       load: loadFireStations,
       pointToLayer: function (feature, latlng) {
@@ -1850,6 +1877,10 @@
         fields.push({ label: "Email", html: '<a href="mailto:' + sanitize(result.email) + '">' + sanitize(result.email) + '</a>' });
       }
       return renderFieldList(fields);
+    },
+    pointOfInterest: function (result) {
+      if (!result.address) return null;
+      return { label: result.alderman ? "Ald. " + String(result.alderman) : "Ward Office", address: String(result.address) };
     }
   });
 
@@ -1929,6 +1960,17 @@
     return lines.map(sanitize).join("<br>");
   }
 
+  // districtOffice lines mix street/city/zip with phone/fax numbers (e.g.
+  // "(773) 869-9050"); geocoding needs just the postal address, so drop
+  // anything that looks like a phone/fax line before joining.
+  function officeAddressForGeocode(lines) {
+    if (!lines || !lines.length) return null;
+    var addressLines = lines.filter(function (line) {
+      return !/\(\d{3}\)/.test(line) && !/fax/i.test(line);
+    });
+    return addressLines.length ? addressLines.join(", ") : null;
+  }
+
   function registerIlgaChamber(opts) {
     // opts: id, label, layerIndex, districtFields, ilgaUrl, roster, memberLabel, style
     var loadChamber = makeCached(function () { return loadTigerLayer(opts.layerIndex); });
@@ -1964,6 +2006,13 @@
           html: '<a href="' + sanitize(profileUrl) + '" target="_blank" rel="noopener">' + sanitize(profileUrl) + '</a>'
         });
         return renderFieldList(fields);
+      },
+      pointOfInterest: function (result) {
+        var member = result.member;
+        if (!member) return null;
+        var address = officeAddressForGeocode(member.districtOffice);
+        if (!address) return null;
+        return { label: member.name, address: address };
       }
     });
   }
