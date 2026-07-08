@@ -111,3 +111,4 @@ _(append handoff notes here as modules complete)_
 - `zip-code` (geography) DONE — same pattern, dotted overlay style
 - demo-radius STUB removed per plan
 - SURPRISE — couldn't get a live JSON field-name confirmation (web_fetch sandbox only allows previously-searched/fetched URLs); modules degrade gracefully via findPropCI's alias list if the guessed field name is wrong, but a manual spot-check against real data is still worth doing before Thread 4 depends on the same pattern
+- Moved to Claude Code: `index_1.html` (Thread 0 + Thread 1) is now the single canonical `index.html`; the old Thread-0-only `index.html` snapshot was removed. Each future thread edits `index.html` in place rather than saving a new numbered file.
