@@ -506,6 +506,8 @@
       <a href="https://data.cityofchicago.org" target="_blank" rel="noopener">Chicago Data Portal</a>
       <a href="https://tigerweb.geo.census.gov" target="_blank" rel="noopener">U.S. Census TIGERweb</a>
       <a href="https://github.com/unitedstates/congress-legislators" target="_blank" rel="noopener">unitedstates/congress-legislators</a>
+      <a href="https://www.ilga.gov" target="_blank" rel="noopener">Illinois General Assembly</a>
+      <a href="https://www.ilsenateredistricting.com" target="_blank" rel="noopener">School board district map (ilsenateredistricting.com)</a>
     </div>
   </div>
 </footer>
@@ -1488,6 +1490,276 @@
     label: "CPS Network (High School, admin office)",
     datasetId: "aupu-jt2g",
     style: { color: "#7A2D3D", weight: 1.5, fillColor: "#7A2D3D", fillOpacity: 0.04, dashArray: "10 3" }
+  });
+
+  /* =========================================================================
+   * THREAD 4 — POLITICAL: Ward+Alderman, U.S. House, IL Senate/House, School Board
+   * Five layers, three different join patterns:
+   *  - Ward: Socrata polygon + Socrata roster, joined locally on ward number
+   *    (same shape as Thread 1/2/3's polygon modules, but with a second
+   *    non-geo dataset fetched once and joined client-side).
+   *  - Congress: Census TIGERweb polygon (Esri REST, not Socrata) joined to
+   *    the congress-legislators roster on district number.
+   *  - IL Senate / IL House: same TIGERweb pattern, but per the playbook,
+   *    Open States has no browser CORS, so instead of a roster join this
+   *    links out to ILGA's own directory — never guessed into a per-district
+   *    URL, since the session/GA numbering isn't reliably derivable client-side.
+   *  - School Board: the KML→GeoJSON conversion from §4 of the playbook,
+   *    hosted locally at data/school-board-districts.geojson (no roster
+   *    endpoint exists for this newly-elected body; links to the district's
+   *    official board page instead).
+   * ======================================================================= */
+
+  /* ---------- generic cached-promise wrapper (Socrata-geojson-specific
+   * makeCachedLoader above predates this; this variant memoizes any loader
+   * function, used here for roster JSON, TIGERweb, and the local file) ---------- */
+  function makeCached(fn) {
+    var pending = null;
+    return function () {
+      if (!pending) {
+        pending = fn().catch(function (err) { pending = null; throw err; });
+      }
+      return pending;
+    };
+  }
+
+  /* ---------- fetch a Socrata dataset as plain JSON rows (not geometry) — used
+   * for roster tables like the alderman list, which have no geometry column ---------- */
+  function loadSocrataJSON(datasetId) {
+    var urls = [
+      "https://data.cityofchicago.org/resource/" + datasetId + ".json?$limit=1000",
+      "https://data.cityofchicago.org/api/v3/views/" + datasetId + "/query.json"
+    ];
+    function tryRoute(i) {
+      if (i >= urls.length) throw new Error("no route for " + datasetId + " returned rows");
+      return fetchWithRetry(urls[i], {}, i === 0 ? 2 : 1)
+        .then(function (res) { return res.json(); })
+        .then(function (rows) {
+          if (Array.isArray(rows) && rows.length) return rows;
+          return tryRoute(i + 1);
+        })
+        .catch(function (err) {
+          if (i + 1 >= urls.length) throw err;
+          return tryRoute(i + 1);
+        });
+    }
+    return tryRoute(0);
+  }
+
+  /* ---------- Census TIGERweb Legislative MapServer (Esri REST, not Socrata) —
+   * layer 0 = Congressional, 1 = IL Senate (SLDU), 2 = IL House (SLDL);
+   * filtered to Illinois (STATE FIPS 17) so the payload stays small ---------- */
+  function loadTigerLayer(layerIndex) {
+    var where = encodeURIComponent("STATE='17'");
+    var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Legislative/MapServer/" +
+      layerIndex + "/query?where=" + where + "&outFields=*&outSR=4326&f=geojson";
+    return fetchWithRetry(url, {}, 2).then(function (res) { return res.json(); });
+  }
+
+  /* ---------- district-number lookup with a name-field regex fallback, since
+   * TIGERweb's numbered-district field name changes with each Congress/GA
+   * (e.g. CD119FP) and hasn't been live-verified in this sandbox (see SURPRISE
+   * note in the playbook) ---------- */
+  function extractDistrictNumber(props, numericCandidates) {
+    var direct = findPropCI(props, numericCandidates);
+    if (direct !== null && direct !== undefined && String(direct) !== "") {
+      return String(direct).replace(/^0+(?=\d)/, "");
+    }
+    var keys = Object.keys(props || {});
+    for (var i = 0; i < keys.length; i++) {
+      if (/name/i.test(keys[i])) {
+        var m = String(props[keys[i]]).match(/(\d+)\s*$/);
+        if (m) return m[1];
+      }
+    }
+    return null;
+  }
+
+  /* ---------- Ward + Alderman ---------- */
+  var loadWards = makeCached(function () { return loadSocrataGeoJSON("p293-wvbd"); });
+  var loadAldermen = makeCached(function () { return loadSocrataJSON("htai-wnw4"); });
+
+  registerLayer({
+    id: "ward",
+    group: "political",
+    label: "City Ward",
+    overlay: {
+      load: loadWards,
+      style: { color: "#0B5394", weight: 2, fillColor: "#41B6E6", fillOpacity: 0.08, dashArray: "3 2 6 2" }
+    },
+    query: function (point, seq) {
+      return Promise.all([loadWards(), loadAldermen()]).then(function (results) {
+        var geojson = results[0], roster = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var wardRaw = findPropCI(props, ["ward", "ward_num", "ward_number", "ward_id"]);
+        var ward = wardRaw !== null && wardRaw !== undefined ? String(wardRaw).replace(/^0+(?=\d)/, "") : null;
+
+        var aldermanRow = null;
+        if (ward && Array.isArray(roster)) {
+          aldermanRow = roster.filter(function (r) {
+            var rWard = findPropCI(r, ["ward", "ward_num", "ward_number"]);
+            return rWard !== null && rWard !== undefined && String(rWard).replace(/^0+(?=\d)/, "") === ward;
+          })[0] || null;
+        }
+        var alderman = aldermanRow ? findPropCI(aldermanRow, ["alderman", "alderman_name", "member", "name"]) : null;
+        var email = aldermanRow ? findPropCI(aldermanRow, ["email", "e_mail", "e-mail"]) : null;
+        var phone = aldermanRow ? findPropCI(aldermanRow, ["phone", "ward_office_phone", "office_phone", "telephone"]) : null;
+        var address = aldermanRow ? findPropCI(aldermanRow, ["address", "ward_office_address", "office_address", "ward_office"]) : null;
+
+        return { seq: seq, ward: ward, alderman: alderman, email: email, phone: phone, address: address };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Ward", value: result.ward ? String(result.ward) : "Unknown" }];
+      if (result.alderman) fields.push({ label: "Alderman", value: String(result.alderman) });
+      if (result.phone) fields.push({ label: "Office Phone", value: String(result.phone) });
+      if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
+      if (result.email) {
+        fields.push({ label: "Email", html: '<a href="mailto:' + sanitize(result.email) + '">' + sanitize(result.email) + '</a>' });
+      }
+      return renderFieldList(fields);
+    }
+  });
+
+  /* ---------- U.S. House (Congress) ---------- */
+  var loadCongressDistricts = makeCached(function () { return loadTigerLayer(0); });
+  var loadCongressLegislators = makeCached(function () {
+    return fetchWithRetry("https://unitedstates.github.io/congress-legislators/legislators-current.json", {}, 1)
+      .then(function (res) { return res.json(); });
+  });
+  var CONGRESS_DISTRICT_FIELDS = ["cd119fp", "cd118fp", "cdfp", "cd"];
+
+  registerLayer({
+    id: "congress",
+    group: "political",
+    label: "U.S. House District",
+    overlay: {
+      load: loadCongressDistricts,
+      style: { color: "#14181C", weight: 2, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "8 3" }
+    },
+    query: function (point, seq) {
+      return Promise.all([loadCongressDistricts(), loadCongressLegislators()]).then(function (results) {
+        var geojson = results[0], legislators = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var district = extractDistrictNumber(props, CONGRESS_DISTRICT_FIELDS);
+
+        var rep = null;
+        if (district && Array.isArray(legislators)) {
+          rep = legislators.filter(function (leg) {
+            var terms = leg.terms || [];
+            var term = terms[terms.length - 1];
+            return term && term.type === "rep" && term.state === "IL" && String(term.district) === district;
+          })[0] || null;
+        }
+        var term = rep ? rep.terms[rep.terms.length - 1] : null;
+        var name = rep && rep.name ? (rep.name.official_full || (rep.name.first + " " + rep.name.last)) : null;
+
+        return {
+          seq: seq,
+          district: district,
+          name: name,
+          party: term ? term.party : null,
+          phone: term ? term.phone : null,
+          url: term ? term.url : null
+        };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.district ? "IL-" + result.district : "Unknown" }];
+      if (result.name) fields.push({ label: "Representative", value: String(result.name) });
+      if (result.party) fields.push({ label: "Party", value: String(result.party) });
+      if (result.phone) fields.push({ label: "D.C. Office Phone", value: String(result.phone) });
+      if (result.url) fields.push({ label: "Website", html: '<a href="' + sanitize(result.url) + '" target="_blank" rel="noopener">' + sanitize(result.url) + '</a>' });
+      return renderFieldList(fields);
+    }
+  });
+
+  /* ---------- IL State Senate / IL State House — Open States has no browser
+   * CORS (per playbook), so instead of a roster join these link out to
+   * ILGA's own member directory rather than guessing a per-district URL ---------- */
+  function registerIlgaChamber(opts) {
+    // opts: id, label, layerIndex, districtFields, ilgaUrl, style
+    var loadChamber = makeCached(function () { return loadTigerLayer(opts.layerIndex); });
+    registerLayer({
+      id: opts.id,
+      group: "political",
+      label: opts.label,
+      overlay: { load: loadChamber, style: opts.style },
+      query: function (point, seq) {
+        return loadChamber().then(function (geojson) {
+          var feature = findFeatureContaining(geojson, point);
+          if (!feature) return null;
+          var props = feature.properties || {};
+          var district = extractDistrictNumber(props, opts.districtFields);
+          return { seq: seq, district: district };
+        });
+      },
+      render: function (result) {
+        var fields = [{ label: "District", value: result.district ? String(result.district) : "Unknown" }];
+        fields.push({
+          label: "Find your legislator",
+          html: '<a href="' + sanitize(opts.ilgaUrl) + '" target="_blank" rel="noopener">ILGA member directory</a>'
+        });
+        return renderFieldList(fields);
+      }
+    });
+  }
+
+  registerIlgaChamber({
+    id: "il-senate",
+    label: "IL State Senate District",
+    layerIndex: 1,
+    districtFields: ["sldust", "sldu"],
+    ilgaUrl: "https://www.ilga.gov/senate/",
+    style: { color: "#4A2E8C", weight: 2, fillColor: "#4A2E8C", fillOpacity: 0.05, dashArray: "1 5" }
+  });
+
+  registerIlgaChamber({
+    id: "il-house",
+    label: "IL State House District",
+    layerIndex: 2,
+    districtFields: ["sldlst", "sldl"],
+    ilgaUrl: "https://www.ilga.gov/house/",
+    style: { color: "#8C2E4A", weight: 2, fillColor: "#8C2E4A", fillOpacity: 0.05, dashArray: "5 1 2 1" }
+  });
+
+  /* ---------- Elected School Board District — converted from the
+   * ilsenateredistricting.com KML per playbook §4, hosted locally since no
+   * Socrata/TIGERweb source exists for it; no roster endpoint for this newly
+   * elected body, so this links to the board's official page instead ---------- */
+  var loadSchoolBoardDistricts = makeCached(function () {
+    return fetchWithRetry("data/school-board-districts.geojson", {}, 1).then(function (res) { return res.json(); });
+  });
+
+  registerLayer({
+    id: "school-board",
+    group: "political",
+    label: "Elected School Board District",
+    overlay: {
+      load: loadSchoolBoardDistricts,
+      style: { color: "#2E8C6A", weight: 2, fillColor: "#2E8C6A", fillOpacity: 0.05, dashArray: "2 2" }
+    },
+    query: function (point, seq) {
+      return loadSchoolBoardDistricts().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var district = findPropCI(props, ["district"]);
+        return { seq: seq, district: district };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.district ? String(result.district) : "Unknown" }];
+      fields.push({
+        label: "Board info",
+        html: '<a href="https://www.cps.edu/about/board-of-education/" target="_blank" rel="noopener">Chicago Board of Education</a>'
+      });
+      return renderFieldList(fields);
+    }
   });
 
   /* =========================================================================
