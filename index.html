@@ -1076,7 +1076,10 @@
   });
 
   /* ---------- ZIP Code ---------- */
-  var loadZipCodes = makeCachedLoader("gdcf-axmw");
+  // portal page is Boundaries - ZIP Codes (gdcf-axmw), but that dataset's
+  // /resource/{id}.geojson route returns null geometry; the underlying
+  // view id unjd-c2ca serves the same data with real geometry
+  var loadZipCodes = makeCachedLoader("unjd-c2ca");
 
   registerLayer({
     id: "zip-code",
