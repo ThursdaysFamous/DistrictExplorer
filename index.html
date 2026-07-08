@@ -1732,6 +1732,10 @@
         if (result.phone) fields.push({ label: "Phone", value: String(result.phone) });
         if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
         return renderFieldList(fields);
+      },
+      pointOfInterest: function (result) {
+        if (!result.address) return null;
+        return { label: result.network ? "Network " + String(result.network) + " Office" : "CPS Network Office", address: String(result.address) };
       }
     });
   }
@@ -2460,6 +2464,16 @@
         html: '<a href="https://maps.cookcountyil.gov/findmydistrict/" target="_blank" rel="noopener">Cook County Find My District (official)</a>'
       });
       return renderFieldList(fields);
+    },
+    pointOfInterest: function (result) {
+      var office = result.office;
+      if (!office) return null;
+      var name = findPropCI(office, ["commission"]);
+      var addressLines = [findPropCI(office, ["district_a"]), findPropCI(office, ["suite"])].filter(Boolean);
+      var cityZip = [findPropCI(office, ["city"]), findPropCI(office, ["zip_code"])].filter(Boolean).join(" ");
+      if (cityZip) addressLines.push(cityZip);
+      if (!addressLines.length) return null;
+      return { label: name ? String(name) : "Commissioner Office", address: addressLines.join(", ") };
     }
   });
 
