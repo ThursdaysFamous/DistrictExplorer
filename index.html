@@ -857,7 +857,10 @@
       mod.overlay.load()
         .then(function (geojson) {
           rt.geojson = geojson;
-          rt.overlayLayer = L.geoJSON(geojson, { style: mod.overlay.style }).addTo(map);
+          rt.overlayLayer = L.geoJSON(geojson, {
+            style: mod.overlay.style,
+            pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
+          }).addTo(map);
           if (state.layersOn[mod.id] && !map.hasLayer(rt.overlayLayer)) rt.overlayLayer.addTo(map);
         })
         .catch(function (err) {
@@ -1063,6 +1066,115 @@
       return renderFieldList([
         { label: "ZIP Code", value: result.zip ? String(result.zip) : "Unknown" }
       ]);
+    }
+  });
+
+  /* =========================================================================
+   * THREAD 2 — PUBLIC SAFETY: Police District + Fire Stations
+   * Police District follows the Thread 1 polygon pattern exactly. Fire
+   * Stations is a point dataset, so instead of containment it does nearest-N
+   * proximity (haversine, straight-line) — there's no "point-in-polygon" for
+   * point data. Per the playbook, commanders aren't in open data, so this
+   * only surfaces what the dataset actually contains.
+   * ======================================================================= */
+
+  /* ---------- great-circle distance in miles ---------- */
+  function haversineMiles(lat1, lng1, lat2, lng2) {
+    var R = 3958.8;
+    var toRad = function (d) { return (d * Math.PI) / 180; };
+    var dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function pointFeatureLatLng(feature) {
+    var g = feature && feature.geometry;
+    if (!g || g.type !== "Point") return null;
+    return { lat: g.coordinates[1], lng: g.coordinates[0] };
+  }
+
+  /* ---------- Police District ---------- */
+  var loadPoliceDistricts = makeCachedLoader("fthy-xz3r");
+
+  registerLayer({
+    id: "police-district",
+    group: "safety",
+    label: "Police District",
+    overlay: {
+      load: loadPoliceDistricts,
+      // dash pattern distinct from both Geography layers, Chicago-flag red for the Safety group
+      style: { color: "#9C0B24", weight: 1.5, fillColor: "#C8102E", fillOpacity: 0.06, dashArray: "2 6" }
+    },
+    query: function (point, seq) {
+      return loadPoliceDistricts().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var number = findPropCI(props, ["dist_num", "dist_number", "district", "dist", "district_number", "district_no"]);
+        var label = findPropCI(props, ["dist_label", "district_name", "dist_name", "name"]);
+        return { seq: seq, number: number, label: label };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.number ? String(result.number) : "Unknown" }];
+      if (result.label) fields.push({ label: "Label", value: String(result.label) });
+      return renderFieldList(fields);
+    }
+  });
+
+  /* ---------- Fire Stations (nearest 3, not point-in-polygon) ---------- */
+  var FIRE_STATION_COUNT = 3;
+  var loadFireStations = makeCachedLoader("28km-gtjn");
+
+  registerLayer({
+    id: "fire-station",
+    group: "safety",
+    label: "Fire Station (nearest " + FIRE_STATION_COUNT + ")",
+    overlay: {
+      load: loadFireStations,
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, { radius: 5, color: "#7A0B1E", weight: 1.5, fillColor: "#C8102E", fillOpacity: 0.85 });
+      }
+    },
+    query: function (point, seq) {
+      return loadFireStations().then(function (geojson) {
+        var features = (geojson && geojson.features) || [];
+        var withDistance = [];
+        for (var i = 0; i < features.length; i++) {
+          var latLng = pointFeatureLatLng(features[i]);
+          if (!latLng) continue;
+          withDistance.push({
+            feature: features[i],
+            distanceMi: haversineMiles(point.lat, point.lng, latLng.lat, latLng.lng)
+          });
+        }
+        if (!withDistance.length) return null;
+        withDistance.sort(function (a, b) { return a.distanceMi - b.distanceMi; });
+        var nearest = withDistance.slice(0, FIRE_STATION_COUNT).map(function (w) {
+          var props = w.feature.properties || {};
+          var address = findPropCI(props, ["address", "address_1", "location_address", "adress"]);
+          return { address: address, distanceMi: w.distanceMi };
+        });
+        return { seq: seq, stations: nearest };
+      });
+    },
+    render: function (result) {
+      var wrap = document.createElement("div");
+      var intro = document.createElement("p");
+      intro.style.margin = "0 0 8px";
+      intro.textContent = "Nearest stations, straight-line distance:";
+      wrap.appendChild(intro);
+      var ol = document.createElement("ol");
+      ol.style.margin = "0";
+      ol.style.paddingLeft = "20px";
+      result.stations.forEach(function (s) {
+        var li = document.createElement("li");
+        li.textContent = (s.address ? String(s.address) : "Fire station") + " — " + s.distanceMi.toFixed(2) + " mi";
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+      return wrap;
     }
   });
 

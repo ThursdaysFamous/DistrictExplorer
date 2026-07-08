@@ -25,7 +25,8 @@ The reference-of-truth for building this app in small, cheap, focused threads.
   label: "City Ward",
   overlay: {                     // lazy-loaded map overlay
     load: () => Promise<GeoJSON>,// fetched only when toggled on
-    style: {...}                 // visually distinct; not color-only
+    style: {...},                // visually distinct; not color-only (polygon/line datasets)
+    pointToLayer: (feature, latlng) => L.Layer  // optional; point datasets (e.g. fire stations) use this instead of style
   },
   query: (point, seq) => Promise<Result | null>,  // point-in-district + roster join; tag result with seq
   render: (result) => HTMLElement                  // one result card; all external strings via sanitize()
@@ -112,3 +113,7 @@ _(append handoff notes here as modules complete)_
 - demo-radius STUB removed per plan
 - SURPRISE — couldn't get a live JSON field-name confirmation (web_fetch sandbox only allows previously-searched/fetched URLs); modules degrade gracefully via findPropCI's alias list if the guessed field name is wrong, but a manual spot-check against real data is still worth doing before Thread 4 depends on the same pattern
 - Moved to Claude Code: `index_1.html` (Thread 0 + Thread 1) is now the single canonical `index.html`; the old Thread-0-only `index.html` snapshot was removed. Each future thread edits `index.html` in place rather than saving a new numbered file.
+- Fixed after moving to Claude Code: the Leaflet CSS/JS `integrity` hashes pasted into the core shell didn't match the real CDN files, so browsers silently blocked both and crashed the whole init script (blank map, dead Layers dropdown). Corrected to the hashes the browser itself reported. Also swapped the OSM tile layer for CARTO's basemap tiles — OSM's tile CDN 403s requests with no HTTP referrer, which `file://` pages (the common way to open this app) never send; CARTO doesn't enforce that check.
+- `police-district` (safety) DONE — same polygon/point-in-polygon pattern as Thread 1's Geography modules; red dash-pattern overlay distinct from Geography's green/blue.
+- `fire-station` (safety) DONE — point dataset, so no point-in-polygon test; instead does nearest-3 straight-line (haversine) proximity, sorted ascending. Required one small, backward-compatible core addition: `overlay.pointToLayer`, since the core's overlay renderer only knew `style` (meaningless for Point geometries) — existing polygon modules are unaffected since they never set it.
+- SURPRISE — same sandboxed web_fetch limitation as Thread 1: couldn't get a live field-name confirmation for `fthy-xz3r` (police districts) or `28km-gtjn` (fire stations). Both modules degrade gracefully via `findPropCI`'s alias lists if a guessed field name is wrong, but a manual spot-check against real data is worth doing, especially before Thread 4 (Political) leans on the same pattern for higher-stakes datasets.
