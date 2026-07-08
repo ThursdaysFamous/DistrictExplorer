@@ -91,7 +91,7 @@
     padding: 18px 20px 22px;
   }
   .masthead-inner {
-    max-width: 1400px;
+    max-width: 1800px;
     margin: 0 auto;
     display: flex;
     align-items: flex-end;
@@ -124,10 +124,10 @@
   }
 
   main.layout {
-    max-width: 1400px;
+    max-width: 1800px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(340px, 0.9fr);
+    grid-template-columns: minmax(0, 1.9fr) minmax(340px, 1fr);
     gap: 0;
     min-height: 78vh;
   }
@@ -188,9 +188,29 @@
   }
   .search-row button:hover { background: #08406e; }
 
+  /* Collapses to just the search row until the shell is hovered, focused
+     within (click/tab into the input or any control it contains), or
+     JS marks it .expanded because there's a query, results, or a status
+     message to show. */
+  .search-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    max-height: 600px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding-top 0.25s ease;
+  }
+  .search-shell:not(:hover):not(:focus-within):not(.expanded) .search-extra {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+  }
+
   #geocode-results {
     list-style: none;
-    margin: 6px 0 0;
+    margin: 0;
     padding: 0;
     max-height: 240px;
     overflow-y: auto;
@@ -211,14 +231,12 @@
   .geo-status {
     font-size: 12px;
     color: var(--slate);
-    margin-top: 6px;
     padding: 0 2px;
     min-height: 15px;
   }
   .geo-status.err { color: var(--err); }
 
   .locate-btn {
-    margin-top: 8px;
     width: 100%;
     background: var(--paper);
     border: 1px solid var(--line-strong);
@@ -234,7 +252,6 @@
   .locate-btn:disabled { opacity: 0.6; cursor: default; }
 
   .kbd-select-btn {
-    margin-top: 8px;
     width: 100%;
     background: var(--paper);
     border: 1px dashed var(--line-strong);
@@ -497,12 +514,14 @@
           <input type="text" id="geocode-input" placeholder="Search a Chicago address…" autocomplete="off" />
           <button type="submit">Search</button>
         </form>
-        <button type="button" id="locate-btn" class="locate-btn">📍 Use my current location</button>
-        <div id="geo-status" class="geo-status" aria-live="polite"></div>
-        <ul id="geocode-results" role="listbox" aria-label="Address matches"></ul>
-        <button type="button" id="kbd-select-btn" class="kbd-select-btn">
-          ⌨ Keyboard / screen-reader users: select the point currently centered on the map
-        </button>
+        <div class="search-extra" id="search-extra">
+          <button type="button" id="locate-btn" class="locate-btn">📍 Use my current location</button>
+          <div id="geo-status" class="geo-status" aria-live="polite"></div>
+          <ul id="geocode-results" role="listbox" aria-label="Address matches"></ul>
+          <button type="button" id="kbd-select-btn" class="kbd-select-btn">
+            ⌨ Keyboard / screen-reader users: select the point currently centered on the map
+          </button>
+        </div>
       </div>
     </div>
 
@@ -883,6 +902,21 @@
   var geoResultsList = document.getElementById("geocode-results");
   var debounceTimer = null;
   var inFlightController = null;
+
+  /* Keeps the collapsed search shell open whenever there's a typed query,
+   * results, or a status message — so hover/focus-out never yanks content
+   * away mid-interaction. Hover/focus-within (CSS) handle the rest. */
+  var searchShellEl = document.querySelector(".search-shell");
+  var geocodeInputEl = document.getElementById("geocode-input");
+  function refreshSearchShellExpanded() {
+    var hasContent = geocodeInputEl.value.trim() !== "" ||
+      geoResultsList.children.length > 0 ||
+      geoStatus.textContent.trim() !== "";
+    searchShellEl.classList.toggle("expanded", hasContent);
+  }
+  geocodeInputEl.addEventListener("input", refreshSearchShellExpanded);
+  new MutationObserver(refreshSearchShellExpanded).observe(geoStatus, { childList: true, characterData: true, subtree: true });
+  new MutationObserver(refreshSearchShellExpanded).observe(geoResultsList, { childList: true, subtree: true });
 
   function geocodeAddress(query) {
     if (inFlightController) inFlightController.abort();
