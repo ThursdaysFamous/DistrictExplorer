@@ -772,7 +772,39 @@
 
   function registerLayer(mod) {
     layers.push(mod);
-    layerRuntime[mod.id] = { overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null };
+    layerRuntime[mod.id] = { overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null, highlightedLayer: null };
+  }
+
+  /* ---------- highlight whichever boundary the selected point actually falls in.
+   * Deliberately generic, not per-module: it re-runs the same shared
+   * findFeatureContaining/pointInGeometry check against the overlay's own
+   * cached geojson (rt.geojson), then matches the result to the Leaflet
+   * sub-layer Leaflet already tagged with `.feature`. Point datasets (e.g.
+   * fire stations) never match since pointInGeometry only handles
+   * Polygon/MultiPolygon, so they're unaffected. ---------- */
+  var HIGHLIGHT_STYLE = { color: "#FFD400", weight: 4, opacity: 1, fillOpacity: 0.3, dashArray: null };
+
+  function clearLayerHighlight(mod) {
+    var rt = layerRuntime[mod.id];
+    if (rt.highlightedLayer && rt.highlightedLayer.setStyle) {
+      rt.highlightedLayer.setStyle(mod.overlay.style);
+    }
+    rt.highlightedLayer = null;
+  }
+
+  function updateLayerHighlight(mod) {
+    var rt = layerRuntime[mod.id];
+    clearLayerHighlight(mod);
+    if (!rt.overlayLayer || !rt.geojson || !state.selectedPoint) return;
+    var feature = findFeatureContaining(rt.geojson, state.selectedPoint);
+    if (!feature) return;
+    rt.overlayLayer.eachLayer(function (subLayer) {
+      if (subLayer.feature === feature) {
+        rt.highlightedLayer = subLayer;
+        subLayer.setStyle(HIGHLIGHT_STYLE);
+        if (subLayer.bringToFront) subLayer.bringToFront();
+      }
+    });
   }
 
   function buildGroupsUI() {
@@ -845,6 +877,7 @@
     var on = !!state.layersOn[mod.id];
 
     if (!on) {
+      clearLayerHighlight(mod); // revert style before hiding, so it doesn't linger if re-toggled with a different point later
       if (rt.overlayLayer) map.removeLayer(rt.overlayLayer);
       rt.cardBody.className = "layer-card-body state-off";
       rt.cardBody.textContent = "Layer off.";
@@ -915,6 +948,7 @@
       .then(function (result) {
         if (seq !== state.sequence) return; // stale — a newer point was selected meanwhile
         if (!state.layersOn[mod.id]) return; // toggled off while in flight
+        updateLayerHighlight(mod);
         if (!result) { setCardEmpty(mod); return; }
         setCardResult(mod, mod.render(result));
       })
@@ -922,6 +956,7 @@
         if (seq !== state.sequence) return;
         if (!state.layersOn[mod.id]) return;
         console.error("[" + mod.id + "] query failed:", err);
+        clearLayerHighlight(mod);
         setCardError(mod, "This layer's data source didn't respond. It won't affect other layers.", seq);
       });
   }

@@ -14,6 +14,7 @@ The reference-of-truth for building this app in small, cheap, focused threads.
 - Global state: `selectedPoint {lat, lng}`, monotonic `sequence` counter (discards stale async results)
 - Shared utilities: `sanitize(str)`, `pointInPolygon(pt, geom)` (multipolygon + holes), `fetchWithRetry(url, opts)`, `probeGeometryColumn(datasetId)` (Socrata field names vary)
 - Layer registry + result-card framework: loading / error / empty states, `aria-live` regions, per-layer failure isolation
+- Selected-boundary highlight: for any polygon layer, whichever feature the point actually falls in gets a distinct on-map style (gold outline, brought to front), independent per active layer. Generic — not part of the module contract; the core re-runs `findFeatureContaining` against the overlay's own cached geojson and matches it to the Leaflet sub-layer. Point datasets (fire stations) are unaffected since containment doesn't apply to them.
 - Attribution + "data last verified" + legal disclaimer footer
 
 **Each layer module is self-contained** and exposes exactly this interface:
@@ -129,3 +130,4 @@ _(append handoff notes here as modules complete)_
 - `cps-hs-network` (schools) NEW, DONE — same admin-boundary pattern as `cps-network` but for High School networks, confirmed live via `aupu-jt2g` (same `network`/`admin`/`phone`/`address` schema, separate dataset from the K-8 one). Both network layers now share one `registerCpsNetwork` factory.
 - `cps-middle` corrected — the playbook's `9kct-c3uq` (~22 schools, marked legacy) is superseded. Operator found `fyff-53xy`, live-confirmed to be a current, full attendance boundary with the same schema as elementary/high (`school_id`, `school_nam`, `grade_cat: "MS"`, `boundarygr`). Label dropped the "legacy, partial coverage" caveat since this is no longer the sparse legacy dataset. Confirmed via `query.geojson` too (operator's first sample used `query.json` by mistake) — proper `Feature`/`MultiPolygon` GeoJSON, same schema.
 - All three school-zone datasets (elementary, middle, high) and both CPS Network datasets are now live-confirmed. Thread 3 is in good shape.
+- Selected-boundary highlight ADDED (core feature, not a module) — whichever polygon feature actually contains the selected point now gets a distinct gold outline + brought-to-front, per active layer, reverted correctly on toggle-off/re-toggle/new-point/error. Implemented generically in the core (`updateLayerHighlight`/`clearLayerHighlight`) rather than per-module, so no existing module needed to change.
