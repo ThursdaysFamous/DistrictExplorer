@@ -1249,7 +1249,7 @@
           var feature = findFeatureContaining(geojson, point);
           if (!feature) return null;
           var props = feature.properties || {};
-          var name = findPropCI(props, ["short_name", "school_nm", "school_name", "schoolname", "sch_name", "name"]);
+          var name = findPropCI(props, ["short_name", "school_nam", "school_nm", "school_name", "schoolname", "sch_name", "name"]);
           var schoolId = findPropCI(props, ["school_id", "sch_id", "schoolid", "school_ids"]);
           var grades = findPropCI(props, ["boundarygr", "grade_range", "gradelevel"]);
           return { seq: seq, name: name, schoolId: schoolId, grades: grades };
@@ -1276,7 +1276,8 @@
   registerSchoolZone({
     id: "cps-high",
     label: "High School Zone",
-    datasetId: "4kfz-zr3a",
+    // confirmed via live sample: per-school attendance boundary (school_id, school_nam, grade_cat: "HS")
+    datasetId: "xg7c-d8rm",
     style: { color: "#0F6F6F", weight: 1.5, fillColor: "#0F6F6F", fillOpacity: 0.06, dashArray: "1 3 4 3" }
   });
 
@@ -1290,38 +1291,52 @@
   });
 
   /* ---------- CPS Network (administrative region, not a single school) ----------
-   * Confirmed via live sample (pnta-kuqa): each polygon covers a whole CPS
-   * "Network" and carries a real named administrator + phone + address —
+   * Confirmed via live sample: each polygon covers a whole CPS "Network"
+   * (K-8's pnta-kuqa, High School's aupu-jt2g — same schema, separate
+   * datasets) and carries a real named administrator + phone + address —
    * unlike commander/principal contacts, this one actually is in open data. */
-  var loadCpsNetworks = makeCachedLoader("pnta-kuqa");
+  function registerCpsNetwork(opts) {
+    // opts: id, label, datasetId, style
+    var loadNetworks = makeCachedLoader(opts.datasetId);
+    registerLayer({
+      id: opts.id,
+      group: "schools",
+      label: opts.label,
+      overlay: { load: loadNetworks, style: opts.style },
+      query: function (point, seq) {
+        return loadNetworks().then(function (geojson) {
+          var feature = findFeatureContaining(geojson, point);
+          if (!feature) return null;
+          var props = feature.properties || {};
+          var network = findPropCI(props, ["network", "networknum", "k12_networ"]);
+          var chief = findPropCI(props, ["admin", "chief", "administrator"]);
+          var phone = findPropCI(props, ["phone"]);
+          var address = findPropCI(props, ["address"]);
+          return { seq: seq, network: network, chief: chief, phone: phone, address: address };
+        });
+      },
+      render: function (result) {
+        var fields = [{ label: "Network", value: result.network ? String(result.network) : "Unknown" }];
+        if (result.chief) fields.push({ label: "Network Chief", value: String(result.chief) });
+        if (result.phone) fields.push({ label: "Phone", value: String(result.phone) });
+        if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
+        return renderFieldList(fields);
+      }
+    });
+  }
 
-  registerLayer({
+  registerCpsNetwork({
     id: "cps-network",
-    group: "schools",
-    label: "CPS Network (admin office)",
-    overlay: {
-      load: loadCpsNetworks,
-      style: { color: "#3D3D7A", weight: 1.5, fillColor: "#3D3D7A", fillOpacity: 0.04, dashArray: "8 4 2 4" }
-    },
-    query: function (point, seq) {
-      return loadCpsNetworks().then(function (geojson) {
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var props = feature.properties || {};
-        var network = findPropCI(props, ["network", "networknum", "k12_networ"]);
-        var chief = findPropCI(props, ["admin", "chief", "administrator"]);
-        var phone = findPropCI(props, ["phone"]);
-        var address = findPropCI(props, ["address"]);
-        return { seq: seq, network: network, chief: chief, phone: phone, address: address };
-      });
-    },
-    render: function (result) {
-      var fields = [{ label: "Network", value: result.network ? String(result.network) : "Unknown" }];
-      if (result.chief) fields.push({ label: "Network Chief", value: String(result.chief) });
-      if (result.phone) fields.push({ label: "Phone", value: String(result.phone) });
-      if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
-      return renderFieldList(fields);
-    }
+    label: "CPS Network (K-8, admin office)",
+    datasetId: "pnta-kuqa",
+    style: { color: "#3D3D7A", weight: 1.5, fillColor: "#3D3D7A", fillOpacity: 0.04, dashArray: "8 4 2 4" }
+  });
+
+  registerCpsNetwork({
+    id: "cps-hs-network",
+    label: "CPS Network (High School, admin office)",
+    datasetId: "aupu-jt2g",
+    style: { color: "#7A2D3D", weight: 1.5, fillColor: "#7A2D3D", fillOpacity: 0.04, dashArray: "10 3" }
   });
 
   /* =========================================================================
