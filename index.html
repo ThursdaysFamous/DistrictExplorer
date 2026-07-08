@@ -964,15 +964,37 @@
    * Replaces Thread 0's demo-radius stub, as planned in the playbook.
    * ======================================================================= */
 
+  /* ---------- true if at least one feature has real (non-null) geometry.
+   * Some older "legacy" Socrata boundary datasets return HTTP 200 from the
+   * primary .geojson route with every feature's geometry stripped to null
+   * (confirmed on Boundaries - ZIP Codes / Police Districts) — that's not a
+   * fetch failure, so .catch() alone never sees it. ---------- */
+  function hasUsableGeometry(geojson) {
+    var features = geojson && geojson.features;
+    if (!features || !features.length) return false;
+    for (var i = 0; i < features.length; i++) {
+      if (features[i].geometry) return true;
+    }
+    return false;
+  }
+
   /* ---------- fetch a Socrata dataset as GeoJSON, with legacy-route fallback ---------- */
   function loadSocrataGeoJSON(datasetId) {
+    var legacyUrl = "https://data.cityofchicago.org/api/geospatial/" + datasetId + "?method=export&format=GeoJSON";
+    function loadLegacy() {
+      return fetchWithRetry(legacyUrl, {}, 1).then(function (res) { return res.json(); });
+    }
+
     var primaryUrl = "https://data.cityofchicago.org/resource/" + datasetId + ".geojson?$limit=1000";
     return fetchWithRetry(primaryUrl, {}, 2)
       .then(function (res) { return res.json(); })
+      .then(function (geojson) {
+        if (hasUsableGeometry(geojson)) return geojson;
+        return loadLegacy(); // primary "succeeded" but returned no real geometry
+      })
       .catch(function () {
-        // fall back to the legacy export route some older Socrata datasets still require
-        var legacyUrl = "https://data.cityofchicago.org/api/geospatial/" + datasetId + "?method=export&format=GeoJSON";
-        return fetchWithRetry(legacyUrl, {}, 1).then(function (res) { return res.json(); });
+        // primary request itself failed (network/HTTP error) — try the legacy route
+        return loadLegacy();
       });
   }
 
