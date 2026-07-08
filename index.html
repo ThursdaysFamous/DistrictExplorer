@@ -174,6 +174,7 @@
   }
   .search-row input[type="text"] {
     flex: 1;
+    min-width: 0;
     border: 1px solid var(--line-strong);
     border-radius: 6px;
     padding: 10px 12px;
@@ -311,6 +312,30 @@
     box-shadow: 0 2px 10px rgba(20,24,28,0.15);
   }
 
+  /* ---- Below ~1150px page width the map column (full width once the
+     layout stacks at 900px, or the ~65% grid track above that) narrows
+     enough that the centered search toolbar (width: min(92%, 560px))
+     and this top-right layer toggle button start to overlap and the
+     Search button becomes untappable. Anchor the toolbar to the left
+     and reserve fixed space on the right for a fixed-width layer
+     button instead. ---- */
+  @media (max-width: 1150px) {
+    .map-toolbar {
+      left: 10px;
+      right: 72px;
+      transform: none;
+      width: auto;
+    }
+    .layer-toggle-btn {
+      top: 10px;
+      right: 10px;
+      min-width: 60px;
+      padding: 9px 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+  }
+
   /* ---- Results rail ---- */
   .results-col {
     background: var(--panel);
@@ -435,8 +460,8 @@
   }
 
   .result-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
-  .result-row dt { color: var(--slate); font-size: 12px; }
-  .result-row dd { margin: 0; font-weight: 600; text-align: right; }
+  .result-row dt { color: var(--slate); font-size: 12px; flex: none; }
+  .result-row dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: break-word; }
   dl.result-fields { margin: 0; }
 
   footer.site-footer {
