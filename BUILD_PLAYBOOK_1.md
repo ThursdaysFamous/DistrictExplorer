@@ -65,6 +65,20 @@ Rules every module must honor (from the prompt's quality requirements):
 Socrata caps at 1,000 rows by default. Some serve `/resource/{id}.geojson`; legacy ones use `/api/geospatial/{id}?method=export`.
 Commanders + principals: **not in open data** — link to CPD district pages and `cps.edu/schools/schoolprofiles/{school_id}`, never guess.
 
+### 2a. Verified alternate/fallback source — CPD's own ArcGIS org (not a registry swap)
+
+Host: `services2.arcgis.com/t3tlzCPfmaQzSWAk/arcgis/rest/services/` (CPD's hosted ArcGIS org, distinct from the Chicago Data Portal). All five confirmed `Query`-capable, `f=geojson` fetchable directly (no Esri→GeoJSON conversion step), 1,000–2,000 records/request cap, `Access-Control-Allow-Origin: *` (fetchable from a browser with no proxy/key).
+
+| Service | Geometry | Key fields | Notes |
+|---|---|---|---|
+| `Police_District_Stations_View` | Point | `NAME`, `ADDRESS`, `DISTRICT`, `PHONE` | Station address + phone from source; not currently in the registry at all |
+| `Police_District_Boundary_View` | Polygon | `DISTRICT`, `NAME` | Alternative to Socrata `fthy-xz3r`/`24zt-jpfn` |
+| `Police_Beat_Boundary_View` | Polygon | `BEAT_NUMBER` | Finer than district; beat number only, no roster — out of current scope (§3 calls for district only) |
+| `Wards` | Polygon | `WARD`, `ALDERMAN`, `Ward_Numbe` | Alderman name baked into the boundary layer, but single string only (no phone/email/office) — treat as fallback/cross-check against `htai-wnw4`, not a replacement |
+| `Community_Area_View` | Polygon | `AREA_NUMBE`, `COMMUNITY` | Alternative to Socrata `igwz-8jzy` |
+
+Not wired into any module — this is a documented fallback if a Socrata source above goes stale or disappears, not a live registry entry. Being CPD-operated rather than the city's central portal, there's no independent update-cadence guarantee; same "not for legal use" caveat applies, arguably more so.
+
 ---
 
 ## 3. Thread sequence
