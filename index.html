@@ -1156,19 +1156,41 @@
     return tryRoute(0);
   }
 
-  /* ---------- one shared in-flight/cached promise per dataset, so overlay.load()
+  /* ---------- one shared in-flight/cached promise per loader fn, so overlay.load()
    * and query() never trigger two separate downloads of the same boundaries ---------- */
-  function makeCachedLoader(datasetId) {
+  function makeCachedLoaderFromFn(loadFn) {
     var pending = null;
     return function () {
       if (!pending) {
-        pending = loadSocrataGeoJSON(datasetId).catch(function (err) {
+        pending = loadFn().catch(function (err) {
           pending = null; // let the next call (e.g. a Retry click) try again
           throw err;
         });
       }
       return pending;
     };
+  }
+
+  function makeCachedLoader(datasetId) {
+    return makeCachedLoaderFromFn(function () { return loadSocrataGeoJSON(datasetId); });
+  }
+
+  /* ---------- fetch a CPD-hosted ArcGIS FeatureServer layer as GeoJSON.
+   * services2.arcgis.com/t3tlzCPfmaQzSWAk is CPD's own hosted org (not the
+   * Chicago Data Portal); confirmed CORS-open (Access-Control-Allow-Origin: *)
+   * and f=geojson-capable directly, no separate Esri->GeoJSON conversion. ---------- */
+  function arcgisServiceUrl(serviceName) {
+    return "https://services2.arcgis.com/t3tlzCPfmaQzSWAk/arcgis/rest/services/" + serviceName + "/FeatureServer/0";
+  }
+
+  function loadArcGISGeoJSON(serviceUrl) {
+    var url = serviceUrl + "/query?where=1%3D1&outFields=*&f=geojson&outSR=4326";
+    return fetchWithRetry(url, {}, 2)
+      .then(function (res) { return res.json(); })
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("no usable geometry from " + serviceUrl);
+        return geojson;
+      });
   }
 
   /* ---------- case-insensitive property lookup — Socrata field-name casing/
@@ -1253,12 +1275,13 @@
   });
 
   /* =========================================================================
-   * THREAD 2 — PUBLIC SAFETY: Police District + Fire Stations
-   * Police District follows the Thread 1 polygon pattern exactly. Fire
-   * Stations is a point dataset, so instead of containment it does nearest-N
-   * proximity (haversine, straight-line) — there's no "point-in-polygon" for
-   * point data. Per the playbook, commanders aren't in open data, so this
-   * only surfaces what the dataset actually contains.
+   * THREAD 2 — PUBLIC SAFETY: Police District + Police Stations + Fire Stations
+   * Police District follows the Thread 1 polygon pattern exactly, now sourced
+   * from CPD's own ArcGIS org (§2a of the playbook) rather than the Socrata
+   * mirror. Police/Fire Stations are point datasets, so instead of containment
+   * they do nearest-N proximity (haversine, straight-line) — there's no
+   * "point-in-polygon" for point data. Per the playbook, commanders aren't in
+   * open data, so this only surfaces what each dataset actually contains.
    * ======================================================================= */
 
   /* ---------- great-circle distance in miles ---------- */
@@ -1278,10 +1301,15 @@
   }
 
   /* ---------- Police District ---------- */
-  // portal page is Boundaries - Police Districts (fthy-xz3r), but that
-  // dataset's /resource/{id}.geojson route returns null geometry; the
-  // underlying view id 24zt-jpfn serves the same data with real geometry
-  var loadPoliceDistricts = makeCachedLoader("24zt-jpfn");
+  // Switched from the Socrata mirror (24zt-jpfn) to CPD's own ArcGIS org per
+  // playbook §2a: Police_District_Boundary_View, fields DISTRICT/NAME. Not
+  // live-spot-checked in this sandbox (services2.arcgis.com is blocked by
+  // this environment's egress policy, same limitation as every prior
+  // thread's live-fetch checks) — findPropCI's alias lists cover both the
+  // new field names and the old Socrata ones, so this degrades gracefully
+  // if either guess is wrong; still worth an operator spot-check.
+  var POLICE_DISTRICT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_District_Boundary_View");
+  var loadPoliceDistricts = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
 
   registerLayer({
     id: "police-district",
@@ -1297,8 +1325,8 @@
         var feature = findFeatureContaining(geojson, point);
         if (!feature) return null;
         var props = feature.properties || {};
-        var number = findPropCI(props, ["dist_num", "dist_number", "district", "dist", "district_number", "district_no"]);
-        var label = findPropCI(props, ["dist_label", "district_name", "dist_name", "name"]);
+        var number = findPropCI(props, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+        var label = findPropCI(props, ["name", "dist_label", "district_name", "dist_name"]);
         return { seq: seq, number: number, label: label };
       });
     },
@@ -1306,6 +1334,79 @@
       var fields = [{ label: "District", value: result.number ? String(result.number) : "Unknown" }];
       if (result.label) fields.push({ label: "Label", value: String(result.label) });
       return renderFieldList(fields);
+    }
+  });
+
+  /* ---------- Police Stations (nearest 3, not point-in-polygon) ----------
+   * New layer, not in the original playbook registry — CPD's ArcGIS org
+   * (Police_District_Stations_View) surfaces station address + phone
+   * straight from source, which the Chicago Data Portal registry never had.
+   * Same nearest-N pattern as Fire Stations below. Field names (NAME,
+   * ADDRESS, DISTRICT, PHONE) per playbook §2a; not live-spot-checked in
+   * this sandbox for the same egress-policy reason as the boundary layer
+   * above. */
+  var POLICE_STATION_COUNT = 3;
+  var POLICE_STATION_SERVICE = arcgisServiceUrl("Police_District_Stations_View");
+  var loadPoliceStations = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
+
+  registerLayer({
+    id: "police-station",
+    group: "safety",
+    label: "Police Station (nearest " + POLICE_STATION_COUNT + ")",
+    overlay: {
+      load: loadPoliceStations,
+      // distinct from Fire Station's red circleMarker — blue, matching the flag-stripe hue
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, { radius: 5, color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.85 });
+      }
+    },
+    query: function (point, seq) {
+      return loadPoliceStations().then(function (geojson) {
+        var features = (geojson && geojson.features) || [];
+        var withDistance = [];
+        for (var i = 0; i < features.length; i++) {
+          var latLng = pointFeatureLatLng(features[i]);
+          if (!latLng) continue;
+          withDistance.push({
+            feature: features[i],
+            distanceMi: haversineMiles(point.lat, point.lng, latLng.lat, latLng.lng)
+          });
+        }
+        if (!withDistance.length) return null;
+        withDistance.sort(function (a, b) { return a.distanceMi - b.distanceMi; });
+        var nearest = withDistance.slice(0, POLICE_STATION_COUNT).map(function (w) {
+          var props = w.feature.properties || {};
+          return {
+            name: findPropCI(props, ["name"]),
+            address: findPropCI(props, ["address"]),
+            district: findPropCI(props, ["district"]),
+            phone: findPropCI(props, ["phone"]),
+            distanceMi: w.distanceMi
+          };
+        });
+        return { seq: seq, stations: nearest };
+      });
+    },
+    render: function (result) {
+      var wrap = document.createElement("div");
+      var intro = document.createElement("p");
+      intro.style.margin = "0 0 8px";
+      intro.textContent = "Nearest stations, straight-line distance:";
+      wrap.appendChild(intro);
+      var ol = document.createElement("ol");
+      ol.style.margin = "0";
+      ol.style.paddingLeft = "20px";
+      result.stations.forEach(function (s) {
+        var li = document.createElement("li");
+        var name = s.name ? String(s.name) : "Police station";
+        var districtSuffix = s.district ? " (District " + String(s.district) + ")" : "";
+        var addressPart = s.address ? " — " + String(s.address) : "";
+        var phonePart = s.phone ? " — " + String(s.phone) : "";
+        li.textContent = name + districtSuffix + addressPart + phonePart + " — " + s.distanceMi.toFixed(2) + " mi";
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+      return wrap;
     }
   });
 
