@@ -217,6 +217,22 @@
   }
   .geo-status.err { color: var(--err); }
 
+  .locate-btn {
+    margin-top: 8px;
+    width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chi-blue-deep);
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .locate-btn:hover { background: #EEF4F7; }
+  .locate-btn:disabled { opacity: 0.6; cursor: default; }
+
   .kbd-select-btn {
     margin-top: 8px;
     width: 100%;
@@ -481,6 +497,7 @@
           <input type="text" id="geocode-input" placeholder="Search a Chicago address…" autocomplete="off" />
           <button type="submit">Search</button>
         </form>
+        <button type="button" id="locate-btn" class="locate-btn">📍 Use my current location</button>
         <div id="geo-status" class="geo-status" aria-live="polite"></div>
         <ul id="geocode-results" role="listbox" aria-label="Address matches"></ul>
         <button type="button" id="kbd-select-btn" class="kbd-select-btn">
@@ -796,6 +813,53 @@
   document.getElementById("kbd-select-btn").addEventListener("click", function () {
     var c = map.getCenter();
     setSelectedPoint(c.lat, c.lng, { skipPan: true });
+  });
+
+  /* =========================================================================
+   * GEOLOCATION — "Use my current location" via the browser's
+   * navigator.geolocation API. Feeds straight into the same
+   * setSelectedPoint() the map click and address search use, so a
+   * geolocated point behaves identically everywhere downstream.
+   * ======================================================================= */
+
+  var locateBtn = document.getElementById("locate-btn");
+  var geoStatusEl = document.getElementById("geo-status");
+
+  locateBtn.addEventListener("click", function () {
+    if (!("geolocation" in navigator)) {
+      geoStatusEl.textContent = "Geolocation isn't supported in this browser.";
+      geoStatusEl.className = "geo-status err";
+      return;
+    }
+
+    locateBtn.disabled = true;
+    geoStatusEl.textContent = "Locating…";
+    geoStatusEl.className = "geo-status";
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        locateBtn.disabled = false;
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        if (lat < CHI_BBOX.minLat || lat > CHI_BBOX.maxLat || lng < CHI_BBOX.minLng || lng > CHI_BBOX.maxLng) {
+          geoStatusEl.textContent = "Your current location looks like it's outside the Chicago area this app covers.";
+          geoStatusEl.className = "geo-status err";
+          return;
+        }
+        geoStatusEl.textContent = "";
+        geoResultsList.innerHTML = "";
+        setSelectedPoint(lat, lng);
+      },
+      function (err) {
+        locateBtn.disabled = false;
+        var msg = "Couldn't get your location.";
+        if (err.code === err.PERMISSION_DENIED) msg = "Location access was denied. Allow it in your browser's site settings to use this.";
+        else if (err.code === err.TIMEOUT) msg = "Location request timed out. Try again.";
+        else if (err.code === err.POSITION_UNAVAILABLE) msg = "Your location is currently unavailable.";
+        geoStatusEl.textContent = msg;
+        geoStatusEl.className = "geo-status err";
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   });
 
   /* ---------- "Layers" drawer button — collapses the results rail so the

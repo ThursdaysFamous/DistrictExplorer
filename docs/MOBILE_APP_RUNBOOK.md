@@ -4,7 +4,7 @@ How to turn the existing single-file web app into installable iOS/Android apps w
 
 ## 0. Decide the approach first
 
-The app is a single dependency-light `index.html` (Leaflet + fetch calls to public APIs, no build step, no framework, no login, no geolocation API use — selection is tap-on-map or address search). Three options, in order of effort:
+The app is a single dependency-light `index.html` (Leaflet + fetch calls to public APIs, no build step, no framework, no login; selection is tap-on-map, address search, or the browser's `navigator.geolocation` "Use my current location" button). Three options, in order of effort:
 
 | Option | Effort | What you get | When to pick it |
 |---|---|---|---|
@@ -78,7 +78,7 @@ Run this before every native build — it copies the current `index.html` (and `
 
 ### 2d. Permissions
 
-The app makes outbound HTTPS calls to Socrata, CPD ArcGIS, Cook County GIS, Census TIGERweb, and Nominatim. No native permissions (camera, contacts, precise location) are needed today since selection is tap-on-map, not device geolocation. If a "use my location" feature is added later, add `@capacitor/geolocation` and the corresponding `NSLocationWhenInUseUsageDescription` (iOS `Info.plist`) / `ACCESS_FINE_LOCATION` (Android `AndroidManifest.xml`) entries then — not before, to keep the store privacy questionnaire minimal.
+The app makes outbound HTTPS calls to Socrata, CPD ArcGIS, Cook County GIS, Census TIGERweb, and Nominatim. It also calls the browser's `navigator.geolocation.getCurrentPosition` for the "Use my current location" button, so a WebView wrapper needs precise-location permission wired up: add `@capacitor/geolocation` (or equivalent WebView geolocation bridge) and the corresponding `NSLocationWhenInUseUsageDescription` (iOS `Info.plist`) / `ACCESS_FINE_LOCATION` (Android `AndroidManifest.xml`) entries so the in-app geolocation prompt actually resolves instead of silently failing.
 
 ### 2e. Icons and splash screen
 
