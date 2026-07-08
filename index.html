@@ -952,48 +952,115 @@
   }
 
   /* =========================================================================
-   * STUB MODULE — proves the full contract (overlay lazy-load, point-in-poly
-   * math, query/render, seq-based staleness) ahead of Thread 1's real
-   * Geography module. Clearly labeled STUB; safe to delete wholesale later.
+   * THREAD 1 — GEOGRAPHY: Community Area + ZIP Code
+   * Both datasets are small (77 community areas, ~60 ZIPs) so each module
+   * fetches its full boundary set once (cached, shared between the overlay
+   * and the query so toggling a layer on never double-fetches), then does
+   * the point-in-polygon test locally via the shared pointInGeometry util.
+   * Replaces Thread 0's demo-radius stub, as planned in the playbook.
    * ======================================================================= */
 
+  /* ---------- fetch a Socrata dataset as GeoJSON, with legacy-route fallback ---------- */
+  function loadSocrataGeoJSON(datasetId) {
+    var primaryUrl = "https://data.cityofchicago.org/resource/" + datasetId + ".geojson?$limit=1000";
+    return fetchWithRetry(primaryUrl, {}, 2)
+      .then(function (res) { return res.json(); })
+      .catch(function () {
+        // fall back to the legacy export route some older Socrata datasets still require
+        var legacyUrl = "https://data.cityofchicago.org/api/geospatial/" + datasetId + "?method=export&format=GeoJSON";
+        return fetchWithRetry(legacyUrl, {}, 1).then(function (res) { return res.json(); });
+      });
+  }
+
+  /* ---------- one shared in-flight/cached promise per dataset, so overlay.load()
+   * and query() never trigger two separate downloads of the same boundaries ---------- */
+  function makeCachedLoader(datasetId) {
+    var pending = null;
+    return function () {
+      if (!pending) {
+        pending = loadSocrataGeoJSON(datasetId).catch(function (err) {
+          pending = null; // let the next call (e.g. a Retry click) try again
+          throw err;
+        });
+      }
+      return pending;
+    };
+  }
+
+  /* ---------- case-insensitive property lookup — Socrata field-name casing/
+   * naming varies dataset to dataset (see probeGeometryColumn's rationale) ---------- */
+  function findPropCI(props, candidates) {
+    if (!props) return null;
+    var keys = Object.keys(props);
+    for (var c = 0; c < candidates.length; c++) {
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].toLowerCase() === candidates[c]) return props[keys[i]];
+      }
+    }
+    return null;
+  }
+
+  function findFeatureContaining(geojson, point) {
+    var features = (geojson && geojson.features) || [];
+    for (var i = 0; i < features.length; i++) {
+      if (pointInGeometry(point, features[i].geometry)) return features[i];
+    }
+    return null;
+  }
+
+  /* ---------- Community Area ---------- */
+  var loadCommunityAreas = makeCachedLoader("igwz-8jzy");
+
   registerLayer({
-    id: "demo-radius",
+    id: "community-area",
     group: "geography",
-    label: "Selected point (demo)",
-    stub: true,
+    label: "Community Area",
     overlay: {
-      load: function () {
-        // "loads" instantly since there's nothing to fetch — real modules
-        // will return a fetch()'d GeoJSON promise here instead.
-        return Promise.resolve({ type: "FeatureCollection", features: [] });
-      },
-      style: { color: "#0B5394", weight: 2, fillOpacity: 0.08 }
+      load: loadCommunityAreas,
+      // dashed outline (not just a color) so it's distinguishable from ZIP without relying on hue alone
+      style: { color: "#3D6B49", weight: 1.5, fillColor: "#5C8F6B", fillOpacity: 0.06, dashArray: "5 3" }
     },
     query: function (point, seq) {
-      // exercises pointInGeometry against a small synthetic square so the
-      // shared point-in-polygon utility is proven end-to-end too.
-      var d = 0.003;
-      var square = {
-        type: "Polygon",
-        coordinates: [[
-          [point.lng - d, point.lat - d], [point.lng + d, point.lat - d],
-          [point.lng + d, point.lat + d], [point.lng - d, point.lat + d],
-          [point.lng - d, point.lat - d]
-        ]]
-      };
-      var inside = pointInGeometry(point, square);
-      return new Promise(function (resolve) {
-        setTimeout(function () {
-          resolve({ lat: point.lat, lng: point.lng, seq: seq, containedInDemoSquare: inside });
-        }, 260); // simulated network latency
+      return loadCommunityAreas().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var name = findPropCI(props, ["community", "community_area_name", "commarea", "comarea"]);
+        var number = findPropCI(props, ["area_numbe", "area_num_1", "area_number", "community_area_number", "area_num"]);
+        return { seq: seq, name: name, number: number };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Name", value: result.name ? String(result.name) : "Unknown" }];
+      if (result.number) fields.push({ label: "Area #", value: String(result.number) });
+      return renderFieldList(fields);
+    }
+  });
+
+  /* ---------- ZIP Code ---------- */
+  var loadZipCodes = makeCachedLoader("gdcf-axmw");
+
+  registerLayer({
+    id: "zip-code",
+    group: "geography",
+    label: "ZIP Code",
+    overlay: {
+      load: loadZipCodes,
+      // dotted outline (distinct pattern from Community Area's dashed one) + different hue
+      style: { color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "1 4" }
+    },
+    query: function (point, seq) {
+      return loadZipCodes().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var zip = findPropCI(props, ["zip", "zip_code", "zipcode", "zcta5ce10"]);
+        return { seq: seq, zip: zip };
       });
     },
     render: function (result) {
       return renderFieldList([
-        { label: "Latitude", value: result.lat.toFixed(6) },
-        { label: "Longitude", value: result.lng.toFixed(6) },
-        { label: "Point-in-polygon check", value: result.containedInDemoSquare ? "pass" : "fail" }
+        { label: "ZIP Code", value: result.zip ? String(result.zip) : "Unknown" }
       ]);
     }
   });
