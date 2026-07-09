@@ -1,27 +1,32 @@
 #!/usr/bin/env python3
 """
 Resolve scripts/ilga_scraper.py's raw output into the current officeholder
-per district, then rewrite the IL_SENATE_MEMBERS / IL_HOUSE_MEMBERS object
-literals embedded in index.html.
+per district and write the IL Senate / IL House rosters as JSON app-data files.
 
-Why rewrite index.html instead of writing a separate data file: this app is
-commonly opened directly via file://, where a relative fetch() of a sibling
-JSON file is blocked by the browser's same-origin policy. Every non-CORS
-dataset in this app is embedded inline for that reason (see index.html's
-"embedded inline (not fetched)" comments) — this script keeps that pattern
-while letting the roster itself be regenerated instead of hand-typed.
+These rosters used to be spliced into object literals inside index.html. They
+now live in data/app/il-senate-members.json and data/app/il-house-members.json,
+which index.html fetches lazily on first click (same-origin, no CORS needed).
+Writing plain JSON instead of rewriting a 400 KB HTML file removes the regex
+splice entirely — the class of bug that could silently drop live code (see
+docs/BUILD_PLAYBOOK_1.md) no longer exists here.
 
 Usage:
-    python3 build_il_roster.py ilga_network.json ../index.html
+    python3 build_il_roster.py ilga_network.json [output_dir]
+
+output_dir defaults to the repo's data/app/ directory.
 """
 
 import json
+import os
 import re
 import sys
 
 PARTY_NAMES = {"D": "Democratic", "R": "Republican", "I": "Independent"}
 
 DISTRICT_RE = re.compile(r"^\s*(\d+)")
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_OUT_DIR = os.path.join(REPO_ROOT, "data", "app")
 
 
 def district_number(record):
@@ -70,45 +75,24 @@ def resolve_roster(records, chamber):
     return roster
 
 
-def js_string(value):
-    out = json.dumps(value, ensure_ascii=False)
-    # This literal lands inside index.html's inline <script> block, where the
-    # HTML parser would end the script at any "</script" regardless of JS
-    # string context — and scraped ILGA text could in principle contain one.
-    # "<\/" is identical to "</" to the JS engine but invisible to the HTML
-    # parser. U+2028/U+2029 are legal in JSON but line terminators in older
-    # JS, so escape those too.
-    out = out.replace("</", "<\\/")
-    out = out.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-    return out
+def ordered(roster):
+    # Emit districts in numeric order so the file diffs cleanly week to week.
+    return {d: roster[d] for d in sorted(roster, key=int)}
 
 
-def js_object_literal(roster, var_name):
-    lines = ["  var " + var_name + " = {"]
-    for district in sorted(roster.keys(), key=int):
-        member = roster[district]
-        parts = ["name: " + js_string(member["name"]), "party: " + js_string(member["party"])]
-        parts.append("springfieldOffice: " + js_string(member["springfieldOffice"]))
-        parts.append("districtOffice: " + js_string(member["districtOffice"]))
-        parts.append("url: " + js_string(member["url"]))
-        lines.append('    "' + district + '": { ' + ", ".join(parts) + " },")
-    lines.append("  };")
-    return "\n".join(lines)
-
-
-def replace_block(html, var_name, new_literal):
-    pattern = re.compile(r"  var " + re.escape(var_name) + r" = \{.*?\n  \};", re.DOTALL)
-    if not pattern.search(html):
-        raise RuntimeError(f"could not find existing {var_name} block in index.html")
-    return pattern.sub(lambda _m: new_literal, html, count=1)
+def write_json(path, roster):
+    with open(path, "w") as f:
+        json.dump(ordered(roster), f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 
 def main():
-    if len(sys.argv) != 3:
-        print(f"usage: {sys.argv[0]} <raw-scraper-output.json> <index.html>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"usage: {sys.argv[0]} <raw-scraper-output.json> [output_dir]", file=sys.stderr)
         sys.exit(1)
 
-    raw_path, html_path = sys.argv[1], sys.argv[2]
+    raw_path = sys.argv[1]
+    out_dir = sys.argv[2] if len(sys.argv) == 3 else DEFAULT_OUT_DIR
 
     with open(raw_path) as f:
         records = json.load(f)
@@ -120,21 +104,20 @@ def main():
         print(
             f"WARNING: resolved {len(senate_roster)}/59 senate and "
             f"{len(house_roster)}/118 house districts — refusing to overwrite "
-            "index.html with an incomplete roster",
+            "the roster files with an incomplete roster",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    with open(html_path) as f:
-        html = f.read()
+    os.makedirs(out_dir, exist_ok=True)
+    write_json(os.path.join(out_dir, "il-senate-members.json"), senate_roster)
+    write_json(os.path.join(out_dir, "il-house-members.json"), house_roster)
 
-    html = replace_block(html, "IL_SENATE_MEMBERS", js_object_literal(senate_roster, "IL_SENATE_MEMBERS"))
-    html = replace_block(html, "IL_HOUSE_MEMBERS", js_object_literal(house_roster, "IL_HOUSE_MEMBERS"))
-
-    with open(html_path, "w") as f:
-        f.write(html)
-
-    print(f"Updated {html_path}: {len(senate_roster)} senate, {len(house_roster)} house districts", file=sys.stderr)
+    print(
+        f"Wrote {out_dir}/il-senate-members.json ({len(senate_roster)} districts), "
+        f"il-house-members.json ({len(house_roster)} districts)",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

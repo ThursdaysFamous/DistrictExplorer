@@ -1,2 +1,9 @@
 __pycache__/
 *.pyc
+
+# Transient — created only when running scripts/smoke_test.mjs locally
+# (`npm install playwright`). This project has no build step; none of these
+# are committed.
+node_modules/
+package.json
+package-lock.json
