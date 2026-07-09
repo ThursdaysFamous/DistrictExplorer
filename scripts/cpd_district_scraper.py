@@ -218,17 +218,22 @@ def clean(text):
     return text or None
 
 
-# CPD runs 22 active districts. The finder page has been observed to render only
-# a sparse subset of district links after its challenge clears (the rest sit
-# behind a JS map/widget), so discovery both (a) waits for the full list to
-# appear and (b) self-heals by harvesting the all-districts nav that every
-# per-district page carries. This readiness predicate blocks the browser until
-# the finder DOM actually holds the pattern many times (tag-agnostic: matches
-# <a href>, <option value>, data-attrs — however CPD encodes them).
+# CPD runs 22 active districts. Discovery reality (confirmed against the live
+# site via CI, 2026-07-09): the finder page is an address-search *widget* that
+# renders only one example district link, and per-district pages carry no
+# all-districts nav — so neither is a usable directory. The reliable roster of
+# every district page is CPD's WordPress sitemap (robots.txt points at it). We
+# still hit the finder first: it's cheap, occasionally yields a link, and — the
+# real reason — its Playwright navigation clears the Cloudflare challenge so the
+# cf_clearance cookie warms the whole context before we pull the sitemaps.
 EXPECTED_DISTRICTS = 22
+WP_SITEMAP = BASE + "/wp-sitemap.xml"
 FINDER_READY_JS = (
-    r"(document.documentElement.innerHTML.match(/\d(?:st|nd|rd|th)-district-/gi) || []).length >= 15"
+    r"(document.documentElement.innerHTML.match(/\d(?:st|nd|rd|th)-district-/gi) || []).length >= 1"
 )
+# Any .xml URL (sitemap-index children), tag-agnostic so it survives Chromium's
+# XML-viewer rendering of the fetched sitemap.
+SUBSITEMAP_RE = re.compile(r"https?://[^\s\"'<>]+?\.xml", re.IGNORECASE)
 
 
 def _harvest_district_links(html, seen):
@@ -243,28 +248,44 @@ def _harvest_district_links(html, seen):
     return seen
 
 
+def _harvest_from_sitemap(fetcher, seen):
+    """Pull district page URLs from the WordPress sitemap index + its children."""
+    try:
+        index = fetcher.fetch(WP_SITEMAP)
+    except Exception as e:
+        print(f"sitemap index fetch failed: {e}", file=sys.stderr)
+        return
+    _harvest_district_links(index, seen)  # in case the index inlines page URLs
+    subs = []
+    for u in SUBSITEMAP_RE.findall(index):
+        if u not in subs and u.rstrip("/") != WP_SITEMAP.rstrip("/"):
+            subs.append(u)
+    print(f"sitemap index lists {len(subs)} sub-sitemap(s)", file=sys.stderr)
+    for sm in subs:
+        if len(seen) >= EXPECTED_DISTRICTS:
+            break
+        try:
+            _harvest_district_links(fetcher.fetch(sm), seen)
+        except Exception as e:
+            print(f"  sub-sitemap {sm} failed: {e}", file=sys.stderr)
+
+
 def get_district_pages(fetcher):
     """Return sorted list of unique (district_number, ordinal, slug, url) tuples."""
     seen = {}
-    _harvest_district_links(fetcher.fetch(BASE + FINDER_PATH, wait_ready=FINDER_READY_JS), seen)
+    try:
+        _harvest_district_links(fetcher.fetch(BASE + FINDER_PATH, wait_ready=FINDER_READY_JS), seen)
+    except Exception as e:
+        print(f"finder fetch failed: {e}", file=sys.stderr)
     print(f"finder page yielded {len(seen)} district link(s)", file=sys.stderr)
 
-    # If the finder was sparse, harvest the district nav from the pages we did
-    # find (each district page footer links every other district). Keep pulling
-    # from newly-discovered pages until the set stops growing or we hit the full
-    # roster — bounded by the finite district count, so it always terminates.
-    tried = set()
-    while len(seen) < EXPECTED_DISTRICTS and (set(seen) - tried):
-        number = min(set(seen) - tried)
-        tried.add(number)
-        try:
-            _harvest_district_links(fetcher.fetch(seen[number][3]), seen)
-        except Exception as e:
-            print(f"  harvest from district {number} failed: {e}", file=sys.stderr)
+    if len(seen) < EXPECTED_DISTRICTS:
+        _harvest_from_sitemap(fetcher, seen)
+        print(f"after sitemap: {len(seen)} district link(s)", file=sys.stderr)
 
     if len(seen) < EXPECTED_DISTRICTS:
         print(
-            f"WARNING: discovered {len(seen)}/{EXPECTED_DISTRICTS} districts after harvest",
+            f"WARNING: discovered {len(seen)}/{EXPECTED_DISTRICTS} districts",
             file=sys.stderr,
         )
     return [seen[n] for n in sorted(seen)]
@@ -424,10 +445,14 @@ def scrape(engine, limit=None, delay=0.5):
         finally:
             fetcher.close()
 
-    # auto: probe the finder page with requests, keep it if it works.
+    # auto: one decisive probe — can plain requests clear the site at all? The
+    # finder page is Cloudflare-protected, so a 403/challenge here means every
+    # page will be too, and we switch to the browser engine. (This probe, not
+    # get_district_pages' return, drives the decision: discovery swallows a
+    # blocked finder and leans on the sitemap, so it can't be the block signal.)
     req = RequestsFetcher()
     try:
-        pages = get_district_pages(req)
+        req.fetch(BASE + FINDER_PATH)
     except Exception as e:
         req.close()
         print(f"requests engine blocked ({e}); falling back to Playwright", file=sys.stderr)
@@ -438,7 +463,7 @@ def scrape(engine, limit=None, delay=0.5):
             pw.close()
     else:
         try:
-            return scrape_all(req, limit=limit, delay=delay, pages=pages)
+            return scrape_all(req, limit=limit, delay=delay)
         finally:
             req.close()
 
