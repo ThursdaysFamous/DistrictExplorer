@@ -19,6 +19,8 @@ All numbers were measured against this working tree unless marked *(not live-ver
 - **Item 26:** README updated (embedded→fetched, offline/SW-caching semantics, `data/app/` simplification provenance, repo layout); the not-in-repo Playwright/parse5 Validation claim was replaced with the real `validate_index.py` gate (the smoke test itself remains item 5).
 - **Deliberately not folded in:** SW shell-entry dedupe (item 22) and the `timeoutMs` overrides for the now-fetched large geometry (item 11) — `sw.js` `CACHE_NAME` was bumped to `-v2` and given cache-first geometry / network-first roster handling for `data/app/*`, but the pre-existing `"./"`+`"./index.html"` duplication is left for item 22.
 
+**Execution log (item 5 — smoke test):** Committed `scripts/smoke_test.mjs` (Playwright) + `.github/workflows/smoke-test.yml` (`on: pull_request`), delivering the headless boot check the README described but the repo never carried (R4 doc/reality drift). Eight checks, all deterministic — no dependency on the live district APIs (flaky in CI): app boots and exports `window.ChiExplorer`, all **18** layers register, the three no-API layers classify the downtown Loop point against known ground truth (school-board 12, IL Supreme Court 1, Board of Review 3) including the member-roster join, and a forced `data/app` failure yields an isolated error card + Retry. Verified green locally against the real page. This also gives the externalization PR its first real CI (the roster workflows are schedule/dispatch-only and never ran on PRs).
+
 ---
 
 ## 1. Executive Summary
@@ -170,7 +172,7 @@ Zero `tileerror` handlers (grep-verified); offline users get a booted app (the S
 | 2 | ~~Externalize geometry + rosters to `data/app/*.json`, lazy per-layer fetch~~ — **done (P0; index.html 410 KB → 112 KB)** | **High** | Medium | Architecture |
 | 3 | ~~`node --check` + output invariants between rewrite and PR in both workflows~~ — **done in this PR (`scripts/validate_index.py`)** | **High** | **Low** | DevEx |
 | 4 | ~~SW shell → network-first (fixes guaranteed-stale rosters)~~ — **done in this PR** | **High** | **Low** | Frontend |
-| 5 | Commit the Playwright boot smoke test on `pull_request` — R4 | **High** | Medium | DevEx |
+| 5 | ~~Commit the Playwright boot smoke test on `pull_request`~~ — **done (`scripts/smoke_test.mjs` + `smoke-test.yml`)** | **High** | Medium | DevEx |
 | 6 | ~~Builders emit JSON (regex splice + `</script`/U+2028 escaping gone entirely)~~ — **done with #2** | **High** | Medium | Pipeline |
 | 7 | Surface overlay-load failures (15/18 layers currently silent) — R5 | **High** | **Low** | Frontend |
 | 8 | Build-time IL congress roster; drop multi-MB runtime fetch — P2 | **High** | Medium | Network |

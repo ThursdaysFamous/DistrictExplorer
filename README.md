@@ -85,7 +85,8 @@ scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commande
 scripts/build_cpd_roster.py      writes data/app/cpd-district-info.json from scraper output
 scripts/build_embedded_boundaries.py  simplifies data/*.geojson into data/app/*.json (occasional operator step)
 scripts/validate_index.py   post-regeneration gate: app parses, all data/app files present + well formed
-.github/workflows/          weekly roster refreshes — open a PR for human review, never commit to main
+scripts/smoke_test.mjs      Playwright boot/behaviour smoke test (runs on every PR)
+.github/workflows/          weekly roster refreshes (PR for human review) + per-PR smoke test
 docs/BUILD_PLAYBOOK_1.md    architecture contract + per-thread build/status log
 docs/OPTIMIZATION_PLAYBOOK.md  optimization & refinement playbook (measured findings + prioritized tasks)
 docs/screenshot.png         README screenshot
@@ -93,7 +94,10 @@ docs/screenshot.png         README screenshot
 
 ## Validation
 
-The app is exercised headlessly in CI-like conditions: the inline script passes `node --check` and `scripts/validate_index.py` confirms every layer is still registered and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 5 + 3 court/board districts). This gate runs in the weekly roster workflows between regeneration and the PR, so a bad data regeneration can't reach `main` unreviewed.
+Two gates run in CI:
+
+- **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered, no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 5 + 3 court/board districts). A bad data regeneration can't reach `main` unreviewed.
+- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 18 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 
 ## Not for legal or official use
 

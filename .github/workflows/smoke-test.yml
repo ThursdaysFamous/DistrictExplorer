@@ -1,0 +1,47 @@
+name: Smoke test
+
+# Headless boot + behaviour check on every pull request: serves the real
+# index.html and drives it in Chromium (scripts/smoke_test.mjs) to confirm the
+# app boots, registers all 18 layers, classifies a known point with the three
+# no-API layers, and degrades gracefully when a data source fails. This is the
+# validation the README describes; it runs before merge so a change that breaks
+# boot or the data files can't land unnoticed.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Pinned to the version the test was authored against. Installs into the
+      # ephemeral workspace only (node_modules is never committed — this repo
+      # has no build step).
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Serve app and run smoke test
+        env:
+          BASE_URL: http://localhost:8000/
+        run: |
+          python3 -m http.server 8000 &
+          server_pid=$!
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8000/ >/dev/null && break
+            sleep 0.5
+          done
+          node scripts/smoke_test.mjs
+          status=$?
+          kill "$server_pid" 2>/dev/null || true
+          exit $status

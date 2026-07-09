@@ -1,0 +1,126 @@
+// Headless boot + behaviour smoke test, run in CI on every pull request
+// (.github/workflows/smoke-test.yml). Serves the real index.html and drives it
+// in Chromium via Playwright — the check the README's "Validation" section
+// describes and that OPTIMIZATION_PLAYBOOK item 5 asked to actually commit.
+//
+// It deliberately depends only on the app shell (Leaflet from its CDN) and the
+// same-origin data/app/*.json files — never on the live district APIs, which
+// are flaky/blocked in CI. The three no-API layers (school board, IL Supreme
+// Court, Board of Review) are the deterministic ground truth.
+//
+// Run locally against a static server:
+//     python3 -m http.server 8000 &
+//     npm install playwright && node scripts/smoke_test.mjs
+// Configure the URL with BASE_URL (default http://localhost:8000/).
+
+import { chromium } from "playwright";
+
+const BASE = process.env.BASE_URL || "http://localhost:8000/";
+const POINT = "41.88250,-87.62850"; // downtown Loop — inside Cook County
+const OFFLINE = ["school-board", "il-supreme-court", "ccbr"];
+const EXPECT_LAYERS = 18;
+const BOOT_TIMEOUT = 45000; // Leaflet CDN + first paint on a cold CI runner
+const QUERY_TIMEOUT = 25000;
+
+const failures = [];
+function check(name, ok, detail) {
+  console.log(`  ${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
+  if (!ok) failures.push(name);
+}
+
+async function booted(page, url) {
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => !!window.ChiExplorer, null, { timeout: BOOT_TIMEOUT });
+}
+
+const browser = await chromium.launch();
+try {
+  // 1. App boots and registers every layer.
+  {
+    const page = await browser.newPage();
+    await booted(page, BASE);
+    check("app boots (window.ChiExplorer exported)", true);
+    const n = await page.evaluate(
+      () => document.querySelectorAll('input[type=checkbox][id^="toggle-"]').length
+    );
+    check(`${EXPECT_LAYERS} layers registered`, n === EXPECT_LAYERS, `found ${n}`);
+    await page.close();
+  }
+
+  // 2. The three no-API layers classify a known point against known ground
+  //    truth, fetched from data/app/*.json.
+  {
+    const page = await browser.newPage();
+    await booted(page, `${BASE}#point=${POINT}&layers=${OFFLINE.join(",")}`);
+    const EXPECT_DISTRICT = { "school-board": "12", "il-supreme-court": "1", "ccbr": "3" };
+    for (const id of OFFLINE) {
+      await page
+        .waitForFunction(
+          (cid) => {
+            const el = document.getElementById("card-" + cid);
+            return el && !el.querySelector(".loading-row") && /District/i.test(el.innerText);
+          },
+          id,
+          { timeout: QUERY_TIMEOUT }
+        )
+        .catch(() => {});
+      const info = await page.evaluate((cid) => {
+        const el = document.getElementById("card-" + cid);
+        if (!el) return { text: "(no card)", error: true };
+        return { text: el.innerText.replace(/\s+/g, " ").trim(), error: el.classList.contains("state-error") };
+      }, id);
+      const m = /District\s+(\S+)/i.exec(info.text);
+      const got = m ? m[1] : null;
+      check(
+        `${id} classifies point (District ${EXPECT_DISTRICT[id]})`,
+        !info.error && got === EXPECT_DISTRICT[id],
+        info.text.slice(0, 70)
+      );
+    }
+    // Bonus: the school-board card joins its externalized member roster.
+    const board = await page.evaluate(() => {
+      const el = document.getElementById("card-school-board");
+      return el ? el.innerText : "";
+    });
+    check("school-board joins member roster", /Board member/i.test(board), board.replace(/\s+/g, " ").slice(0, 70));
+    await page.close();
+  }
+
+  // 3. A failing data source degrades to that layer's error card + Retry, in
+  //    isolation — the app's per-layer failure-isolation rule.
+  {
+    const page = await browser.newPage();
+    await page.route("**/data/app/school-board-districts.json", (r) => r.fulfill({ status: 503, body: "down" }));
+    await booted(page, `${BASE}#point=${POINT}&layers=school-board,ccbr`);
+    await page
+      .waitForFunction(
+        () => {
+          const el = document.getElementById("card-school-board");
+          return el && el.classList.contains("state-error");
+        },
+        null,
+        { timeout: QUERY_TIMEOUT }
+      )
+      .catch(() => {});
+    const res = await page.evaluate(() => {
+      const sb = document.getElementById("card-school-board");
+      const other = document.getElementById("card-ccbr");
+      return {
+        errored: !!sb && sb.classList.contains("state-error"),
+        hasRetry: !!sb && !!sb.querySelector(".retry-btn"),
+        otherOk: !!other && !other.classList.contains("state-error") && /District/i.test(other.innerText),
+      };
+    });
+    check("failed layer shows error card + Retry", res.errored && res.hasRetry);
+    check("failure is isolated (other layer still classifies)", res.otherOk);
+    await page.close();
+  }
+} finally {
+  await browser.close();
+}
+
+if (failures.length) {
+  console.error(`\n${failures.length} smoke check(s) failed: ${failures.join(", ")}`);
+  process.exit(1);
+}
+console.log("\nAll smoke checks passed.");
