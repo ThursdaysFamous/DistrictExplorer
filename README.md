@@ -20,7 +20,7 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | Elected School Board District | ERSB district + "6b"-style sub-district, elected board member |
 | | IL Supreme Court District | District under PA 102-0011 (District 1 = Cook County) |
 | | Cook County Board of Review District | District under PA 102-0012 (property-tax appeals) |
-| **Public Safety** | Police District | CPD district number and name |
+| **Public Safety** | Police District | CPD district number and name, commander, CAPS unit phone/email, station address + phone, district map link |
 | | Police Station (nearest 3) | Station name, address, phone, straight-line distance |
 | | Fire Station (nearest 3) | Firehouse + engine designation, distance |
 | **Schools** | Elementary / Middle / High School Zone | CPS attendance-boundary school, grades, address, profile link, map pin |
@@ -64,6 +64,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 |---|---|
 | [Chicago Data Portal](https://data.cityofchicago.org) (Socrata) | Wards + aldermen roster, fire stations, CPS zones + networks, community areas, ZIP codes |
 | CPD ArcGIS (`services2.arcgis.com/t3tlzCPfmaQzSWAk`) | Police district boundaries, police station roster |
+| [chicagopolice.org](https://www.chicagopolice.org) per-district pages (scraped weekly by CI) | Police district commander, CAPS unit phone/email, station address (embedded inline) |
 | Cook County GIS (`gis.cookcountyil.gov/traditional/rest/services/politicalBoundary`) | Cook County Commissioner District boundaries + office roster |
 | [U.S. Census TIGERweb](https://tigerweb.geo.census.gov) | Congressional, IL Senate, IL House boundaries |
 | [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) | U.S. House roster |
@@ -83,7 +84,9 @@ data/source/                intermediate conversions
 data/source/raw/            original shapefiles / KML / KMZ / XLSX as supplied
 scripts/ilga_scraper.py     scrapes ilga.gov member rosters
 scripts/build_il_roster.py  rewrites the inline IL rosters in index.html from scraper output
-.github/workflows/          weekly roster refresh — opens a PR for human review, never commits to main
+scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commander/contact pages
+scripts/build_cpd_roster.py      rewrites the inline CPD_DISTRICT_INFO roster in index.html from scraper output
+.github/workflows/          weekly roster refreshes — open a PR for human review, never commit to main
 docs/BUILD_PLAYBOOK_1.md    architecture contract + per-thread build/status log
 docs/MOBILE_APP_RUNBOOK.md  turning index.html into installable iOS/Android apps
 docs/screenshot.png         README screenshot
