@@ -32,10 +32,10 @@ import subprocess
 import sys
 import tempfile
 
-# Floor, not a moving target: 1 function definition + 11 direct registerLayer()
+# Floor, not a moving target: 1 function definition + 12 direct registerLayer()
 # calls + 3 factory bodies. New layers only raise this; a drop means modules
 # were lost.
-MIN_REGISTER_LAYER = 15
+MIN_REGISTER_LAYER = 16
 
 # file -> (min features, max features) for the boundary layers fetched by the app.
 GEOMETRY_FILES = {
