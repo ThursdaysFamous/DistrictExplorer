@@ -127,6 +127,44 @@ try {
     check("failure is isolated (other layer still classifies)", res.otherOk);
     await context.close();
   }
+
+  // 4. Overlay-load failure with NO point selected still surfaces (R5 / item 7).
+  //    Toggle a layer via the permalink before any point is picked and fail its
+  //    boundary fetch — the card must show an error + Retry (un-hidden), not
+  //    fail silently the way it used to on 15 of 18 layers.
+  {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    const page = await booted(
+      context,
+      `${BASE}#layers=school-board`,
+      (p) => p.route("**/data/app/school-board-districts.json", (r) => r.fulfill({ status: 503, body: "down" }))
+    );
+    await page
+      .waitForFunction(
+        () => {
+          const el = document.getElementById("card-school-board");
+          return el && el.classList.contains("state-error");
+        },
+        null,
+        { timeout: QUERY_TIMEOUT }
+      )
+      .catch(() => {});
+    const res = await page.evaluate(() => {
+      const el = document.getElementById("card-school-board");
+      return {
+        pointSelected: !!(window.ChiExplorer && window.ChiExplorer.state.selectedPoint),
+        errored: !!el && el.classList.contains("state-error"),
+        hasRetry: !!el && !!el.querySelector(".retry-btn"),
+        visible: !!el && getComputedStyle(el).display !== "none",
+      };
+    });
+    check(
+      "pre-point overlay failure surfaces (not silent)",
+      !res.pointSelected && res.errored && res.hasRetry && res.visible,
+      `point=${res.pointSelected} err=${res.errored} retry=${res.hasRetry} visible=${res.visible}`
+    );
+    await context.close();
+  }
 } finally {
   await browser.close();
 }

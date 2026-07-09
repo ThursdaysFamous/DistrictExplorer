@@ -1423,6 +1423,19 @@
         .catch(function (err) {
           rt.overlayLoaded = false;
           console.error("[" + mod.id + "] overlay load failed:", err);
+          // Don't fail silently. Before a point is picked, runLayerQuery below
+          // returns early, so without this the boundaries simply never appear
+          // and the user has no signal why — a silent stall of up to ~28 s.
+          // setCardError un-hides this layer's own card (it drops the state-off
+          // display:none) and adds a Retry that re-runs onLayerToggled, which
+          // re-attempts the load (overlayLoaded was just reset). Guard on the
+          // layer still being on: the user may have toggled it off mid-download,
+          // and the off-branch already owns the card in that case. If a point is
+          // selected, runLayerQuery reports the same failure in the same card —
+          // both paths say the same thing, last writer wins.
+          if (state.layersOn[mod.id]) {
+            setCardError(mod, "Couldn't load this layer's boundaries. It won't affect other layers.");
+          }
         });
     } else if (rt.overlayLayer) {
       rt.overlayLayer.addTo(map);
