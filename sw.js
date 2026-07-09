@@ -1,5 +1,6 @@
 // App-shell cache only. Never cache live district/roster API responses —
-// see docs/MOBILE_APP_RUNBOOK.md §7 for why staleness there is unacceptable.
+// a stale cached roster could name the wrong officeholder, and this app's
+// rule is that officeholder data is never guessed or served stale.
 const CACHE_NAME = "district-explorer-shell-v1";
 const SHELL_URLS = [
   "./",

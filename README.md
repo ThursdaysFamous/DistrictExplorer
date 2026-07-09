@@ -2,7 +2,7 @@
 
 **Click any point in Chicago — or search an address — and see every civic district that contains it, and who represents you there.**
 
-A single-file, dependency-light web app: one `index.html`, Leaflet for the map, no build step, no framework, no server-side code. Open it in a browser and it works — including directly from `file://`.
+A single-file, dependency-light web app: one `index.html`, Leaflet for the map, no build step, no framework, no server-side code. Deployed as a static site — any static host or server works.
 
 ![Chicago District Explorer showing a selected point with the Elected School Board, IL Supreme Court, and Board of Review layers on](docs/screenshot.png)
 
@@ -42,10 +42,6 @@ There is nothing to build.
 # any static server works:
 python3 -m http.server 8000
 # then open http://localhost:8000/
-
-# or just open the file directly:
-open index.html        # macOS
-xdg-open index.html    # Linux
 ```
 
 Most layers fetch live data from public APIs at runtime, so they need an internet connection. Three layers — Elected School Board, IL Supreme Court, and Board of Review — are embedded in the page and work fully offline.
@@ -88,7 +84,7 @@ scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commande
 scripts/build_cpd_roster.py      rewrites the inline CPD_DISTRICT_INFO roster in index.html from scraper output
 .github/workflows/          weekly roster refreshes — open a PR for human review, never commit to main
 docs/BUILD_PLAYBOOK_1.md    architecture contract + per-thread build/status log
-docs/MOBILE_APP_RUNBOOK.md  turning index.html into installable iOS/Android apps
+docs/OPTIMIZATION_PLAYBOOK.md  optimization & refinement playbook (measured findings + prioritized tasks)
 docs/screenshot.png         README screenshot
 ```
 

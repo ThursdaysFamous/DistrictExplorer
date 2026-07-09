@@ -1,113 +1,150 @@
 # Optimization & Refinement Playbook
 
-**Repo:** ThursdaysFamous/DistrictExplorer · **Date:** 2026-07-09 · **Scope:** `index.html` (2,811 lines, 1.30 MB), `sw.js`, `scripts/` pipeline, `.github/workflows/`, Capacitor wrappers
+**Repo:** ThursdaysFamous/DistrictExplorer · **Date:** 2026-07-09 · **Scope:** `index.html` (2,811 lines, 1.30 MB), `sw.js`, `scripts/` pipeline, `.github/workflows/`
 
-All numbers below were measured against this working tree unless marked *(not live-verified)* — the same convention the codebase itself uses for claims that couldn't be checked from the build sandbox.
+**Constraint changes this playbook is built on** (owner decisions, 2026-07-09):
+- The Capacitor/Android/iOS stack is **removed** (done in this PR — 80 files, −2,931 lines; git history retains everything). The app is a website (+ installable PWA) only.
+- The app is hosted (GitHub Pages, `ChiDistricts.overberg.co`); **`file://` support is no longer a constraint.** Every "embedded inline because file:// blocks sibling fetches" decision in the codebase is now renegotiable. The other design values — one hand-readable page, no build step, no framework, per-layer failure isolation, sanitized external strings, never-guess/never-stale officeholder data — remain in force and this playbook works within them.
+
+All numbers were measured against this working tree unless marked *(not live-verified)* — the same convention the codebase itself uses. Findings were produced by a multi-agent review (5 scoped reviewers + adversarial verification of all 36 findings + a completeness-critic round that added 19 more); everything below survived verification, and the biggest claims were re-derived independently a second time.
 
 ---
 
 ## 1. Executive Summary
 
-This is an unusually disciplined codebase for its size: per-layer failure isolation is real, stale async results are sequenced away, external strings are sanitized at one choke point, scrapers are polite and PR-gated, and design constraints (single file, no build step, `file://` support, never-guess-officeholders) are written down and honored. The playbook below deliberately works **within** those constraints; where a recommendation would bend one, it says so explicitly.
+This is an unusually disciplined codebase: per-layer failure isolation is real, stale async results are sequenced away, external strings pass through one sanitizer, scrapers are polite and PR-gated, and design constraints are written down and mostly honored. The four issues that matter, in order:
 
-The findings, in order of user impact:
+1. **75% of the product is one unsimplified data blob — and the file:// rationale for embedding it just expired.** `SCHOOL_BOARD_DISTRICTS_GEOJSON` (`index.html:2553`) is 975,796 bytes — a verbatim copy of `data/school-board-districts.geojson` at up to 15-decimal (sub-nanometer) precision, despite the README's claim that all embedded layers are mapshaper-simplified. Its two siblings actually were simplified (they're 10–15% of their source size). Simplifying it identically cuts it to **57.7 KB (−94%)**, taking `index.html` from **1.30 MB → 384 KB raw (428 KB → 106 KB gzipped)** at 99.98% classification agreement over 5,000 in-district points. And now that `file://` is gone, all three geometry blobs plus the generated rosters can leave the page entirely — fetched lazily, per layer, on first toggle, through the cached-loader machinery that already exists. End state: `index.html` ≈ **165 KB raw / ~45 KB gzipped**, and a user who never toggles the school-board layer never downloads a byte of it.
 
-1. **One data blob dominates everything.** `SCHOOL_BOARD_DISTRICTS_GEOJSON` (line 2553) is **975,797 bytes — 75% of the entire page** — carrying 24,904 coordinate pairs at up to **15 decimal places (nanometer precision)**. The two sibling embedded layers (IL Supreme Court, CCBR) already received a documented "topology-preserving simplification" treatment (5-decimal, validated with random-point classification); the school-board layer never did. Applying the identical treatment shrinks it to **57.7 KB (−94%)** and shrinks the whole page from **1.30 MB → 384 KB raw (428 KB → 106 KB gzipped)**, with **99.98% classification agreement across 5,000 in-district test points** (the single disagreement lies within the 5.5 m simplification tolerance of a district boundary). This one change cuts first-load bytes by ~75%, cuts the service worker's background revalidation traffic by the same, cuts both app binaries, and speeds `JSON.parse` at boot.
+2. **The weekly CI rewrite of a 1.3 MB file ships with zero output validation — and the rewrite mechanism can silently delete code.** Both roster workflows regex-rewrite `index.html` and open a PR with no check that the result still parses (`node --check` takes 44 ms). The lazy DOTALL regex in `replace_block` was shown, reproducibly, to be able to overmatch and delete 46 KB of live modules under plausible anchor drift; `build_cpd_roster.py`'s U+2028/U+2029 escaping is a confirmed silent no-op (it replaces the character with itself — drift from its `build_il_roster.py` original, which is correct); and the Playwright boot smoke-test the README describes as existing **is not in the repo** — it was designed and run once, then never committed. Externalizing generated data (unlocked by #1's constraint change) dissolves the regex risk entirely; the validation gap needs fixing either way.
 
-2. **Runtime over-fetch on the network layers.** The U.S. House card downloads the complete `legislators-current.json` roster (every member of Congress, full term history — multi-MB *(not live-verified; egress blocked)*) to display one representative, and the TIGERweb layers download full-resolution statewide geometry with `outFields=*`. The repo already owns the correct pattern for the first problem — build-time roster embedding via a weekly scraper PR (ILGA, CPD) — and the second has a server-side fix (`maxAllowableOffset`, trimmed `outFields`) that keeps the overlay visuals.
+3. **The service worker violates the project's own freshness rule.** `sw.js` serves the shell cache-first with background revalidation — but the rosters live *inside* that shell, so every returning visitor sees last-deploy's officeholders on a page whose header comment says staleness there is unacceptable. One small handler change (network-first with cache fallback) restores correct-when-online semantics.
 
-3. **Small architecture debts, honestly labeled.** A verbatim duplicate of the cached-loader factory (`makeCached` at 2081 vs `makeCachedLoaderFromFn` at 1581 — the comment even admits it), duplicated Socrata route-fallback walkers, and a click path that runs the same point-in-polygon scan twice per layer and restyles every SVG path of every active layer on every click.
-
-4. **A process gap that will eventually ship a broken page.** Two GitHub Actions regex-rewrite `index.html` weekly and open PRs, but nothing anywhere validates that the rewritten 1.3 MB file still parses and boots. There are no tests of any kind. One malformed replacement away from a blank page.
+4. **Silent failure paths and measured interaction waste.** Toggling a layer before selecting a point gives a completely silent failure on 15 of 18 layers if the boundary download fails (violates honesty rule 3); ArcGIS "200-with-error-envelope" responses get cached as permanent success on 4 layers; and every map click re-runs point-in-polygon twice per layer and restyles every SVG path of every active layer (~6,300 attribute mutations per click with 5 typical layers on).
 
 ---
 
 ## 2. Performance Optimization Plan
 
-### 2.1 Payload & startup (the big one)
+### 2.1 Payload & startup
 
-**P1 — Simplify the school-board geometry (measured: −918 KB raw, −322 KB gzipped).**
-`index.html:2553`. The blob was embedded from the ERSB shapefile without the simplification pass its two siblings got (their provenance comment at `index.html:2605-2619` documents "reprojected NAD83 → WGS84 and topology-preserving-simplified for embedding — classification agreement … 100% across 2,000 random in-city test points"). Measured on this tree:
+**P0 — Externalize the embedded data; fetch lazily per layer** *(unlocked by the file:// constraint removal)*
+`index.html` embeds 1,136,613 bytes of data across three geometry blobs (lines 2553/2620/2658: 975,796 + 99,810 + 61,009 B) and three generated rosters (`IL_SENATE_MEMBERS` 18,080 B, `IL_HOUSE_MEMBERS` 36,058 B, `CPD_DISTRICT_INFO` currently a 32-byte placeholder). Every visitor downloads and evaluates all of it (measured: ~38 ms script-eval for the JSON.parse lines on desktop Node, est. 150–300 ms on low-end mobile WebViews) even though all three geometry layers are off by default.
 
-| Layer (embedded line) | Coord pairs | Max decimals | Bytes |
-|---|---|---|---|
-| School board (2553) | 24,904 | **15** | 975,797 |
-| IL Supreme Court (2620) | 4,771 | 5 | 99,810 |
-| CCBR (2658) | 2,916 | 5 | 61,009 |
-
-Douglas-Peucker at ~5.5 m tolerance + 6-decimal rounding → **2,394 coord pairs, 57,736 bytes**, `index.html` = 383,923 bytes raw / 105,974 gzipped. Validation: 5,000 random points *inside* the original districts, classified with the app's own even-odd `pointInGeometry` algorithm → 4,999/5,000 agreement (99.98%). See §5 Quick Win 1 for the exact change. Commit the generator as `scripts/build_embedded_boundaries.py` so the blob is regenerable (today the geometry blobs — unlike the rosters — have no scripted path; that's finding R6).
-
-**P2 — Defer `JSON.parse` of embedded blobs to first toggle.**
-Lines 2553/2620/2658 execute `JSON.parse` on ~1.14 MB of string at script-eval time on *every* page load, even when none of the three layers is ever toggled (they are off by default). The loaders are already promise-shaped (`loadSchoolBoardDistricts` at 2554 wraps the parsed constant in `Promise.resolve`), so the change is mechanical: store the raw string, parse inside the existing `makeCached` wrapper — first toggle pays the parse, and the parsed object is retained by the same cache that retains it today. After P1 this is ~220 KB of string instead of 1.14 MB, so it drops from "tens of ms on low-end mobile" to noise — do it in the same commit as P1 while you're editing those lines.
-
-**P3 — Replace the runtime congress-legislators download with a build-time roster (consistent with existing architecture).**
-`index.html:2195-2197`:
+Move each dataset to `data/app/<name>.json`, and have the loaders fetch them with the machinery that already exists — this is a ~10-line change per layer because the cached-loader pattern is already promise-shaped:
 
 ```js
-var loadCongressLegislators = makeCached(function () {
-  return fetchJSONWithRetry("https://unitedstates.github.io/congress-legislators/legislators-current.json", {}, 1);
+// before (index.html:2554-2556)
+var loadSchoolBoardDistricts = makeCached(function () {
+  return Promise.resolve(SCHOOL_BOARD_DISTRICTS_GEOJSON);
+});
+// after
+var loadSchoolBoardDistricts = makeCached(function () {
+  return fetchJSONWithRetry("data/app/school-board-districts.json", {}, 2);
 });
 ```
 
-Every browser that toggles the U.S. House layer downloads the full national roster — every legislator, every term ever served — to `filter()` out one IL representative (`index.html:2218-2222`). The repo already has the exact pattern this should use: `scripts/ilga_scraper.py` + `build_il_roster.py` + a weekly PR-gated Action embed the *resolved current officeholder per district* directly into `index.html`. An `IL_CONGRESS_MEMBERS` object for IL's 17 districts is ~3–4 KB embedded, eliminates a multi-MB runtime fetch *(size not live-verified)*, removes the layer's dependency on a third-party host at runtime, and even improves the `file://` story. The source can remain `legislators-current.json` — fetched once a week by CI instead of once per user.
+Effects: `index.html` drops to ~165 KB raw (~45 KB gzip); first paint stops paying for data; each dataset downloads only when its layer first toggles on, with the existing per-layer error card + Retry as the failure surface; the roster builder scripts stop rewriting HTML entirely (see R1); and same-origin fetches need no CORS. Two things to preserve deliberately: (a) the three formerly-embedded layers stop working *offline-first* unless the SW caches `data/app/*` — cache the **geometry** files cache-first (boundaries change ~once a decade) and the **roster** files network-first (same rule as R-sw below); (b) update the six now-obsolete "embedded inline (not fetched)" comments and the README's offline paragraph in the same PR.
 
-**P4 — Server-side generalization for TIGERweb layers.**
-`index.html:2115-2120` (`loadTigerLayer`) fetches Congressional/SLDU/SLDL boundaries for all of Illinois at full resolution with `outFields=*`. Esri REST supports `maxAllowableOffset` (generalize geometry server-side to the display tolerance) and explicit `outFields` lists — the app only reads the district-number fields (`CONGRESS_DISTRICT_FIELDS` at 2198, `districtFields` per chamber at 2534) plus a name-field fallback. Adding `&maxAllowableOffset=0.0001&outFields=BASENAME,NAME,CD119FP,SLDUST,SLDLST` (tune per layer) keeps the overlay visually identical at city zoom and typically cuts Esri payloads by 5–20× *(exact delta not live-verified; egress blocked)*. Same applies to `loadCookCountyLayerGeoJSON` (2709) and `loadArcGISGeoJSON` (1606), both of which use `where=1=1&outFields=*`.
+**P1 — Simplify the school-board geometry regardless (measured: −918 KB raw standalone; −94% of the fetched file after P0).**
+Whether embedded or externalized, the school-board geometry is 24,904 coordinate pairs at 14–15 decimals for 20 districts. Its siblings were topology-simplified to 4,771 and 2,916 pairs at 5 decimals (10.2%/14.4% keep — `index.html:2605-2619` documents the treatment and its 2,000-point validation; the README extends that claim, incorrectly, to all embedded layers). Applying the same treatment (Douglas-Peucker ε≈5.5 m + 6-decimal rounding, validated in this review):
 
-### 2.2 Interaction path
+| | Coord pairs | Bytes | index.html raw | index.html gzip |
+|---|---|---|---|---|
+| Today | 24,904 | 975,796 | 1,301,984 | 427,836 |
+| 6dp rounding only (zero classification change at 6dp) | 24,904 | 570,353 | 896,595 | 233,544 |
+| Simplified + 6dp (**recommended**) | 2,394 | 57,736 | 383,923 | 105,974 |
 
-**P5 — The same point-in-polygon scan runs twice per layer per click, then every path gets restyled.**
-Click → `runLayerQuery` (1470) → `mod.query()` → `findFeatureContaining(rt.geojson, point)` … then the `.then` at 1479 calls `updateLayerHighlight(mod)` (1215), which calls `findFeatureContaining` **again** on the same cached geojson, then `eachLayer`+`setStyle` over *every* sub-layer (1223-1234) — for every active layer, on every click. `refreshActiveLayerOpacities` (1130) triggers the same full sweep on every toggle. With the school zones active (hundreds of attendance polygons) that's hundreds of SVG attribute rewrites per click.
-Fixes, in increasing ambition: (a) memoize the match — have `updateLayerHighlight` accept the feature the query already found (or cache `{seq, feature}` on `rt`); (b) restyle only the two affected paths (previous highlight, new highlight) instead of `eachLayer` when only the selection changed — the faded/base style for the other paths only changes when the *active-layer count* changes; (c) add a per-feature bbox pre-check to `findFeatureContaining` (1628) — compute bboxes once at load, skip ray-casting features whose bbox excludes the point. Each is small and independent.
+Validation: 5,000 random points inside the original districts, classified with the app's own even-odd `pointInGeometry` — 4,999/5,000 agree; the single disagreement is ~5 m from a district 4/7 boundary, the same accuracy class as the documented sibling treatment and below GPS error. (Verifier note, kept for honesty: plain 5dp rounding *without* simplification was independently shown to risk boundary-adjacent flips; 6dp rounding is the safe floor.) Do it via the script in R2 so it's reproducible.
 
-**P6 — Memoize POI geocoding.**
-`geocodePoiAddress` (1252) hits Nominatim for the office address on every render — click three points in the same ward and the same alderman office address geocodes three times. A `Map` keyed by address string (the result never changes within a session) is one line of state and is also politer to a shared public service whose usage policy the geocoder code already respects (see the 550 ms debounce comment at 1036).
+### 2.2 Network
 
-### 2.3 Delivery & caching
+**P2 — Stop shipping the national congress roster to every browser.**
+`index.html:2195-2197` fetches `https://unitedstates.github.io/congress-legislators/legislators-current.json` — all ~538 members with every term each has ever served, multi-MB raw *(not live-verified; sandbox egress blocked)* — then filters client-side (2218-2222) for one IL representative, using ≤ ~200 bytes of it. Verifier correction folded in: the browser HTTP cache does mitigate repeats (GitHub Pages serves ETag/max-age), so the cost is per cold cache, not per session — but the first toggle on any device still pays the full download. The repo already owns the right pattern: build-time roster embedding with a weekly PR-gated refresh (ILGA: 59+118 members; CPD: 22 districts). A `scripts/build_congress_roster.py` producing IL's 17 reps (~3–4 KB, becoming `data/app/congress-roster.json` after P0) removes the layer's runtime dependency on a third-party host entirely.
 
-**P7 — `sw.js` shell entries: `"./"` and `"./index.html"` double-store the page.**
-`sw.js:4-12` lists both; each is cached as a separate Cache Storage entry (2.6 MB today, ~770 KB after P1), and the stale-while-revalidate fetch handler (43-63) re-downloads the full page in the background per navigation. After P1 the revalidation cost drops 75%, which is the real fix; normalizing to one entry is polish. Two genuine correctness notes while in the file: `CACHE_NAME` is fixed at `"district-explorer-shell-v1"`, and the activate handler only deletes *other-named* caches — an entry removed from `SHELL_URLS` in a future edit would live in cache forever until the name is bumped; and the `response.ok` check in the fetch handler (49) means opaque responses would never refresh — currently harmless because both cdnjs entries use `crossorigin` (CORS, non-opaque), worth a comment so nobody adds a non-CORS shell URL.
+**P3 — Ask Esri servers for display-precision geometry.**
+`loadTigerLayer` (`index.html:2115-2120`), `loadArcGISGeoJSON` (1607), and `loadCookCountyLayerGeoJSON` (2710-2711) all fetch full-precision coordinates with `outFields=*`. Adding `&geometryPrecision=6` (≈11 cm) cuts coordinate payload ~40% (measured proxy: digits beyond 6dp are 41.5% of raw GeoJSON bytes on the full-precision layer analyzed locally); servers that don't support the param ignore it. `outFields` can shrink to the fields actually read (`CONGRESS_DISTRICT_FIELDS` at 2198, `districtFields` at 2534, commissioner fields at 2725). Six layers benefit (congress, il-senate, il-house, police-district, police-station, commissioner). Exact diff in §5 QW4.
 
-**P8 — Preconnect the tile CDN.**
-First map paint is gated on DNS+TLS to `a–d.basemaps.cartocdn.com` (tile layer added at `index.html:773` as soon as the script runs), but the `<head>` only preconnects Google Fonts (13-14). Adding preconnects for the tile subdomains (and `cdnjs.cloudflare.com`, used by both head CSS and body JS) shaves a round trip off every cold load. Exact diff in §5 Quick Win 2.
+**P4 — Give big payloads a bigger timeout than a 1-row probe.**
+`fetchJSONWithRetry` supports `opts.timeoutMs` (`index.html:711`) but none of the 9 call sites overrides it — a 9 s whole-body budget applies equally to a 1-row Socrata probe and the statewide IL House boundary download, so slow links can *never* load the big layers (each retry re-aborts at 9 s), while the Socrata 3-route ladder can keep a "Loading…" spinner alive ~65 s before failing. Give the known-large loaders (TIGERweb, Cook County, ArcGIS, congress roster until P2) `{timeoutMs: 30000}` and consider dropping route-ladder retries to tighten worst-case failure to under ~30 s.
 
-**P9 — Trim unused font weights.**
-Line 15 requests 10 weights across 3 families (Big Shoulders 600/700/800/900, Inter 400/500/600/700, IBM Plex Mono 400/500). The stylesheet uses weights 400/500/600/800/900 and contains no `<strong>`/`<b>` (so no implicit 700). Dropping Big Shoulders 700 and Inter 700 saves two font files (~25–40 KB) and is a one-line edit to the Google Fonts URL.
+**P5 — Guard the two unguarded Esri loaders (a 200-response bug becomes a session-long outage).**
+ArcGIS REST returns HTTP 200 with a JSON error envelope under load — the exact "succeeded but useless" mode the code already defends against for Socrata (`hasUsableGeometry` at 1566) and CPD ArcGIS (1610). `loadTigerLayer` (2119) and `loadCookCountyLayerGeoJSON` (2712) skip the guard, and `makeCached` retains resolved promises forever — so one bad 200 kills congress/il-senate/il-house/commissioner for the whole session with no Retry path. Two one-line `.then` additions reusing the existing guard.
 
-### 2.4 Memory
+**P6 — Serialize POI geocoding (up to 9 concurrent Nominatim hits per click today).**
+9 of 18 layers define `pointOfInterest`; a click with them active fires up to 9 parallel `geocodePoiAddress` requests (18 with retries) at a shared public service with a 1 req/s policy — the *search* geocoder respects it (550 ms debounce, comment at 1036), the POI path doesn't. The per-address cache (`poiGeocodeCache`, 1250) already prevents repeats; add a small promise queue with ≥1 s spacing in front of the fetch (pins already appear asynchronously, so latency is tolerable).
 
-**P10 — Overlay caches are unbounded but acceptable — document it.**
-Every toggled layer's full GeoJSON is retained forever (`rt.geojson` + the Leaflet layer + the `makeCached` promise). Worst case (every layer toggled once) is tens of MB after the school-zone layers load. That's a deliberate simplicity/speed trade-off that mostly suits this app; the one place it stings is low-end Android WebViews inside the Capacitor shell. Cheap mitigation if it ever matters: drop `rt.overlayLayer` (the Leaflet object, not the geojson) when a layer is toggled off — rebuild from `rt.geojson` on re-toggle is fast. Not worth doing preemptively; noted so it's a decision rather than an accident.
+### 2.3 Interaction & rendering
+
+**P7 — One PIP scan and two path restyles per click, not two scans and ~630 restyles.**
+Measured today (5 typical layers on: community areas 77, ZIPs ~61, wards 50, police 22, school zones ~420): every click runs `findFeatureContaining` **twice** per layer (once in `mod.query`, again in `updateLayerHighlight` at 1218 on the same cached geojson) and then `eachLayer`+`setStyle` over *every* sub-layer (1223-1234) — ~630 `setStyle` × ~10 attributes ≈ 6,300 SVG attribute mutations + 630 classList ops per click. Fix in the shared code, no module changes: (a) memoize `(point → feature)` on the geojson object so query and highlight share one scan; (b) when only the selection moved, restyle just the previous match and the new match — the faded/base style of the other ~628 paths is unchanged unless the *active-layer count* changed; (c) optional: per-feature bbox pre-check (0.105 ms → 0.004 ms per school-board scan, measured).
+
+**P8 — Toggle path does the same full sweep, plus a DOM reorder of every path.**
+`onLayerToggled` → `refreshActiveLayerOpacities` re-runs `updateLayerHighlight` (full PIP + full restyle) for every active layer, then `reorderActiveLayers` `bringToFront()`s each layer (~630 `appendChild`s) — including on toggle-**off** (1401-1402), where the layer being removed doesn't need restyling at all. Opacity rescaling only needs `setStyle({fillOpacity})` per path, not the full highlight recomputation; and the highlight of *other* layers is unaffected by a toggle.
+
+**P9 — The highlight drop-shadow is a hidden rasterization tax.**
+`.chi-region-highlight` (`index.html:525-528`) applies stacked `drop-shadow()` filters to a raw SVG path; at z15 the largest highlighted district's filter region is ~13.9 Mpx, re-rasterized during pan/zoom. Cheapest fix if pan jank is observed on low-end devices: drop the filter during `movestart`/`moveend`, or trade the shadow for a non-filter treatment (wider casing stroke). Cosmetic decision — flagging the mechanism so it's a choice.
+
+**P10 — Canvas rendering for the many-polygon layers — with a named trade-off.**
+No `renderer`/`preferCanvas` option exists in the file; all ~1,000 polygons (all layers on) are SVG DOM paths, ~500 of them from the school-zone layers. Per-layer `renderer: L.canvas()` on the three school-zone + two CPS-network layers would remove most paths — **but** the highlight mechanism mutates `subLayer._path.classList` (1226-1229), which doesn't exist under canvas, so the drop-shadow highlight would need the setStyle-only fallback on those layers. Do after P7/P8; only if profiling still shows restyle cost.
+
+**P11 — Release the Leaflet layer graph on toggle-off (keep the geojson).**
+Toggle-off keeps `rt.overlayLayer` forever — ~2 MB of `L.LatLng` objects for school-board alone (measured), unbounded across an 18-layer session. Keep the raw-geojson promise caches (they're what make re-toggle instant and are shared with `query()` — verified deliberate), but null out the Leaflet object on toggle-off and rebuild from `rt.geojson` on re-toggle. After P1's simplification this shrinks ~10×, so it's a "nice when touching that code" item.
+
+### 2.4 Delivery & caching
+
+**P-sw — `sw.js` currently guarantees stale rosters for returning visitors — invert the shell strategy.**
+The shell (which *contains* the rosters until P0) is served cache-first with background revalidation (`sw.js:49-62`), so every visit after a roster deploy shows the previous roster — directly against the never-stale rule in the file's own header. Network-first with cache fallback restores plain-page-load semantics online and keeps offline boot. Exact diff in §5 QW2. Post-P0 the same policy question moves to `data/app/*`: geometry cache-first, rosters network-first. Also: drop the duplicate `"./index.html"` shell entry (`"./"` and `"./index.html"` are two Cache API keys holding identical 1.3 MB bodies — 2.6 MB stored, and the typical install re-downloads one of them (~428 KB gzip) redundantly), and bump `CACHE_NAME` whenever `SHELL_URLS` changes (the activate handler only deletes *other-named* caches, so removed URLs otherwise live forever).
+
+**P12 — Warm the tile CDN connections.**
+Only Google Fonts gets preconnects (`index.html:13-14`), but first map paint is gated on DNS+TLS to `{a-d}.basemaps.cartocdn.com` (tile layer created at 773, immediately at script run). Preconnect two tile shards + dns-prefetch the click-time API origins. Exact diff in §5 QW5.
+
+**P13 — Trim two unused font weights.**
+Line 15 requests 10 weights; the stylesheet uses 400/500/600/800/900 and there's no `<strong>`/`<b>`. Dropping Big Shoulders 700 and Inter 700 saves two font files and nothing else changes.
+
+**Anti-finding, recorded so nobody "fixes" it:** `leaflet.js` at line 615 does **not** need `defer`. Lines 1–616 are only 19,297 bytes, so the preload scanner discovers it in the first ~19 KB and fetches it in parallel with the (long) HTML download; the inline classic-script IIFE at 617 depends on `L` synchronously, so adding `defer` would *break* boot, not speed it.
 
 ---
 
 ## 3. Refactoring & Code Quality
 
-**R1 — Delete the duplicate cached-loader factory.**
-`makeCached` (`index.html:2081-2089`) is line-for-line identical to `makeCachedLoaderFromFn` (1581-1592); the comment above it even says the earlier one "predates this." Keep one name, delete the other, update ~8 call sites. Zero-risk deletion of dead weight in the file's most load-bearing abstraction. Exact diff in §5 Quick Win 3.
+### 3.1 The generated-data pipeline (highest-risk area of the repo)
 
-**R2 — Extract the Socrata route-walker.**
-`loadSocrataGeoJSON` (1560-1577) and `loadSocrataJSON` (2093-2110) duplicate the same `tryRoute(i)` fallback recursion (including the subtle single-catch-per-route fix, whose rationale comment appears in one and is referenced by the other). Extract `tryRoutes(urls, validate)` and both become two-liners; the retry-count asymmetry (`i === 0 ? 2 : 1`) lives in one place.
+**R1 — Builders should emit data files, not rewrite a 1.3 MB HTML file** *(structural fix; unlocked by P0)*.
+Today `build_il_roster.py`/`build_cpd_roster.py` locate JS object literals inside `index.html` with a lazy DOTALL regex (`replace_block`, `build_il_roster.py:99-103`) and splice replacements in. The review reproduced a plausible-anchor-drift scenario where that regex overmatches and **silently deletes 46,753 bytes of live modules** (a failure mode this repo has already experienced once — `docs/BUILD_PLAYBOOK_1.md` records a module deleted by an earlier rewrite). Two builders also carry drifted copies of the same machinery: `build_cpd_roster.py`'s U+2028/U+2029 escaping is a **confirmed no-op** (it replaces the raw character with the same raw character — `cat -A` shows it; `build_il_roster.py:82` is correct). After P0, builders write `data/app/*.json` with `json.dump` and never touch HTML: the regex, the `</script`-escaping subtlety, and the drift risk all cease to exist. Until P0 lands: fix the U+2028 line (rewrite it fresh — the buggy line contains invisible characters, do not copy-paste), extract the shared `js_string`/`replace_block` into one imported module, and make `replace_block` fail on multiple matches.
 
-**R3 — Deduplicate office-address assembly in the commissioner module.**
-`index.html:2759-2762` (render) and 2774-2777 (pointOfInterest) build the same `[district_a, suite, city+zip]` lines twice with copy-pasted `findPropCI` calls. Build it once in `query()` and put the assembled lines on the result object — which is also where every other module does this kind of work.
+**R2 — Make the geometry blobs regenerable.**
+Verified: zero scripts reference the three embedded geometry variables; the school-board blob is canonically identical to its `data/` file (i.e., embedded-by-copy, never simplified), while the other two exist only as simplified snapshots of a mapshaper run nobody can repeat. Commit `scripts/build_embedded_boundaries.py` (or post-P0, `build_app_data.py`) that goes `data/*.geojson → simplify → round → data/app/*.json`, with the tolerance and validation protocol recorded in the script. The README's "Embedded boundary layers are topology-preserving simplifications" claim becomes true again (today it is false for school-board).
 
-**R4 — Separate data from code *within* the single file.**
-The single-file constraint is load-bearing (file://, no build step) — keep it. But the file currently interleaves three kinds of content: hand-written code, generated rosters (`IL_SENATE_MEMBERS`, `IL_HOUSE_MEMBERS`, `CPD_DISTRICT_INFO`), and generated geometry (three `JSON.parse` lines). Moving all generated data to `<script type="application/json" id="data-...">` tags in a clearly-fenced "GENERATED DATA" section at the end of the file (parsed lazily by the loaders — this is also P2) gets you: cleaner diffs for the weekly roster PRs (JSON text nodes, not JS object literals), simpler and safer builder scripts (`build_il_roster.py`'s `replace_block` regex over JS literals and its `</script`-escaping comment at `scripts/build_il_roster.py:73-83` become plain JSON serialization — the `<\/` escape is still needed but the JS-literal parsing risk disappears), and a file where "code above the fence" is reviewable at a glance. This is the highest-leverage maintainability change available without touching the architecture philosophy.
+**R3 — Put validation between "bot rewrote the file" and "PR opened."**
+Both workflows go straight from the rewrite to `gh pr create` with zero checks. Minimum bar, both < 1 s: `node --check` on the extracted inline script (44 ms measured — catches syntax death) + an output-side invariant check in the builders (count of `registerLayer(` blocks and dataset completeness after the rewrite, mirroring the input-side guards that already exist at `build_il_roster.py:119-126` and `build_cpd_roster.py:109-115`). Also extend the CPD guard to require a minimum count of non-null `commanderName`s — today a CPD site reword that nulls every commander sails through the district-count check. §5 QW3 has the exact workflow step.
 
-**R5 — Add a boot smoke-test to CI (the missing safety net).**
-`update-ilga-roster.yml` and `update-cpd-roster.yml` regex-rewrite `index.html` weekly and open PRs. `build_il_roster.py` refuses incomplete rosters (guardrail at 119-126 — good), but *nothing* checks that the resulting file still parses and boots. A ~40-line workflow step — serve the tree, load it headless (Chromium + Playwright), assert `window.ChiExplorer` exists (already exported at 2794-2804 "for later module threads / debugging"), assert 18 layers registered, click a known point and assert the ward/community-area cards render expected districts using the embedded layers — turns "the bot PR looks plausible" into "the bot PR provably boots." Run it on `pull_request` so human PRs get it too. This is the single best DevEx investment in the repo, precisely because a 2,811-line hand-edited file with machine-rewritten sections is the risk profile tests exist for.
+**R4 — Commit the smoke test that the README already claims exists.**
+`README.md:91-93` describes headless validation (node --check, parse5, Playwright boot + known-point district assertions) in the present tense; none of it is in the repo — it was built and run once during development, then not committed (`docs/BUILD_PLAYBOOK_1.md` prose is the only trace). A ~40-line Playwright job on `pull_request` — boot, assert 18 layers registered via the already-exported `window.ChiExplorer`, click a known point, assert the three local layers' district answers — is the single highest-leverage DevEx investment here, and it makes R3's PRs trustworthy rather than merely syntax-valid. Until it exists, the README section should be reworded to past tense (doc/reality drift).
 
-**R6 — Script the geometry-embedding path.**
-The rosters are regenerable by script; the three geometry blobs are not — no script in the repo produces the embedded `JSON.parse` lines from `data/*.geojson` (verified: no reference to the embedded variable names anywhere in `scripts/`). The provenance comments are excellent, but provenance ≠ reproducibility: today, fixing P1 by hand would *create* drift between `data/school-board-districts.geojson` (which stays full-precision, correctly, as the source of truth) and the embedded copy. Commit `scripts/build_embedded_boundaries.py` (simplify → round → escape → splice, same `replace`-pattern as the roster builders) and note in each blob's comment which command regenerates it.
+### 3.2 Failure honesty (the app's own rule 3)
 
-**R7 — package.json dependency hygiene.**
-`@capacitor/geolocation` is declared (`package.json:21`) but nothing uses it: the page uses `navigator.geolocation` (index.html:882-901), and neither generated native manifest includes the plugin (`android/app/capacitor.build.gradle` has an empty dependencies block; `ios/App/CapApp-SPM/Package.swift` lists only Capacitor/Cordova). The next `npx cap sync` would silently wire it into both binaries — dead code plus a location-permission-bearing plugin you don't use. Also `@capacitor/cli` belongs in `devDependencies`. Both platforms already declare the right permissions for the web-API path (`AndroidManifest.xml:41-42`, `Info.plist` NSLocationWhenInUseUsageDescription), so removal is safe. Exact diff in §5 Quick Win 4. *(Alternative: if Android-WebView geolocation prompts prove unreliable in the installed app, the fix is to actually wire the plugin — the current half-state is the only wrong option.)*
+**R5 — Overlay-load failure before a point is selected is completely silent on 15 of 18 layers.**
+Verified repro: toggle a network layer on before tapping the map; if the boundary download fails, `onLayerToggled`'s catch (1423-1426) only `console.error`s and resets `rt.overlayLoaded` — no card state (cards aren't visible pre-point), no map-side signal, no auto-retry; the user just never sees boundaries and has no idea. Worst-case silent stall ≈ 28.5 s of nothing. Surface it: set a card-visible error state (the framework already has `setCardError` + Retry) and/or a small toast near the toggle: "Couldn't load [layer] boundaries — tap to retry." Related second-order gap: after a transient failure, nothing re-attempts the overlay except a manual re-toggle, even when a later `query()` for the same layer succeeds.
 
-**R8 — Repo/deploy hygiene (low urgency, worth a decision).**
-`data/source/raw/` carries 2.7 MB of `.zip`/`.kmz`/`.xlsx` originals, and `data/*.geojson` another 2.5 MB, in every clone — and GitHub Pages deploys the whole branch, so all of it is publicly served though the app never fetches it at runtime. Options: keep (provenance is a stated value — legitimate), or move raw archives to a GitHub Release asset and keep only the converted GeoJSON. Either way, record the decision. The Python scrapers and workflows themselves are in good shape (Session reuse, backoff, rate-limit delays, PR-gated writes); the only nits are missing pip caching (`actions/setup-python` supports `cache: pip`) and unpinned `python-version: "3.x"`.
+**R6 — Silent gray map when tiles fail.**
+Zero `tileerror` handlers (grep-verified); offline users get a booted app (the SW shell works offline) over an empty gray map with no explanation. One `tileLayer.on("tileerror", …)` debounced into a dismissible banner ("Base map unavailable — selections still work") keeps the app honest in its most likely offline state.
 
-**Architecture verdict:** the layer-registry contract (`{id, group, label, overlay, query, render}`) is the right shape and needs no rework. The refactors above are consolidations within it, not a new architecture. Resist the temptation to introduce a build step or framework — the constraint is the feature.
+### 3.3 Code consolidation
+
+**R7 — Delete the duplicate cached-loader factory.** `makeCached` (2081-2089) is semantically identical to `makeCachedLoaderFromFn` (1581-1592) — 9 duplicated lines; 3 vs 10 call sites (verifier-corrected counts). Keep one, rename for clarity. §5 has the exact edit.
+
+**R8 — Extract the Socrata route-walker.** `loadSocrataGeoJSON` (1560-1577) and `loadSocrataJSON` (2093-2110) are 18-line structural clones with the same single-catch-per-route subtlety (a past bug fix documented in one and inherited silently by the other). One `tryRoutes(urls, validate)` used by both. Verifier correction recorded: the four ArcGIS-style calls all use retries=2 — the genuine retry inconsistency is Socrata-primary 2 / fallback 1 / legislators 1 / POI 1, worth one comment line where they're set.
+
+**R9 — One declarative polygon-layer factory.** The load → `findFeatureContaining` → `findPropCI` → `renderFieldList` pattern appears 12× (grep-verified call sites), 9 as standalone `registerLayer` blocks, ~250 near-duplicate lines. Three factories already exist (`registerSchoolZone`, `registerCpsNetwork`, `registerIlgaChamber`) proving the shape works; a generalized `registerPolygonLayer({loader, style, fields:[{label, props, optional}], enrich, pointOfInterest})` collapses most of the remaining nine. Do this *after* the quick wins land — it touches every module and deserves the R4 smoke test as a net.
+
+**R10 — Repo/deploy hygiene.**
+- Pages deploys the whole branch (classic CNAME-file deploy, no `.nojekyll`, no Pages workflow): scrapers, docs, and 4.6 MB of `data/` ship to the CDN. After P0, `data/app/` *must* deploy — but `data/source/raw/` (2.1 MB of zips/xlsx) still needn't. An actions-based Pages deploy that uploads only the app files (+ `.nojekyll` to skip the Jekyll pass) is ~20 lines.
+- Bot branches are unique per run (`bot/ilga-roster-update-${run_id}`): an unmerged roster PR spawns a duplicate every week. Fixed branch name + force-push + `gh pr list` guard.
+- Scraper deps float (`pip install requests beautifulsoup4`, `python-version: "3.x"`): heuristic HTML parsers are exactly the code that breaks on silent dependency drift. Pin via `scripts/requirements.txt` + `cache: pip`.
+- `CPD_DISTRICT_INFO` is still the 32-byte placeholder — the CPD rewrite path has never run against real data in production; treat its first live PR with extra care (or land R3 first).
+
+**Architecture verdict:** the layer-registry contract is right and survives all of the above unchanged. The single-page philosophy also survives — what changes is that *generated data* stops living inside hand-maintained source. Resist adding a build step or framework; after P0 the "build" is still just "run a Python script when data changes, commit the JSON."
 
 ---
 
@@ -115,54 +152,134 @@ The rosters are regenerable by script; the three geometry blobs are not — no s
 
 | # | Task | Impact | Effort | Category |
 |---|------|--------|--------|----------|
-| 1 | Simplify school-board geometry to match sibling layers (−918 KB raw / −75% page weight; validated 99.98%) — §P1 | **High** | **Low** | Data/Assets |
-| 2 | Add boot smoke-test CI for the weekly roster-rewrite PRs — §R5 | **High** | Medium | DevEx |
-| 3 | Embed IL congress roster at build time; drop multi-MB runtime fetch — §P3 | **High** | Medium | Network |
-| 4 | Commit `build_embedded_boundaries.py`; make geometry blobs regenerable — §R6 | **High** (risk) | Low | Pipeline |
-| 5 | Server-side generalization + `outFields` trim for TIGERweb/ArcGIS/Cook County — §P4 | Medium-High | Low | Network |
-| 6 | Preconnect tile CDN + cdnjs — §P8 | Medium | **Low** | Frontend |
-| 7 | Lazy-parse embedded blobs on first toggle — §P2 | Medium | Low | Frontend |
-| 8 | Move generated data to fenced JSON script tags; simplify builder scripts — §R4 | Medium | Medium | Architecture |
-| 9 | Single PIP per click: pass query's matched feature to highlight; bbox pre-check — §P5 | Medium | Low | Frontend |
-| 10 | Remove `@capacitor/geolocation`, move CLI to devDependencies — §R7 | Medium (mobile) | **Low** | Mobile |
-| 11 | Delete duplicate `makeCached` factory — §R1 | Low (quality) | **Low** | Architecture |
-| 12 | Extract shared Socrata route-walker — §R2 | Low (quality) | Low | Architecture |
-| 13 | Memoize `geocodePoiAddress` per address — §P6 | Low | **Low** | Network |
-| 14 | Trim 2 unused font weights — §P9 | Low | **Low** | Frontend |
-| 15 | sw.js: dedupe shell entry, cache-name bump discipline, opaque-response comment — §P7 | Low | Low | Frontend |
-| 16 | pip cache + version pin in both workflows — §R8 | Low | **Low** | DevEx |
-| 17 | Highlight restyle: touch 2 paths, not every path — §P5b | Low | Medium | Frontend |
-| 18 | Decide raw-archive hosting (Release asset vs in-repo) — §R8 | Low | Low | DevEx |
+| 0 | ~~Remove Capacitor/Android/iOS stack~~ — **done in this PR** | — | — | Architecture |
+| 1 | Simplify school-board geometry (−918 KB raw / −75% page; validated) — P1 | **High** | **Low** | Data/Assets |
+| 2 | Externalize geometry + rosters to `data/app/*.json`, lazy per-layer fetch — P0 | **High** | Medium | Architecture |
+| 3 | `node --check` + output invariants between rewrite and PR in both workflows — R3 | **High** | **Low** | DevEx |
+| 4 | SW shell → network-first (fixes guaranteed-stale rosters) — P-sw | **High** | **Low** | Frontend |
+| 5 | Commit the Playwright boot smoke test on `pull_request` — R4 | **High** | Medium | DevEx |
+| 6 | Builders emit JSON; shared module; fix U+2028 no-op; fail-on-multi-match — R1 | **High** | Medium | Pipeline |
+| 7 | Surface overlay-load failures (15/18 layers currently silent) — R5 | **High** | **Low** | Frontend |
+| 8 | Build-time IL congress roster; drop multi-MB runtime fetch — P2 | **High** | Medium | Network |
+| 9 | `geometryPrecision=6` + trimmed `outFields` on 3 Esri loaders — P3 | Medium | **Low** | Network |
+| 10 | Guard `loadTigerLayer`/`loadCookCountyLayerGeoJSON` against 200-error-envelopes — P5 | Medium | **Low** | Network |
+| 11 | `timeoutMs` overrides for large payloads; tighten route-ladder worst case — P4 | Medium | **Low** | Network |
+| 12 | Single PIP per click + restyle only the 2 changed paths — P7 | Medium | **Low** | Frontend |
+| 13 | Commit `build_app_data.py` (geometry regeneration + validation protocol) — R2 | Medium | **Low** | Pipeline |
+| 14 | Preconnect tile shards + dns-prefetch API origins — P12 | Medium | **Low** | Frontend |
+| 15 | Serialize POI geocoding ≥1 s apart — P6 | Medium | **Low** | Network |
+| 16 | Tile-failure banner (`tileerror`) — R6 | Medium | **Low** | Frontend |
+| 17 | Toggle-path: skip restyle on toggle-off; opacity-only rescale — P8 | Medium | **Low** | Frontend |
+| 18 | Actions-based Pages deploy (app files only) + `.nojekyll` — R10 | Low-Med | **Low** | DevEx |
+| 19 | Fixed bot branches + duplicate-PR guard; pin scraper deps — R10 | Low | **Low** | DevEx |
+| 20 | Dedupe loader factory; extract route-walker — R7/R8 | Low | **Low** | Architecture |
+| 21 | Declarative `registerPolygonLayer` (~250 dup lines) — after #5 lands — R9 | Medium | Medium | Architecture |
+| 22 | Trim 2 font weights; dedupe SW shell entry; cache-name discipline — P13/P-sw | Low | **Low** | Frontend |
+| 23 | Release Leaflet layer graph on toggle-off — P11 | Low | **Low** | Frontend |
+| 24 | Canvas renderer for school-zone layers (highlight trade-off) — P10 | Low-Med | Medium | Frontend |
+| 25 | Drop-shadow rasterization: pause filter during pan, or restyle — P9 | Low | Low | Frontend |
+| 26 | README: fix "Validation" tense + simplification claim until R4/R2 land | Low | **Low** | DevEx |
 
-Sequencing note: items 1+4+7 are one coherent PR (they all edit the same three lines); items 11+12+13 are a second quick cleanup PR; item 2 should land *before* item 3 so the new congress-roster Action is born with a safety net.
+Coherent PR groupings: **PR-A** (items 1+13, one regenerated line + one script), **PR-B** (3+19, workflow safety), **PR-C** (4+22, sw.js), **PR-D** (2+6+26, the externalization — the structural centerpiece), **PR-E** (7+16, failure honesty), **PR-F** (9+10+11+15, network etiquette), **PR-G** (12+17, click path). Land PR-B before PR-D so the pipeline change is born validated; land item 5 before item 21.
 
 ---
 
 ## 5. Quick Wins (exact before/after)
 
-### Quick Win 1 — Simplify the school-board blob: −918 KB raw, −322 KB gzipped, one line
+### QW1 — Simplify the school-board blob: −918 KB raw, −322 KB gzipped, one regenerated line
 
-`index.html:2553` currently (line is 975,797 bytes; head shown):
-
-```js
-  var SCHOOL_BOARD_DISTRICTS_GEOJSON = JSON.parse('{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"OBJECTID":1,"DISTRICT":10,...  // 24,904 coord pairs at 15 decimals
-```
-
-After (57,736 bytes — same variable, same schema, simplified geometry):
+`index.html:2553` today (975,796 bytes on one line; head shown):
 
 ```js
-  var SCHOOL_BOARD_DISTRICTS_GEOJSON = JSON.parse('{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"OBJECTID":1,"DISTRICT":10,...  // 2,394 coord pairs at 6 decimals
+  var SCHOOL_BOARD_DISTRICTS_GEOJSON = JSON.parse('{"type":"FeatureCollection","features":[{"type":"Feature","properties":...   // 24,904 coord pairs, 14-15 decimals
 ```
 
-Regenerate with (add as `scripts/build_embedded_boundaries.py`; validated in this review — Douglas-Peucker ε=0.00005° ≈ 5.5 m, 6-decimal rounding, ring-closure preserved, tiny rings kept intact):
+After (57,736 bytes — same variable, schema, and district properties; geometry simplified exactly like its two sibling layers):
 
+```js
+  var SCHOOL_BOARD_DISTRICTS_GEOJSON = JSON.parse('{"type":"FeatureCollection","features":[{"type":"Feature","properties":...   // 2,394 coord pairs, 6 decimals
 ```
-python3 scripts/build_embedded_boundaries.py data/school-board-districts.geojson index.html SCHOOL_BOARD_DISTRICTS_GEOJSON
+
+Measured: `index.html` 1,301,984 → 383,923 B (gzip 427,836 → 105,974). Validated with the app's own `pointInGeometry`: 4,999/5,000 in-district points agree; the one disagreement sits ~5 m off a boundary — within the tolerance the repo's own documented protocol accepts. Generate via the committed script (matrix #13), not by hand, and update the provenance comment at 2541-2552. This wins even if you do the externalization later — it's the same bytes, just in a fetched file.
+
+### QW2 — sw.js: network-first shell (returning visitors currently always see last deploy's rosters)
+
+`sw.js:52-61` before:
+
+```js
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      const network = fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
+  );
 ```
 
-Measured result: `index.html` 1,301,984 → 383,923 bytes (gzip 427,836 → 105,974). Classification agreement with the app's own `pointInGeometry`: 4,999/5,000 random in-district points; the disagreement is a point ~5 m from a district 4/7 boundary — the same accuracy class as the documented treatment already applied to the IL Supreme Court and CCBR blobs (`index.html:2605-2619`), and below GPS accuracy. Update the provenance comment at 2541-2552 to record the tolerance.
+After (network-first with cache fallback — online visits are always current, offline still boots):
 
-### Quick Win 2 — Preconnect the tile CDN (first map paint)
+```js
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
+```
+
+The header comment's own rule ("staleness there is unacceptable") currently loses to `return cached || network` — the rosters live inside the cached shell. Online performance cost is one conditional request (GitHub Pages answers 304 + headers when unchanged).
+
+### QW3 — 44 ms of `node --check` between "bot rewrote 1.3 MB of source" and "PR opened"
+
+Both workflows, after the "Rebuild embedded roster" step and before "Check for changes" (`update-ilga-roster.yml:37` / `update-cpd-roster.yml:37`):
+
+```yaml
+      - name: Validate rewritten index.html still parses
+        run: |
+          python3 - <<'EOF'
+          import re, subprocess, sys
+          html = open("index.html").read()
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
+          assert scripts, "no inline scripts found"
+          open("/tmp/inline.js", "w").write(max(scripts, key=len))
+          subprocess.run(["node", "--check", "/tmp/inline.js"], check=True)
+          assert html.count("registerLayer(") >= 15, "layer registrations went missing"
+          EOF
+```
+
+This is the floor, not the ceiling (see matrix #5 for the real smoke test). Division of labor, verified empirically: `node --check` catches syntax death from a malformed splice but **not** the module-deletion overmatch — the over-matched output still parses — which is exactly what the `registerLayer(` count assertion (15 occurrences today: 1 definition + 11 direct calls + 3 factory bodies) is there to catch. Measured: 44 ms.
+
+### QW4 — Ask TIGERweb for 11 cm coordinates instead of sub-nanometer ones
+
+`index.html:2117-2118` before:
+
+```js
+    var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Legislative/MapServer/" +
+      layerIndex + "/query?where=" + where + "&outFields=*&outSR=4326&f=geojson";
+```
+
+After:
+
+```js
+    var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Legislative/MapServer/" +
+      layerIndex + "/query?where=" + where + "&outFields=*&outSR=4326&f=geojson&geometryPrecision=6";
+```
+
+~40% smaller payloads on the three heaviest network layers (coordinate digits beyond 6dp measure 41.5% of GeoJSON bytes); zero visual or classification difference at any zoom this map allows (maxZoom 18 ≈ 0.6 m/px). Apply the same parameter to `loadArcGISGeoJSON` (line 1607) and `loadCookCountyLayerGeoJSON` (2710-2711).
+
+### QW5 — Warm the connections the first paint actually waits on
 
 `index.html:13-14` before:
 
@@ -178,57 +295,12 @@ After:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://a.basemaps.cartocdn.com">
 <link rel="preconnect" href="https://b.basemaps.cartocdn.com">
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="dns-prefetch" href="https://data.cityofchicago.org">
+<link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
 ```
 
-The tile layer (`index.html:773`) fetches from `{a-d}.basemaps.cartocdn.com` the moment the script runs; today those connections start only after HTML download + parse + Leaflet execution. Preconnecting the first two subdomains (browsers cap speculative sockets; a/b cover the initial viewport's tiles) removes a DNS+TLS round trip from first map paint on every cold load.
+Tiles are requested the moment the inline script runs, from four sharded hosts that today get no warm-up (grep: fonts are the only resource hints in the file). Preconnecting two shards covers the initial viewport's parallelism; dns-prefetch on the click-time APIs is nearly free.
 
-### Quick Win 3 — Delete the duplicate loader factory
+### Bonus one-liner — the geocoder's Enter-key double request
 
-`index.html:2078-2089` before:
-
-```js
-  /* ---------- generic cached-promise wrapper (Socrata-geojson-specific
-   * makeCachedLoader above predates this; this variant memoizes any loader
-   * function, used here for roster JSON, TIGERweb, and the local file) ---------- */
-  function makeCached(fn) {
-    var pending = null;
-    return function () {
-      if (!pending) {
-        pending = fn().catch(function (err) { pending = null; throw err; });
-      }
-      return pending;
-    };
-  }
-```
-
-After — delete the block entirely; it is byte-for-byte the same logic as `makeCachedLoaderFromFn` (`index.html:1581-1592`). Then a rename-only sweep of the 8 `makeCached(` call sites (2142, 2143, 2194, 2195, plus the ilga/school-board/cook-county loaders) to `makeCachedLoaderFromFn(`, or — better name — rename the survivor to `makeCached` and delete the long alias plus its one-line wrapper `makeCachedLoader` becomes `makeCached(function () { return loadSocrataGeoJSON(id); })`.
-
-### Quick Win 4 — Drop the unwired geolocation plugin before it ships
-
-`package.json:17-23` before:
-
-```json
-  "dependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
-    "@capacitor/geolocation": "^8.2.0",
-    "@capacitor/ios": "^8.4.1"
-  }
-```
-
-After:
-
-```json
-  "dependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
-    "@capacitor/ios": "^8.4.1"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^8.4.1"
-  }
-```
-
-The page uses `navigator.geolocation` (`index.html:901`) — the plugin is referenced nowhere, isn't in either generated native project yet, and the next `npx cap sync` would embed it (native code + a location-permission plugin surface) into both binaries for nothing. Both platforms already carry the correct declarations for the web API path (`AndroidManifest.xml:41-42`; `Info.plist` `NSLocationWhenInUseUsageDescription`).
+`index.html:1003-1005`: the submit handler never cancels the pending input-debounce timer, so pressing Enter within 550 ms of the last keystroke fires the search, then the debounce aborts it and re-issues an identical request (~550 ms + 1 RTT of added latency on the fast-typist path). Add `clearTimeout(debounceTimer);` as the first line of the submit handler — mirroring the guard the result-click handler already has at line 992.
