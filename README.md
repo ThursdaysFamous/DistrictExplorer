@@ -82,8 +82,9 @@ data/source/raw/            original shapefiles / KML / KMZ / XLSX as supplied
 scripts/ilga_scraper.py     scrapes ilga.gov member rosters
 scripts/build_il_roster.py  writes data/app/il-{senate,house}-members.json from scraper output
 scripts/build_congress_roster.py  writes data/app/congress-roster.json (IL U.S. House reps) from congress-legislators
-scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commander/contact pages
+scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commander/contact pages (real-browser fallback for Cloudflare)
 scripts/build_cpd_roster.py      writes data/app/cpd-district-info.json from scraper output
+scripts/requirements.txt    pinned scraper deps (requests, beautifulsoup4, playwright)
 scripts/build_embedded_boundaries.py  simplifies data/*.geojson into data/app/*.json (occasional operator step)
 scripts/validate_index.py   post-regeneration gate: app parses, all data/app files present + well formed
 scripts/smoke_test.mjs      Playwright boot/behaviour smoke test (runs on every PR)

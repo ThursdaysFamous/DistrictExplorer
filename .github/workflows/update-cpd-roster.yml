@@ -26,7 +26,14 @@ jobs:
           python-version: "3.x"
 
       - name: Install scraper dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install -r scripts/requirements.txt
+
+      # CPD fronts its per-district pages with Cloudflare's managed (JS)
+      # challenge, which 403s a plain requests client. The scraper's default
+      # --engine auto falls back to a real headless Chromium to clear it, so
+      # Chromium must be present (playbook R11).
+      - name: Install Chromium for Playwright
+        run: python3 -m playwright install --with-deps chromium
 
       - name: Scrape CPD district commander/contact pages
         run: python3 scripts/cpd_district_scraper.py --out /tmp/cpd_district_info.json

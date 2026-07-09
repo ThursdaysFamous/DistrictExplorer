@@ -26,7 +26,9 @@ jobs:
           python-version: "3.x"
 
       - name: Install scraper dependencies
-        run: pip install requests beautifulsoup4
+        # Version-pinned via scripts/requirements.txt (constraints), but only the
+        # two packages this job needs — no Playwright/Chromium (that's CPD-only).
+        run: pip install -c scripts/requirements.txt requests beautifulsoup4
 
       - name: Scrape ILGA member rosters
         run: python3 scripts/ilga_scraper.py --chamber both --out /tmp/ilga_network.json

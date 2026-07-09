@@ -1,0 +1,14 @@
+# Pinned dependencies for the scraper pipeline (playbook R10 — heuristic HTML
+# parsers are exactly the code that breaks on silent dependency drift).
+# Used by the weekly roster workflows:
+#   .github/workflows/update-ilga-roster.yml   (requests + beautifulsoup4)
+#   .github/workflows/update-cpd-roster.yml     (+ playwright for the Cloudflare
+#                                                managed-challenge fetch, R11)
+# build_congress_roster.py uses only the stdlib and needs none of these.
+#
+# playwright also requires a matching browser build; the CPD workflow runs
+# `python3 -m playwright install --with-deps chromium`, which fetches the
+# Chromium that matches the version pinned here.
+requests==2.33.1
+beautifulsoup4==4.15.0
+playwright==1.61.0

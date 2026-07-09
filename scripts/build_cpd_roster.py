@@ -27,6 +27,15 @@ import sys
 # senate/house guard.
 MIN_DISTRICTS = 20
 
+# Output-side guard (playbook R3): station address/phone now have a CORS
+# fallback in the app, so the commander name is the roster's real reason to
+# exist — and it's the field most likely to silently vanish if CPD rewords the
+# "Meet your commander" block, since the heuristic parser nulls it rather than
+# crashing. A scrape that returns enough *districts* but almost no *commanders*
+# is parser drift, not real data; refuse it so a reworded page can't quietly
+# blank every card's headline field.
+MIN_COMMANDERS = 15
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUT_DIR = os.path.join(REPO_ROOT, "data", "app")
 
@@ -70,6 +79,16 @@ def main():
         print(
             f"WARNING: resolved only {len(roster)}/{MIN_DISTRICTS}+ expected districts — "
             "refusing to overwrite the roster file with an incomplete roster",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    commanders = sum(1 for v in roster.values() if v.get("commanderName"))
+    if commanders < MIN_COMMANDERS:
+        print(
+            f"WARNING: only {commanders}/{MIN_COMMANDERS}+ districts have a commander name — "
+            "the scrape likely fetched pages but failed to parse the commander block "
+            "(CPD site drift); refusing to overwrite the roster",
             file=sys.stderr,
         )
         sys.exit(1)
