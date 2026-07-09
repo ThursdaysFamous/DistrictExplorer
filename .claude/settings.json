@@ -1,0 +1,12 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "allowedDomains": [
+      "chicagopolice.org",
+      "www.chicagopolice.org",
+      "unpkg.com",
+      "cdn.jsdelivr.net",
+      "cdnjs.cloudflare.com"
+    ]
+  }
+}
