@@ -18,7 +18,7 @@ import { chromium } from "playwright";
 const BASE = process.env.BASE_URL || "http://localhost:8000/";
 const POINT = "41.88250,-87.62850"; // downtown Loop — inside Cook County
 const OFFLINE = ["school-board", "il-supreme-court", "ccbr"];
-const EXPECT_LAYERS = 21; // 18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council
+const EXPECT_LAYERS = 22; // 18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct
 const BOOT_TIMEOUT = 45000; // Leaflet CDN + first paint on a cold CI runner
 const QUERY_TIMEOUT = 25000;
 
