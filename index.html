@@ -136,13 +136,26 @@
     min-height: 78vh;
   }
   @media (max-width: 900px) {
-    main.layout { grid-template-columns: 1fr; min-height: auto; }
+    /* Switch off the grid so the map column can use position: sticky —
+       CSS Grid constrains a sticky item's containing block to its own
+       (auto-sized) row track, which is exactly the item's height, leaving
+       no room to stick. Plain block flow lets it stick against the whole
+       main.layout height instead, keeping the map fixed in the viewport
+       while the results/layers column scrolls past underneath it. */
+    main.layout { display: block; min-height: auto; }
   }
 
   /* ---- Map column ---- */
   .map-col {
     position: relative;
     background: #DDE6EA;
+  }
+  @media (max-width: 900px) {
+    .map-col {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
   }
   #map {
     height: 78vh;
