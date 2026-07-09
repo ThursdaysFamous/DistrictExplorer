@@ -52,6 +52,7 @@ ROSTER_FILES = {
     "school-board-members.json": 20,
     "congress-roster.json": 17,
     "cpd-district-info.json": 0,
+    "ccpsa-district-councils.json": 20,  # 22 councils (13 & 21 retired); floor guards a partial scrape
 }
 
 

@@ -22,6 +22,7 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | Cook County Board of Review District | District under PA 102-0012 (property-tax appeals) |
 | **Public Safety** | Police District | CPD district number and name, commander, CAPS unit phone/email, station address + phone, district map link |
 | | Police Beat | Beat number (a sub-selection of Police District — turning it on drops the district to an outline and fills it with its beats) |
+| | CCPSA District Council | The three elected District Councilors for that police district (name + role — Chair / Nominating Committee / Community Engagement) and links to each Councilor's profile + the council page |
 | | Police Station (nearest 3) | Station name, address, phone, straight-line distance |
 | | Fire Station (nearest 3) | Firehouse + engine designation, distance |
 | **Schools** | Elementary / Middle / High School Zone | CPS attendance-boundary school, grades, address, profile link, map pin |
@@ -62,6 +63,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 | [Chicago Data Portal](https://data.cityofchicago.org) (Socrata) | Wards + aldermen roster, fire stations, CPS zones + networks, community areas, ZIP codes |
 | CPD ArcGIS (`services2.arcgis.com/t3tlzCPfmaQzSWAk`) | Police district boundaries, police beat boundaries, police station roster |
 | [chicagopolice.org](https://www.chicagopolice.org) per-district pages (scraped weekly by CI) | Police district commander, CAPS unit phone/email, station address (`data/app/cpd-district-info.json`) |
+| [ccpsa.chicago.gov](https://ccpsa.chicago.gov) per-council pages (scraped weekly by CI) | CCPSA District Council elected Councilors — name + role per police district (`data/app/ccpsa-district-councils.json`); boundaries reuse the CPD police-district geometry |
 | Cook County GIS (`gis.cookcountyil.gov/traditional/rest/services/politicalBoundary`) | Cook County Commissioner District boundaries + office roster |
 | [U.S. Census TIGERweb](https://tigerweb.geo.census.gov) | Congressional, IL Senate, IL House boundaries |
 | [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) (rebuilt weekly by CI) | U.S. House roster — IL's 17 reps only, `data/app/congress-roster.json` |
@@ -85,6 +87,8 @@ scripts/build_il_roster.py  writes data/app/il-{senate,house}-members.json from 
 scripts/build_congress_roster.py  writes data/app/congress-roster.json (IL U.S. House reps) from congress-legislators
 scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commander/contact pages (real-browser fallback for Cloudflare)
 scripts/build_cpd_roster.py      writes data/app/cpd-district-info.json from scraper output
+scripts/ccpsa_scraper.py         scrapes ccpsa.chicago.gov per-council pages for the elected District Councilors
+scripts/build_ccpsa_roster.py    writes data/app/ccpsa-district-councils.json from scraper output
 scripts/requirements.txt    pinned scraper deps (requests, beautifulsoup4, playwright)
 scripts/build_embedded_boundaries.py  simplifies data/*.geojson into data/app/*.json (occasional operator step)
 scripts/validate_index.py   post-regeneration gate: app parses, all data/app files present + well formed
@@ -100,7 +104,7 @@ docs/screenshot.png         README screenshot
 Two gates run in CI:
 
 - **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered, no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts). A bad data regeneration can't reach `main` unreviewed.
-- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 20 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
+- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 21 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 
 ## Not for legal or official use
 
