@@ -12,6 +12,15 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- warm the connections first paint waits on: Leaflet's CDN (CSS in head,
+     JS before the app script) and the basemap tile hosts the map hits the
+     moment it initializes. dns-prefetch for the click-time data APIs is nearly
+     free and shaves a round trip off the first layer lookup. -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://a.basemaps.cartocdn.com">
+<link rel="preconnect" href="https://b.basemaps.cartocdn.com">
+<link rel="dns-prefetch" href="https://data.cityofchicago.org">
+<link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="" />
@@ -1012,6 +1021,10 @@
     e.preventDefault();
     var q = document.getElementById("geocode-input").value.trim();
     if (!q) return;
+    // cancel the pending input-debounce so it can't re-fire after this submit
+    // and abort/duplicate the very request we're about to make (the same guard
+    // the result-click handler already uses)
+    clearTimeout(debounceTimer);
     geoStatus.textContent = "Searching…";
     geoStatus.className = "geo-status";
     geocodeAddress(q)
@@ -1257,26 +1270,58 @@
 
   var poiGeocodeCache = {}; // address string -> {lat,lng} | null, avoids re-geocoding the same address
 
-  function geocodePoiAddress(address) {
+  /* ---------- POI geocodes go through a serial, >=1s-spaced queue ----------
+   * Nominatim's usage policy caps clients at 1 request/second. A single click
+   * runs every active layer's query in parallel, and each POI layer then
+   * geocodes its office address — up to ~9 requests firing at once, which the
+   * public endpoint would rate-limit (429) so most pins would silently fail.
+   * Funnel the uncached ones through one queue that spaces network calls
+   * >=1s apart; cached addresses (and the separate search-box geocoder) never
+   * touch this. A per-call currency check skips the network entirely once the
+   * selection has moved on, so rapid clicking can't build an unbounded backlog. */
+  var POI_GEOCODE_SPACING_MS = 1000;
+  var poiGeocodeQueue = Promise.resolve();
+  function enqueuePoiGeocode(task) {
+    var run = poiGeocodeQueue.then(task);
+    // advance the queue one spacing interval after this task settles, whether
+    // it resolved or rejected, so the next network call stays >=1s behind.
+    var spaced = function () {
+      return new Promise(function (resolve) { setTimeout(resolve, POI_GEOCODE_SPACING_MS); });
+    };
+    poiGeocodeQueue = run.then(spaced, spaced);
+    return run;
+  }
+
+  function geocodePoiAddress(address, isCurrent) {
     if (Object.prototype.hasOwnProperty.call(poiGeocodeCache, address)) {
       return Promise.resolve(poiGeocodeCache[address]);
     }
-    var viewbox = [CHI_BBOX.minLng, CHI_BBOX.maxLat, CHI_BBOX.maxLng, CHI_BBOX.minLat].join(",");
-    var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&bounded=1&viewbox=" +
-      viewbox + "&q=" + encodeURIComponent(address);
-    return fetchJSONWithRetry(url, { headers: { "Accept": "application/json" } }, 1)
-      .then(function (results) {
-        var hit = results && results[0];
-        var coords = hit ? { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon) } : null;
-        poiGeocodeCache[address] = coords;
-        return coords;
-      })
-      .catch(function () {
-        // transient failure — deliberately NOT cached, so a later selection
-        // can retry after the network recovers. "Address not found" IS
-        // cached (as null, above) since that outcome is stable.
-        return null;
-      });
+    return enqueuePoiGeocode(function () {
+      // a twin request for the same address queued in the same burst may have
+      // resolved while we waited our turn — reuse it instead of geocoding again.
+      if (Object.prototype.hasOwnProperty.call(poiGeocodeCache, address)) {
+        return poiGeocodeCache[address];
+      }
+      // the selection (or this layer) moved on while we were queued — don't
+      // spend a rate-limited request whose result would just be discarded.
+      if (isCurrent && !isCurrent()) return null;
+      var viewbox = [CHI_BBOX.minLng, CHI_BBOX.maxLat, CHI_BBOX.maxLng, CHI_BBOX.minLat].join(",");
+      var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&bounded=1&viewbox=" +
+        viewbox + "&q=" + encodeURIComponent(address);
+      return fetchJSONWithRetry(url, { headers: { "Accept": "application/json" } }, 1)
+        .then(function (results) {
+          var hit = results && results[0];
+          var coords = hit ? { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon) } : null;
+          poiGeocodeCache[address] = coords;
+          return coords;
+        })
+        .catch(function () {
+          // transient failure — deliberately NOT cached, so a later selection
+          // can retry after the network recovers. "Address not found" IS
+          // cached (as null, above) since that outcome is stable.
+          return null;
+        });
+    });
   }
 
   var poiPinIconCache = {};
@@ -1304,7 +1349,8 @@
     if (!mod.pointOfInterest) return;
     var poi = mod.pointOfInterest(result);
     if (!poi || !poi.address) { clearLayerPoi(mod); return; }
-    geocodePoiAddress(poi.address).then(function (coords) {
+    var isCurrent = function () { return seq === state.sequence && !!state.layersOn[mod.id]; };
+    geocodePoiAddress(poi.address, isCurrent).then(function (coords) {
       if (seq !== state.sequence) return; // a newer point was selected meanwhile
       if (!state.layersOn[mod.id]) return; // toggled off while geocoding
       clearLayerPoi(mod);
