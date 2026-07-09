@@ -7,6 +7,7 @@
       "unpkg.com",
       "cdn.jsdelivr.net",
       "cdnjs.cloudflare.com"
+      "services2.arcgis.com"
     ]
   }
 }
