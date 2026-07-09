@@ -1122,7 +1122,7 @@
     layers.push(mod);
     layerRuntime[mod.id] = {
       overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null,
-      highlightedLayer: null, poiMarker: null,
+      highlightedLayer: null, poiMarker: null, block: null,
       // when true the layer draws its outline only (fillOpacity forced to 0),
       // regardless of its own style — used when a sub-layer takes over the fill
       // (e.g. Police Beat filling a Police District that's dropped to outline).
@@ -1451,6 +1451,7 @@
     block.appendChild(body);
 
     layerRuntime[mod.id].cardBody = body;
+    layerRuntime[mod.id].block = block;
 
     checkbox.addEventListener("change", function () {
       state.layersOn[mod.id] = checkbox.checked;
@@ -1488,6 +1489,10 @@
           if (sub.subOf !== mod.id) return;
           var subBlock = buildLayerBlock(sub);
           subBlock.classList.add("layer-block-sub");
+          // a sub-selection is only offered once its parent is on; the parent
+          // starts off, so hide it until onLayerToggled reveals it (kept in sync
+          // by updateSubLayerVisibility whenever the parent toggles)
+          subBlock.hidden = !state.layersOn[mod.id];
           block.appendChild(subBlock);
         });
         section.appendChild(block);
@@ -1497,9 +1502,22 @@
     });
   }
 
+  // Show a layer's sub-selection toggles only while the parent layer is on;
+  // hide them (and let the parent's onToggle cascade them off) when it's off.
+  function updateSubLayerVisibility(mod) {
+    var parentOn = !!state.layersOn[mod.id];
+    layers.forEach(function (sub) {
+      if (sub.subOf !== mod.id) return;
+      var subRt = layerRuntime[sub.id];
+      if (subRt.block) subRt.block.hidden = !parentOn;
+    });
+  }
+
   function onLayerToggled(mod) {
     var rt = layerRuntime[mod.id];
     var on = !!state.layersOn[mod.id];
+
+    updateSubLayerVisibility(mod); // reveal/hide this layer's sub-selection toggles
 
     if (!on) {
       clearLayerHighlight(mod); // revert style before hiding, so it doesn't linger if re-toggled with a different point later
