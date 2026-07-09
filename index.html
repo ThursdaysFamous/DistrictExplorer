@@ -560,6 +560,123 @@
   .footer-sources { margin-top: 10px; line-height: 1.7; }
   .footer-sources a { margin-right: 14px; }
 
+  /* ---- footer links: feedback + repo + parent domain ---- */
+  .footer-links {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 20px;
+  }
+  .footer-link-btn {
+    font: inherit;
+    font-weight: 600;
+    color: var(--chi-blue-deep);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .footer-link-btn:hover { color: var(--chi-red-deep); }
+  .footer-links a { font-weight: 600; }
+
+  /* ---- feedback modal: serverless "report a bug / comment" dialog ---- */
+  .feedback-modal[hidden] { display: none; }
+  .feedback-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .feedback-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 24, 28, 0.55);
+  }
+  .feedback-panel {
+    position: relative;
+    background: var(--panel);
+    border-radius: 8px;
+    border-top: 4px solid var(--chi-red);
+    box-shadow: 0 12px 40px rgba(20, 24, 28, 0.35);
+    max-width: 460px;
+    width: 100%;
+    padding: 22px 24px 24px;
+    color: var(--ink);
+  }
+  .feedback-panel h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+  .feedback-panel p { font-size: 13px; color: var(--slate); margin: 0 0 14px; }
+  .feedback-panel label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate);
+    margin-bottom: 6px;
+  }
+  .feedback-panel textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+  .feedback-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .feedback-actions .btn-primary,
+  .feedback-actions .btn-secondary {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 9px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .feedback-actions .btn-primary {
+    background: var(--chi-blue-deep);
+    color: #fff;
+    border: none;
+  }
+  .feedback-actions .btn-primary:hover { background: #094377; }
+  .feedback-actions .btn-secondary {
+    background: var(--paper);
+    color: var(--chi-blue-deep);
+    border: 1px solid var(--line-strong);
+  }
+  .feedback-actions .btn-secondary:hover { background: #EEF4F7; }
+  .feedback-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--slate);
+    cursor: pointer;
+    padding: 4px;
+  }
+  .feedback-close:hover { color: var(--ink); }
+
   .visually-hidden {
     position: absolute !important;
     width: 1px; height: 1px;
@@ -686,8 +803,28 @@
       <a href="https://www.illinoiscourts.gov" target="_blank" rel="noopener">IL Supreme Court districts (PA 102-0011 shapefile)</a>
       <a href="https://www.cookcountyboardofreview.com" target="_blank" rel="noopener">Cook County Board of Review districts (PA 102-0012 shapefile)</a>
     </div>
+    <div class="footer-links">
+      <button type="button" id="feedback-btn" class="footer-link-btn">💬 Report a bug or leave a comment</button>
+      <a href="https://github.com/ThursdaysFamous/DistrictExplorer" target="_blank" rel="noopener">View source on GitHub</a>
+      <a href="https://overberg.co" target="_blank" rel="noopener">overberg.co</a>
+    </div>
   </div>
 </footer>
+
+<div class="feedback-modal" id="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+  <div class="feedback-backdrop" id="feedback-backdrop"></div>
+  <div class="feedback-panel" role="document">
+    <button type="button" class="feedback-close" id="feedback-close" aria-label="Close">×</button>
+    <h2 id="feedback-title">Report a bug or leave a comment</h2>
+    <p>Found something wrong, or have a suggestion? Describe it below, then file it as a GitHub issue or send it by email. Your current map view is attached automatically so the report is reproducible.</p>
+    <label for="feedback-text">Your bug report or comment</label>
+    <textarea id="feedback-text" placeholder="What happened, what you expected, and where on the map…"></textarea>
+    <div class="feedback-actions">
+      <button type="button" class="btn-primary" id="feedback-github">Open a GitHub issue</button>
+      <a class="btn-secondary" id="feedback-email" href="#" rel="noopener">Email instead</a>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin=""></script>
 
@@ -1104,6 +1241,78 @@
     drawerBtn.textContent = expanded ? "Layers ▸" : "Layers ▾";
     map.invalidateSize(); // the map container just changed width
   });
+
+  /* =========================================================================
+   * FEEDBACK — a serverless "report a bug / leave a comment" modal. There is
+   * no backend here, so a submission is routed either to a prefilled GitHub
+   * issue or to a mailto. The current permalink + browser are attached so a
+   * report is reproducible. Keep this independent of any layer.
+   * ======================================================================= */
+  (function wireFeedback() {
+    var REPO_ISSUES = "https://github.com/ThursdaysFamous/DistrictExplorer/issues/new";
+    var EMAIL = "adam@overberg.co";
+    var modal = document.getElementById("feedback-modal");
+    var openBtn = document.getElementById("feedback-btn");
+    var closeBtn = document.getElementById("feedback-close");
+    var backdrop = document.getElementById("feedback-backdrop");
+    var textEl = document.getElementById("feedback-text");
+    var githubBtn = document.getElementById("feedback-github");
+    var emailLink = document.getElementById("feedback-email");
+    var lastFocus = null;
+
+    function buildBody() {
+      // Whatever the user typed, plus the context that makes it reproducible.
+      var lines = [];
+      var comment = (textEl.value || "").trim();
+      if (comment) lines.push(comment);
+      lines.push("");
+      lines.push("---");
+      lines.push("Page: " + window.location.href);
+      if (window.navigator && window.navigator.userAgent) {
+        lines.push("Browser: " + window.navigator.userAgent);
+      }
+      return lines.join("\n");
+    }
+
+    function onKeydown(e) {
+      if (e.key === "Escape") closeModal();
+    }
+    function openModal() {
+      lastFocus = document.activeElement;
+      modal.hidden = false;
+      textEl.focus();
+      document.addEventListener("keydown", onKeydown);
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.removeEventListener("keydown", onKeydown);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    // The mailto carries whatever is currently typed, so rebuild it live.
+    function refreshMailto() {
+      emailLink.href = "mailto:" + EMAIL +
+        "?subject=" + encodeURIComponent("Chicago District Explorer feedback") +
+        "&body=" + encodeURIComponent(buildBody());
+    }
+
+    openBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", closeModal);
+    textEl.addEventListener("input", refreshMailto);
+    emailLink.addEventListener("click", function () {
+      refreshMailto(); // sync href before the browser follows the anchor
+      closeModal();
+    });
+    githubBtn.addEventListener("click", function () {
+      var url = REPO_ISSUES +
+        "?title=" + encodeURIComponent("Bug report / comment") +
+        "&body=" + encodeURIComponent(buildBody());
+      window.open(url, "_blank", "noopener");
+      closeModal();
+    });
+    refreshMailto();
+  })();
 
   /* =========================================================================
    * GEOCODER — Nominatim, debounced, bounded to Chicago, attributed.
