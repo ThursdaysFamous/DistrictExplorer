@@ -100,7 +100,7 @@ docs/screenshot.png         README screenshot
 Two gates run in CI:
 
 - **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered, no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts). A bad data regeneration can't reach `main` unreviewed.
-- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 19 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
+- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 20 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 
 ## Not for legal or official use
 
