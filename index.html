@@ -1110,6 +1110,7 @@
     "cps-high",         // High School attendance zone
     "cps-middle",       // Middle School attendance zone
     "cps-elementary",   // Elementary School attendance zone — smallest polygon layer
+    "school-site",      // individual school-campus footprints — smallest polygons, above the zones
     "police-station",   // point marker — no polygon area, always topmost
     "fire-station"      // point marker — no polygon area, always topmost
   ];
@@ -1845,6 +1846,32 @@
     return { lat: g.coordinates[1], lng: g.coordinates[0] };
   }
 
+  /* ---------- representative lat/lng for a polygon feature: the vertex-average
+   * of its exterior ring(s). Used to give Polygon/MultiPolygon features a single
+   * point for the nearest-N proximity pattern below (haversineMiles wants two
+   * points; pointFeatureLatLng only handles Point geometry). Not a true
+   * area-weighted centroid — no geometry library here (see LAYER_AREA_RANK note)
+   * — but plenty accurate for ranking nearby school-site footprints by distance. ---------- */
+  function polygonRepresentativeLatLng(feature) {
+    var g = feature && feature.geometry;
+    if (!g) return null;
+    var rings;
+    if (g.type === "Polygon") rings = [g.coordinates[0]];
+    else if (g.type === "MultiPolygon") rings = g.coordinates.map(function (poly) { return poly[0]; });
+    else return null;
+    var sumLat = 0, sumLng = 0, n = 0;
+    for (var r = 0; r < rings.length; r++) {
+      var ring = rings[r] || [];
+      for (var i = 0; i < ring.length; i++) {
+        sumLng += ring[i][0];
+        sumLat += ring[i][1];
+        n++;
+      }
+    }
+    if (!n) return null;
+    return { lat: sumLat / n, lng: sumLng / n };
+  }
+
   /* ---------- Police District ---------- */
   // Switched from the Socrata mirror (24zt-jpfn) to CPD's own ArcGIS org per
   // playbook §2a: Police_District_Boundary_View, fields DISTRICT/NAME. Not
@@ -2220,7 +2247,7 @@
 
   registerSchoolZone({
     id: "cps-elementary",
-    label: "Elementary School Zone",
+    label: "CPS Elementary School Zone",
     // confirmed via live sample: per-school attendance boundary (school_id, short_name, grade_cat: "ES")
     datasetId: "x72b-38qv",
     style: { color: "#6A3FA0", weight: 1.5, fillColor: "#6A3FA0", fillOpacity: 0.06, dashArray: "4 3" }
@@ -2228,7 +2255,7 @@
 
   registerSchoolZone({
     id: "cps-high",
-    label: "High School Zone",
+    label: "CPS High School Zone",
     // confirmed via live sample: per-school attendance boundary (school_id, school_nam, grade_cat: "HS")
     datasetId: "xg7c-d8rm",
     style: { color: "#0F6F6F", weight: 1.5, fillColor: "#0F6F6F", fillOpacity: 0.06, dashArray: "1 3 4 3" }
@@ -2236,7 +2263,7 @@
 
   registerSchoolZone({
     id: "cps-middle",
-    label: "Middle School Zone",
+    label: "CPS Middle School Zone",
     // confirmed via live sample: same current attendance-boundary schema as
     // elementary/high (school_id, school_nam, grade_cat: "MS", boundarygr),
     // superseding the playbook's ~22-school legacy dataset (9kct-c3uq)
@@ -2295,6 +2322,94 @@
     label: "CPS Network (High School, admin office)",
     datasetId: "aupu-jt2g",
     style: { color: "#7A2D3D", weight: 1.5, fillColor: "#7A2D3D", fillOpacity: 0.04, dashArray: "10 3" }
+  });
+
+  /* ---------- School Location — every school SITE, nearest 3 (not point-in-polygon) ----------
+   * CPD's ArcGIS org (services2.arcgis.com/.../Schools/FeatureServer/0) publishes
+   * ~1,016 individual school-CAMPUS footprint polygons — public, charter AND
+   * private (e.g. Cristo Rey, De LaSalle, Daystar), PK–12 — which the CPS-only
+   * attendance-zone layers above never include. Live-verified schema/count via the
+   * REST API (this org's f=geojson + CORS work, though the sandbox egress policy
+   * blocks re-checking it the way it does for the Police layers). Footprints average
+   * ~6 acres, so a click almost never lands inside one — we answer with the nearest
+   * 3 by campus centroid (same haversine pattern as Police/Fire Stations), while the
+   * overlay still draws the true footprints. Fields: SCHOOL_NAM, GRADES, ADDRESS
+   * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears). */
+  var SCHOOL_SITE_COUNT = 3;
+  var SCHOOL_SITE_SERVICE = arcgisServiceUrl("Schools");
+  var loadSchoolSites = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
+
+  registerLayer({
+    id: "school-site",
+    group: "schools",
+    // deliberately NO "CPS" prefix — this set spans public, charter and private schools
+    label: "School Location (all, incl. private, nearest " + SCHOOL_SITE_COUNT + ")",
+    overlay: {
+      load: loadSchoolSites,
+      // green — a hue none of the five CPS Schools layers use; "2 2" dash keeps
+      // the tiny footprints distinguishable where they overlap a zone boundary
+      style: { color: "#1B7A3D", weight: 1.5, fillColor: "#1B7A3D", fillOpacity: 0.12, dashArray: "2 2" }
+    },
+    query: function (point, seq) {
+      return loadSchoolSites().then(function (geojson) {
+        var features = (geojson && geojson.features) || [];
+        var withDistance = [];
+        for (var i = 0; i < features.length; i++) {
+          var latLng = polygonRepresentativeLatLng(features[i]);
+          if (!latLng) continue;
+          withDistance.push({
+            feature: features[i],
+            distanceMi: haversineMiles(point.lat, point.lng, latLng.lat, latLng.lng)
+          });
+        }
+        if (!withDistance.length) return null;
+        withDistance.sort(function (a, b) { return a.distanceMi - b.distanceMi; });
+        // several records ship " " (a single space) for grades/address/website —
+        // trim to null so the card doesn't render empty parens or dangling dashes
+        var clean = function (v) { var s = v == null ? "" : String(v).trim(); return s ? s : null; };
+        var nearest = withDistance.slice(0, SCHOOL_SITE_COUNT).map(function (w) {
+          var props = w.feature.properties || {};
+          return {
+            name: clean(findPropCI(props, ["school_nam", "school", "school_name", "schoolname", "name"])),
+            grades: clean(findPropCI(props, ["grades", "grade", "grade_range", "boundarygr"])),
+            address: clean(findPropCI(props, ["address", "school_add", "location_address"])),
+            website: clean(findPropCI(props, ["website", "link", "url"])),
+            distanceMi: w.distanceMi
+          };
+        });
+        return { seq: seq, schools: nearest };
+      });
+    },
+    render: function (result) {
+      var wrap = document.createElement("div");
+      var intro = document.createElement("p");
+      intro.style.margin = "0 0 8px";
+      intro.textContent = "Nearest schools, straight-line distance:";
+      wrap.appendChild(intro);
+      var ol = document.createElement("ol");
+      ol.style.margin = "0";
+      ol.style.paddingLeft = "20px";
+      result.schools.forEach(function (s) {
+        var li = document.createElement("li");
+        var name = s.name ? String(s.name) : "School";
+        var gradesPart = s.grades ? " (" + String(s.grades) + ")" : "";
+        var addressPart = s.address ? " — " + String(s.address) : "";
+        li.textContent = name + gradesPart + addressPart + " — " + s.distanceMi.toFixed(2) + " mi";
+        var website = safeHttpUrl(s.website); // empty in current data; scheme-checked if ever populated
+        if (website) {
+          li.appendChild(document.createTextNode(" — "));
+          var a = document.createElement("a");
+          a.href = website;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = "website";
+          li.appendChild(a);
+        }
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+      return wrap;
+    }
   });
 
   /* =========================================================================
