@@ -291,11 +291,38 @@
   }
   .kbd-select-btn:hover { background: #EEF4F7; }
 
-  .selected-point-chip {
+  /* bottom-left map stack: hover toggle on top, selected-point chip below it.
+     column-anchored at the bottom, so the chip sits at the corner and the
+     toggle floats just above it (and the toggle sits alone when no point is
+     selected and the chip is hidden). */
+  .map-bottom-left {
     position: absolute;
     bottom: 12px;
     left: 12px;
     z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .hover-toggle-btn {
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 5px 10px;
+    background: #fff;
+    color: var(--chi-blue-deep, #08406e);
+    border: 1px solid rgba(20, 24, 28, 0.25);
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(20, 24, 28, 0.3);
+  }
+  .hover-toggle-btn:hover { background: #EEF4F7; }
+  .hover-toggle-btn[aria-pressed="true"] {
+    background: var(--chi-blue-deep, #08406e);
+    color: #fff;
+    border-color: var(--chi-blue-deep, #08406e);
+  }
+  .selected-point-chip {
     background: var(--ink);
     color: #fff;
     font-family: var(--font-mono);
@@ -573,25 +600,6 @@
   .hover-row-value { font-weight: 600; }
   .hover-row-parent .hover-row-label,
   .hover-row-parent .hover-row-value { font-size: 12.5px; }
-
-  /* the map-corner toggle that arms/disarms the hover explorer */
-  .hover-ctrl button {
-    font-family: var(--font-body);
-    font-size: 12px;
-    padding: 5px 9px;
-    background: #fff;
-    color: var(--chi-blue-deep, #08406e);
-    border: 1px solid rgba(20, 24, 28, 0.25);
-    border-radius: 4px;
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgba(20, 24, 28, 0.25);
-  }
-  .hover-ctrl button:hover { background: #EEF4F7; }
-  .hover-ctrl button[aria-pressed="true"] {
-    background: var(--chi-blue-deep, #08406e);
-    color: #fff;
-    border-color: var(--chi-blue-deep, #08406e);
-  }
 </style>
 </head>
 <body>
@@ -636,7 +644,11 @@
       Layers ▾
     </button>
 
-    <div class="selected-point-chip" id="point-chip" hidden></div>
+    <div class="map-bottom-left">
+      <button type="button" class="hover-toggle-btn" id="hover-toggle" aria-pressed="true"
+        title="Hover explorer — show the districts under your cursor as you move the mouse">Hover: on</button>
+      <div class="selected-point-chip" id="point-chip" hidden></div>
+    </div>
   </section>
 
   <section class="results-col" id="results-col" aria-label="Civic profile results" aria-live="polite">
@@ -2165,12 +2177,24 @@
    * and it degrades gracefully if a guess is wrong. ---------- */
   var POLICE_BEAT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_Beat_Boundary");
   var loadPoliceBeats = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
+  // Prefer the canonical 4-digit CPD beat number (BEAT_NUMBE, e.g. "2423").
+  // "beat_num" is listed first for other possible schemas but does NOT match
+  // the live "BEAT_NUMBE" field; the truncated "beat" digit ("3") is a
+  // last-resort fallback, and the parent DISTRICT number is deliberately absent.
+  var BEAT_NUMBER_KEYS = ["beat_num", "beat_numbe", "beat_number", "beat_no", "beat", "number"];
 
   registerLayer({
     id: "police-beat",
     group: "safety",
     subOf: "police-district",
     label: "Police Beat",
+    // a beat feature also carries its parent district number (which the generic
+    // hover extractor would pick up first), plus a truncated "BEAT" digit — so
+    // name it explicitly, preferring the canonical 4-digit beat number.
+    hoverName: function (feature) {
+      var props = feature.properties || {};
+      return findPropCI(props, BEAT_NUMBER_KEYS) || null;
+    },
     overlay: {
       load: loadPoliceBeats,
       // solid thin outline + visible fill: with the district dropped to
@@ -2183,7 +2207,7 @@
         var feature = findFeatureContaining(geojson, point);
         if (!feature) return null;
         var props = feature.properties || {};
-        var beat = findPropCI(props, ["beat_num", "beat", "beat_number", "beat_no", "number"]);
+        var beat = findPropCI(props, BEAT_NUMBER_KEYS);
         var district = findPropCI(props, ["district", "dist_num", "dist", "district_number", "district_no"]);
         return { seq: seq, beat: beat, district: district };
       });
@@ -3215,8 +3239,8 @@
   });
 
   /* =========================================================================
-   * HOVER EXPLORER — an opt-in live popup that follows the cursor and names the
-   * district it's over, plus (Phase 2) an outline of every smaller active
+   * HOVER EXPLORER — a live popup (on by default, toggled bottom-left) that
+   * follows the cursor and names the district it's over, plus an outline of every smaller active
    * layer's district that falls FULLY INSIDE that one. "Parent" = the largest
    * active polygon layer (top of LAYER_AREA_RANK) whose feature contains the
    * cursor, reusing the same findFeatureContaining point-in-polygon the click
@@ -3239,7 +3263,7 @@
    * Officeholder/contact details remain on the network-backed click cards.
    * ======================================================================= */
 
-  var hoverActive = false;    // armed via the map-corner toggle; default off
+  var hoverActive = true;     // on by default; toggled via the bottom-left button
   var hoverRAF = null;        // pending requestAnimationFrame handle
   var hoverLatLng = null;     // most recent cursor position (map coords)
   var hoverPopup = null;      // single reused L.popup that follows the cursor
@@ -3423,28 +3447,20 @@
   });
   map.on("mouseout", function () { if (hoverActive) clearHoverVisuals(); });
 
-  // Map-corner toggle that arms/disarms the hover explorer.
-  var HoverControl = L.Control.extend({
-    options: { position: "topright" },
-    onAdd: function () {
-      var wrap = L.DomUtil.create("div", "hover-ctrl leaflet-bar");
-      var btn = L.DomUtil.create("button", "", wrap);
-      btn.type = "button";
-      btn.textContent = "Hover: off";
-      btn.title = "Hover explorer — show the district under your cursor as you move the mouse";
-      btn.setAttribute("aria-pressed", "false");
-      // stop map drag/zoom from stealing clicks and scroll on the control
-      L.DomEvent.disableClickPropagation(wrap);
-      L.DomEvent.on(btn, "click", function () {
-        hoverActive = !hoverActive;
-        btn.textContent = hoverActive ? "Hover: on" : "Hover: off";
-        btn.setAttribute("aria-pressed", hoverActive ? "true" : "false");
-        if (!hoverActive) clearHoverVisuals();
-      });
-      return wrap;
-    }
+  // Bottom-left toggle (above the selected-point chip) that arms/disarms the
+  // hover explorer. It's a plain DOM button over the map, not a Leaflet control,
+  // so it stacks cleanly with the coordinate chip in .map-bottom-left.
+  var hoverToggleBtn = document.getElementById("hover-toggle");
+  function syncHoverToggle() {
+    hoverToggleBtn.textContent = hoverActive ? "Hover: on" : "Hover: off";
+    hoverToggleBtn.setAttribute("aria-pressed", hoverActive ? "true" : "false");
+  }
+  syncHoverToggle(); // reflect the default (on) in the button at boot
+  hoverToggleBtn.addEventListener("click", function () {
+    hoverActive = !hoverActive;
+    syncHoverToggle();
+    if (!hoverActive) clearHoverVisuals();
   });
-  map.addControl(new HoverControl());
 
   /* =========================================================================
    * BOOT
