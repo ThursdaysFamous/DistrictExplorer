@@ -418,6 +418,21 @@
     margin-bottom: 10px;
     overflow: hidden;
   }
+  /* a sub-selection nested inside its parent's block (e.g. Police Beat under
+     Police District): indented, with a top rule separating it from the parent
+     card so it reads as "part of, but under, the district". */
+  .layer-block-sub {
+    margin: 0 10px 10px 22px;
+    border-top: 1px solid var(--line);
+  }
+  .layer-block-sub .layer-block-head {
+    padding: 8px 10px;
+    background: transparent;
+  }
+  .layer-block-sub .layer-block-head label {
+    font-weight: 500;
+    font-size: 12.5px;
+  }
   .layer-block-head {
     display: flex;
     align-items: center;
@@ -1084,12 +1099,18 @@
     "cps-hs-network",   // CPS High School Network (admin grouping)
     "cps-network",      // CPS K-8 Network (admin grouping)
     "ward",             // City Ward (50)
+    // Deliberately out of pure area order: beats (~277, smaller than a district)
+    // sit just BELOW their parent district so the district's outline renders on
+    // top and frames the beat fills — the "district outline + beats as filler"
+    // look the beat sub-selection is for.
+    "police-beat",      // Police Beat (~277)
     "police-district",  // Police District (22)
     "community-area",   // Community Area (77)
     "zip-code",         // ZIP Code
     "cps-high",         // High School attendance zone
     "cps-middle",       // Middle School attendance zone
     "cps-elementary",   // Elementary School attendance zone — smallest polygon layer
+    "school-site",      // individual school-campus footprints — smallest polygons, above the zones
     "police-station",   // point marker — no polygon area, always topmost
     "fire-station"      // point marker — no polygon area, always topmost
   ];
@@ -1101,8 +1122,19 @@
     layers.push(mod);
     layerRuntime[mod.id] = {
       overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null,
-      highlightedLayer: null, poiMarker: null
+      highlightedLayer: null, poiMarker: null,
+      // when true the layer draws its outline only (fillOpacity forced to 0),
+      // regardless of its own style — used when a sub-layer takes over the fill
+      // (e.g. Police Beat filling a Police District that's dropped to outline).
+      outlineOnly: false
     };
+  }
+
+  function getLayerById(id) {
+    for (var i = 0; i < layers.length; i++) {
+      if (layers[i].id === id) return layers[i];
+    }
+    return null;
   }
 
   /* ---------- fill-opacity scaling by active layer count: as more layers
@@ -1139,11 +1171,12 @@
   function baseStyleFor(mod) {
     var style = mod.overlay && mod.overlay.style;
     if (!style) return null;
+    var rt = layerRuntime[mod.id];
     return {
       color: style.color,
       weight: style.weight,
       fillColor: style.fillColor,
-      fillOpacity: scaledFillOpacity(mod),
+      fillOpacity: (rt && rt.outlineOnly) ? 0 : scaledFillOpacity(mod),
       dashArray: style.dashArray
     };
   }
@@ -1202,11 +1235,14 @@
   // lighter fill/stroke instead of an unrelated universal gold.
   var HIGHLIGHT_DARKEN_AMOUNT = 0.35;
   function highlightStyleFor(mod) {
+    var rt = layerRuntime[mod.id];
     return {
       color: darkenHexColor(moduleColor(mod), HIGHLIGHT_DARKEN_AMOUNT),
       weight: 4,
       opacity: 1,
-      fillOpacity: 0.32,
+      // an outline-only layer keeps no fill even when it's the matched region,
+      // so a sub-layer's fill (the beats) shows through unobscured
+      fillOpacity: (rt && rt.outlineOnly) ? 0 : 0.32,
       dashArray: null
     };
   }
@@ -1366,6 +1402,65 @@
     });
   }
 
+  // Build one layer's sidebar block (head with toggle + card body) and wire
+  // its change handler. Returned detached so the caller can append it either
+  // at the group's top level or nested inside a parent block (sub-layers).
+  function buildLayerBlock(mod) {
+    var block = document.createElement("div");
+    block.className = "layer-block";
+    // ties this card's accent border + dot to the same color used for the
+    // layer's map overlay/pins, so the sidebar reads as "this is the box
+    // for the blue layer" at a glance
+    block.style.setProperty("--layer-accent", moduleColor(mod));
+
+    var head = document.createElement("div");
+    head.className = "layer-block-head";
+
+    var checkboxId = "toggle-" + mod.id;
+    var checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = checkboxId;
+    checkbox.checked = false;
+
+    var colorDot = document.createElement("span");
+    colorDot.className = "layer-color-dot";
+    colorDot.setAttribute("aria-hidden", "true");
+    colorDot.title = "Layer color on map";
+
+    var label = document.createElement("label");
+    label.setAttribute("for", checkboxId);
+    label.textContent = mod.label;
+
+    head.appendChild(checkbox);
+    head.appendChild(colorDot);
+    head.appendChild(label);
+    if (mod.stub) {
+      var badge = document.createElement("span");
+      badge.className = "stub-badge";
+      badge.textContent = "STUB";
+      badge.title = "Demonstration module — real data source lands in a later build thread.";
+      head.appendChild(badge);
+    }
+    block.appendChild(head);
+
+    var body = document.createElement("div");
+    body.id = "card-" + mod.id;
+    body.className = "layer-card-body state-off";
+    body.setAttribute("aria-live", "polite");
+    body.textContent = "Layer off.";
+    block.appendChild(body);
+
+    layerRuntime[mod.id].cardBody = body;
+
+    checkbox.addEventListener("change", function () {
+      state.layersOn[mod.id] = checkbox.checked;
+      onLayerToggled(mod);
+      syncUrlHash();
+    });
+
+    return block;
+  }
+
   function buildGroupsUI() {
     var root = document.getElementById("groups-root");
     GROUPS.forEach(function (group) {
@@ -1382,59 +1477,19 @@
       heading.innerHTML = '<span class="dot" aria-hidden="true"></span>' + sanitize(group.label);
       section.appendChild(heading);
 
+      // Top-level layers only; a sub-layer (mod.subOf) is rendered nested
+      // inside its parent's block below, not as a sibling in the group.
       groupLayers.forEach(function (mod) {
-        var block = document.createElement("div");
-        block.className = "layer-block";
-        // ties this card's accent border + dot to the same color used for the
-        // layer's map overlay/pins, so the sidebar reads as "this is the box
-        // for the blue layer" at a glance
-        block.style.setProperty("--layer-accent", moduleColor(mod));
-
-        var head = document.createElement("div");
-        head.className = "layer-block-head";
-
-        var checkboxId = "toggle-" + mod.id;
-        var checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.id = checkboxId;
-        checkbox.checked = false;
-
-        var colorDot = document.createElement("span");
-        colorDot.className = "layer-color-dot";
-        colorDot.setAttribute("aria-hidden", "true");
-        colorDot.title = "Layer color on map";
-
-        var label = document.createElement("label");
-        label.setAttribute("for", checkboxId);
-        label.textContent = mod.label;
-
-        head.appendChild(checkbox);
-        head.appendChild(colorDot);
-        head.appendChild(label);
-        if (mod.stub) {
-          var badge = document.createElement("span");
-          badge.className = "stub-badge";
-          badge.textContent = "STUB";
-          badge.title = "Demonstration module — real data source lands in a later build thread.";
-          head.appendChild(badge);
-        }
-        block.appendChild(head);
-
-        var body = document.createElement("div");
-        body.id = "card-" + mod.id;
-        body.className = "layer-card-body state-off";
-        body.setAttribute("aria-live", "polite");
-        body.textContent = "Layer off.";
-        block.appendChild(body);
-
-        layerRuntime[mod.id].cardBody = body;
-
-        checkbox.addEventListener("change", function () {
-          state.layersOn[mod.id] = checkbox.checked;
-          onLayerToggled(mod);
-          syncUrlHash();
+        if (mod.subOf) return;
+        var block = buildLayerBlock(mod);
+        // nest any sub-layers (e.g. Police Beat under Police District) so the
+        // sidebar reads them as a sub-selection of the parent
+        layers.forEach(function (sub) {
+          if (sub.subOf !== mod.id) return;
+          var subBlock = buildLayerBlock(sub);
+          subBlock.classList.add("layer-block-sub");
+          block.appendChild(subBlock);
         });
-
         section.appendChild(block);
       });
 
@@ -1454,6 +1509,7 @@
       rt.cardBody.textContent = "Layer off.";
       refreshActiveLayerOpacities(); // active count just dropped — remaining active layers get more opaque
       reorderActiveLayers();
+      if (mod.onToggle) mod.onToggle(false); // let a layer react to being turned off (e.g. cascade its sub-layer)
       return;
     }
 
@@ -1498,6 +1554,7 @@
     }
 
     runLayerQuery(mod);
+    if (mod.onToggle) mod.onToggle(true); // let a layer react to being turned on (e.g. a sub-layer restyling its parent)
   }
 
   function setCardLoading(mod) {
@@ -1789,6 +1846,32 @@
     return { lat: g.coordinates[1], lng: g.coordinates[0] };
   }
 
+  /* ---------- representative lat/lng for a polygon feature: the vertex-average
+   * of its exterior ring(s). Used to give Polygon/MultiPolygon features a single
+   * point for the nearest-N proximity pattern below (haversineMiles wants two
+   * points; pointFeatureLatLng only handles Point geometry). Not a true
+   * area-weighted centroid — no geometry library here (see LAYER_AREA_RANK note)
+   * — but plenty accurate for ranking nearby school-site footprints by distance. ---------- */
+  function polygonRepresentativeLatLng(feature) {
+    var g = feature && feature.geometry;
+    if (!g) return null;
+    var rings;
+    if (g.type === "Polygon") rings = [g.coordinates[0]];
+    else if (g.type === "MultiPolygon") rings = g.coordinates.map(function (poly) { return poly[0]; });
+    else return null;
+    var sumLat = 0, sumLng = 0, n = 0;
+    for (var r = 0; r < rings.length; r++) {
+      var ring = rings[r] || [];
+      for (var i = 0; i < ring.length; i++) {
+        sumLng += ring[i][0];
+        sumLat += ring[i][1];
+        n++;
+      }
+    }
+    if (!n) return null;
+    return { lat: sumLat / n, lng: sumLng / n };
+  }
+
   /* ---------- Police District ---------- */
   // Switched from the Socrata mirror (24zt-jpfn) to CPD's own ArcGIS org per
   // playbook §2a: Police_District_Boundary_View, fields DISTRICT/NAME. Not
@@ -1903,6 +1986,80 @@
       var districtMap = safeHttpUrl(result.districtMapUrl); // scheme-check external URLs before they become an href
       if (districtMap) fields.push({ label: "District Map", html: '<a href="' + sanitize(districtMap) + '" target="_blank" rel="noopener">' + sanitize(districtMap) + '</a>' });
       return renderFieldList(fields);
+    },
+    onToggle: function (on) {
+      // The Police Beat sub-layer only makes sense as a subdivision of a
+      // visible district, so if the district is turned off, cascade its beat
+      // sub-selection off too (which restores this layer's own fill via the
+      // beat module's onToggle(false)).
+      if (!on && state.layersOn["police-beat"]) {
+        var box = document.getElementById("toggle-police-beat");
+        if (box && box.checked) box.click();
+      }
+    }
+  });
+
+  /* ---------- Police Beat (sub-selection of Police District) ----------
+   * Beats are CPD's smallest patrol unit — each district is tiled by a
+   * handful of beats. Same CPD ArcGIS org as the district/station layers
+   * (Police_Beat_Boundary). Registered with subOf:"police-district" so its
+   * toggle nests under the district in the sidebar and reads as a
+   * sub-selection. Turning it on flips the parent district to outline-only
+   * (see onToggle) so the district's boundary frames the beats and the beat
+   * fills read as the district's interior subdivision. Field names
+   * (BEAT_NUM/BEAT, DISTRICT) per CPD's schema; not live-spot-checkable in
+   * this sandbox (services2.arcgis.com is egress-blocked here, same as the
+   * other CPD layers), so findPropCI's alias lists cover the likely casings
+   * and it degrades gracefully if a guess is wrong. ---------- */
+  var POLICE_BEAT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_Beat_Boundary");
+  var loadPoliceBeats = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
+
+  registerLayer({
+    id: "police-beat",
+    group: "safety",
+    subOf: "police-district",
+    label: "Police Beat",
+    overlay: {
+      load: loadPoliceBeats,
+      // solid thin outline + visible fill: with the district dropped to
+      // outline-only, the beats carry the interior fill. Same red family as
+      // the district, a shade brighter so the two read as related.
+      style: { color: "#7A0A1C", weight: 1, fillColor: "#E4572E", fillOpacity: 0.14, dashArray: null }
+    },
+    query: function (point, seq) {
+      return loadPoliceBeats().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var beat = findPropCI(props, ["beat_num", "beat", "beat_number", "beat_no", "number"]);
+        var district = findPropCI(props, ["district", "dist_num", "dist", "district_number", "district_no"]);
+        return { seq: seq, beat: beat, district: district };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Beat", value: result.beat ? String(result.beat) : "Unknown" }];
+      if (result.district) fields.push({ label: "District", value: String(result.district) });
+      return renderFieldList(fields);
+    },
+    onToggle: function (on) {
+      var districtRt = layerRuntime["police-district"];
+      if (on) {
+        // a sub-selection needs its parent visible — turn the district on (as
+        // the outline frame) if it isn't already. box.click() runs the normal
+        // toggle path (overlay load + query + hash sync).
+        if (!state.layersOn["police-district"]) {
+          var box = document.getElementById("toggle-police-district");
+          if (box && !box.checked) box.click();
+        }
+        districtRt.outlineOnly = true;
+      } else {
+        districtRt.outlineOnly = false;
+      }
+      // Restyle the already-loaded district overlay to reflect the fill change.
+      // If it's still loading (just auto-enabled above), baseStyleFor reads
+      // outlineOnly at L.geoJSON construction time, so no restyle is needed yet.
+      var districtMod = getLayerById("police-district");
+      if (districtMod && districtRt.overlayLayer) updateLayerHighlight(districtMod);
     }
   });
 
@@ -2090,7 +2247,7 @@
 
   registerSchoolZone({
     id: "cps-elementary",
-    label: "Elementary School Zone",
+    label: "CPS Elementary School Zone",
     // confirmed via live sample: per-school attendance boundary (school_id, short_name, grade_cat: "ES")
     datasetId: "x72b-38qv",
     style: { color: "#6A3FA0", weight: 1.5, fillColor: "#6A3FA0", fillOpacity: 0.06, dashArray: "4 3" }
@@ -2098,7 +2255,7 @@
 
   registerSchoolZone({
     id: "cps-high",
-    label: "High School Zone",
+    label: "CPS High School Zone",
     // confirmed via live sample: per-school attendance boundary (school_id, school_nam, grade_cat: "HS")
     datasetId: "xg7c-d8rm",
     style: { color: "#0F6F6F", weight: 1.5, fillColor: "#0F6F6F", fillOpacity: 0.06, dashArray: "1 3 4 3" }
@@ -2106,7 +2263,7 @@
 
   registerSchoolZone({
     id: "cps-middle",
-    label: "Middle School Zone",
+    label: "CPS Middle School Zone",
     // confirmed via live sample: same current attendance-boundary schema as
     // elementary/high (school_id, school_nam, grade_cat: "MS", boundarygr),
     // superseding the playbook's ~22-school legacy dataset (9kct-c3uq)
@@ -2165,6 +2322,94 @@
     label: "CPS Network (High School, admin office)",
     datasetId: "aupu-jt2g",
     style: { color: "#7A2D3D", weight: 1.5, fillColor: "#7A2D3D", fillOpacity: 0.04, dashArray: "10 3" }
+  });
+
+  /* ---------- School Location — every school SITE, nearest 3 (not point-in-polygon) ----------
+   * CPD's ArcGIS org (services2.arcgis.com/.../Schools/FeatureServer/0) publishes
+   * ~1,016 individual school-CAMPUS footprint polygons — public, charter AND
+   * private (e.g. Cristo Rey, De LaSalle, Daystar), PK–12 — which the CPS-only
+   * attendance-zone layers above never include. Live-verified schema/count via the
+   * REST API (this org's f=geojson + CORS work, though the sandbox egress policy
+   * blocks re-checking it the way it does for the Police layers). Footprints average
+   * ~6 acres, so a click almost never lands inside one — we answer with the nearest
+   * 3 by campus centroid (same haversine pattern as Police/Fire Stations), while the
+   * overlay still draws the true footprints. Fields: SCHOOL_NAM, GRADES, ADDRESS
+   * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears). */
+  var SCHOOL_SITE_COUNT = 3;
+  var SCHOOL_SITE_SERVICE = arcgisServiceUrl("Schools");
+  var loadSchoolSites = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
+
+  registerLayer({
+    id: "school-site",
+    group: "schools",
+    // deliberately NO "CPS" prefix — this set spans public, charter and private schools
+    label: "School Location (all, incl. private, nearest " + SCHOOL_SITE_COUNT + ")",
+    overlay: {
+      load: loadSchoolSites,
+      // green — a hue none of the five CPS Schools layers use; "2 2" dash keeps
+      // the tiny footprints distinguishable where they overlap a zone boundary
+      style: { color: "#1B7A3D", weight: 1.5, fillColor: "#1B7A3D", fillOpacity: 0.12, dashArray: "2 2" }
+    },
+    query: function (point, seq) {
+      return loadSchoolSites().then(function (geojson) {
+        var features = (geojson && geojson.features) || [];
+        var withDistance = [];
+        for (var i = 0; i < features.length; i++) {
+          var latLng = polygonRepresentativeLatLng(features[i]);
+          if (!latLng) continue;
+          withDistance.push({
+            feature: features[i],
+            distanceMi: haversineMiles(point.lat, point.lng, latLng.lat, latLng.lng)
+          });
+        }
+        if (!withDistance.length) return null;
+        withDistance.sort(function (a, b) { return a.distanceMi - b.distanceMi; });
+        // several records ship " " (a single space) for grades/address/website —
+        // trim to null so the card doesn't render empty parens or dangling dashes
+        var clean = function (v) { var s = v == null ? "" : String(v).trim(); return s ? s : null; };
+        var nearest = withDistance.slice(0, SCHOOL_SITE_COUNT).map(function (w) {
+          var props = w.feature.properties || {};
+          return {
+            name: clean(findPropCI(props, ["school_nam", "school", "school_name", "schoolname", "name"])),
+            grades: clean(findPropCI(props, ["grades", "grade", "grade_range", "boundarygr"])),
+            address: clean(findPropCI(props, ["address", "school_add", "location_address"])),
+            website: clean(findPropCI(props, ["website", "link", "url"])),
+            distanceMi: w.distanceMi
+          };
+        });
+        return { seq: seq, schools: nearest };
+      });
+    },
+    render: function (result) {
+      var wrap = document.createElement("div");
+      var intro = document.createElement("p");
+      intro.style.margin = "0 0 8px";
+      intro.textContent = "Nearest schools, straight-line distance:";
+      wrap.appendChild(intro);
+      var ol = document.createElement("ol");
+      ol.style.margin = "0";
+      ol.style.paddingLeft = "20px";
+      result.schools.forEach(function (s) {
+        var li = document.createElement("li");
+        var name = s.name ? String(s.name) : "School";
+        var gradesPart = s.grades ? " (" + String(s.grades) + ")" : "";
+        var addressPart = s.address ? " — " + String(s.address) : "";
+        li.textContent = name + gradesPart + addressPart + " — " + s.distanceMi.toFixed(2) + " mi";
+        var website = safeHttpUrl(s.website); // empty in current data; scheme-checked if ever populated
+        if (website) {
+          li.appendChild(document.createTextNode(" — "));
+          var a = document.createElement("a");
+          a.href = website;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = "website";
+          li.appendChild(a);
+        }
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+      return wrap;
+    }
   });
 
   /* =========================================================================
