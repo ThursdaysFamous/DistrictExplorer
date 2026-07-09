@@ -760,6 +760,90 @@
     return false;
   }
 
+  /* ---------- polygon-in-polygon containment (used by the hover explorer's
+   * "districts fully inside the one you're over" outlining). There's no
+   * geometry library here, so this is a hand-rolled, vertex-based test:
+   * a child polygon counts as inside a parent when every one of its ring
+   * vertices is inside the parent (or within HOVER_CONTAIN_EPS of the parent's
+   * boundary — real nested layers like police beats share edges with their
+   * parent district, and two independently-simplified copies of a shared edge
+   * don't land on exactly the same coordinates, so an exact test would wrongly
+   * reject them). It's an APPROXIMATION: a concave parent could in theory clip
+   * a child edge that runs between two inside vertices. Good enough for civic
+   * exploration (never legal precision — see the app's disclaimer), and every
+   * call is gated by a cheap bounding-box reject first so the vertex loop only
+   * runs for the few candidates that could plausibly nest. ---------- */
+  function eachRing(geometry, cb) {
+    if (!geometry) return;
+    if (geometry.type === "Polygon") { geometry.coordinates.forEach(cb); }
+    else if (geometry.type === "MultiPolygon") {
+      geometry.coordinates.forEach(function (poly) { poly.forEach(cb); });
+    }
+  }
+
+  // bounding box [minLng, minLat, maxLng, maxLat], memoized on the feature so
+  // repeated hover frames don't re-walk the same coordinates.
+  function featureBBox(feature) {
+    if (feature.__hoverBBox) return feature.__hoverBBox;
+    var b = [Infinity, Infinity, -Infinity, -Infinity];
+    eachRing(feature.geometry, function (ring) {
+      for (var i = 0; i < ring.length; i++) {
+        var x = ring[i][0], y = ring[i][1];
+        if (x < b[0]) b[0] = x;
+        if (y < b[1]) b[1] = y;
+        if (x > b[2]) b[2] = x;
+        if (y > b[3]) b[3] = y;
+      }
+    });
+    feature.__hoverBBox = b;
+    return b;
+  }
+
+  function bboxInside(inner, outer, eps) {
+    return inner[0] >= outer[0] - eps && inner[1] >= outer[1] - eps &&
+           inner[2] <= outer[2] + eps && inner[3] <= outer[3] + eps;
+  }
+
+  function distPointToSegment(px, py, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay;
+    if (dx === 0 && dy === 0) return Math.hypot(px - ax, py - ay);
+    var t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
+  // planar (degree-space) distance from a [lng,lat] point to a geometry's
+  // nearest boundary edge. Only used as a small on-boundary tolerance, so not
+  // scaling longitude by cos(lat) is fine at Chicago's latitude.
+  function distToBoundary(pt, geometry) {
+    var min = Infinity;
+    eachRing(geometry, function (ring) {
+      for (var i = 0; i < ring.length - 1; i++) {
+        var d = distPointToSegment(pt[0], pt[1], ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1]);
+        if (d < min) min = d;
+      }
+    });
+    return min;
+  }
+
+  var HOVER_CONTAIN_EPS = 2e-5; // ~2m: tolerance for coincident/independently-simplified shared edges
+  function polygonFullyInside(child, parent) {
+    if (!bboxInside(featureBBox(child), featureBBox(parent), HOVER_CONTAIN_EPS)) return false;
+    var parentGeom = parent.geometry;
+    var inside = true;
+    eachRing(child.geometry, function (ring) {
+      if (!inside) return;
+      for (var i = 0; i < ring.length; i++) {
+        var v = ring[i];
+        if (pointInGeometry({ lat: v[1], lng: v[0] }, parentGeom)) continue;
+        if (distToBoundary(v, parentGeom) <= HOVER_CONTAIN_EPS) continue;
+        inside = false;
+        return;
+      }
+    });
+    return inside;
+  }
+
   /* ---------- fetch JSON with retry + timeout. The abort timer stays armed
    * through the body read, not just the headers — every caller parses JSON,
    * and a response that stalls mid-body would otherwise hang its layer's
@@ -3028,15 +3112,22 @@
   });
 
   /* =========================================================================
-   * HOVER EXPLORER (Phase 1) — an opt-in live popup that follows the cursor
-   * and names the district it's over. "Parent" = the largest active polygon
-   * layer (top of LAYER_AREA_RANK) whose feature contains the cursor, reusing
-   * the same findFeatureContaining point-in-polygon the click path runs.
+   * HOVER EXPLORER — an opt-in live popup that follows the cursor and names the
+   * district it's over, plus (Phase 2) an outline of every smaller active
+   * layer's district that falls FULLY INSIDE that one. "Parent" = the largest
+   * active polygon layer (top of LAYER_AREA_RANK) whose feature contains the
+   * cursor, reusing the same findFeatureContaining point-in-polygon the click
+   * path runs; "children" = smaller active layers' features that pass
+   * polygonFullyInside against the parent.
+   *
    * mousemove is throttled to one run per animation frame so scrubbing stays
    * smooth; a monotonic hoverSeq guards against a fast mouse painting stale
-   * content. This layer is deliberately separate from click-to-select and
-   * never fires a network request — it reads only already-loaded boundaries.
-   * (Phase 2 adds contained-child outlining; Phase 3 the mini civic-profile.)
+   * content; and the (expensive) containment recompute is skipped entirely
+   * while the cursor stays within the same parent feature. Deliberately
+   * separate from click-to-select — child outlines are drawn into their own
+   * layer group, never by mutating the real overlays' styles, so they can't
+   * disturb the click-selection highlight — and it never fires a network
+   * request, reading only already-loaded boundaries. (Phase 3: mini profile.)
    * ======================================================================= */
 
   var hoverActive = false;    // armed via the map-corner toggle; default off
@@ -3044,6 +3135,9 @@
   var hoverLatLng = null;     // most recent cursor position (map coords)
   var hoverPopup = null;      // single reused L.popup that follows the cursor
   var hoverSeq = 0;           // bumped each update so stale rAF work can bail
+  var hoverOutlineGroup = null;   // L.layerGroup holding the contained-child outlines
+  var hoverLastParentFeature = null; // last parent feature outlines were computed for
+  var HOVER_MAX_OUTLINES = 120;   // perf backstop when a citywide parent contains a dense layer
 
   // Broad district-number key list spanning every polygon layer's own naming,
   // fed through extractDistrictNumber (which adds a name-field regex fallback
@@ -3091,6 +3185,62 @@
            '<span class="hover-district">' + sanitize(label) + "</span>";
   }
 
+  /* Every smaller active polygon layer's feature that falls fully inside the
+   * hovered parent. "Smaller" = strictly later in LAYER_AREA_RANK, so a layer
+   * never outlines itself and a parent only gathers finer-grained children.
+   * Each candidate is bbox-rejected before the vertex test (see
+   * polygonFullyInside), so a dense layer (e.g. ~277 beats) only pays the full
+   * cost for the handful whose bounds actually sit within the parent. */
+  function hoverContainedChildren(parentMod, parentFeature) {
+    var out = [];
+    var parentRank = LAYER_AREA_RANK.indexOf(parentMod.id);
+    if (parentRank < 0) return out;
+    for (var i = parentRank + 1; i < LAYER_AREA_RANK.length; i++) {
+      var id = LAYER_AREA_RANK[i];
+      if (!state.layersOn[id]) continue;
+      var rt = layerRuntime[id];
+      if (!rt || !rt.geojson) continue;
+      var mod = getLayerById(id);
+      if (!mod || !mod.overlay || !mod.overlay.style) continue;
+      var feats = rt.geojson.features || [];
+      for (var j = 0; j < feats.length; j++) {
+        if (polygonFullyInside(feats[j], parentFeature)) out.push({ mod: mod, feature: feats[j] });
+      }
+    }
+    return out;
+  }
+
+  function clearHoverOutlines() {
+    if (hoverOutlineGroup) hoverOutlineGroup.clearLayers();
+  }
+
+  function drawHoverOutlines(children) {
+    if (!hoverOutlineGroup) hoverOutlineGroup = L.featureGroup().addTo(map); // featureGroup adds bringToFront over layerGroup
+    hoverOutlineGroup.clearLayers();
+    var shown = Math.min(children.length, HOVER_MAX_OUTLINES);
+    for (var i = 0; i < shown; i++) {
+      var c = children[i];
+      L.geoJSON(c.feature, {
+        // fill:false → outline only, so it frames the child without adding to
+        // the translucent-fill murk the base layers already manage. interactive
+        // false → the outline never intercepts the mousemove/click underneath it.
+        style: { color: darkenHexColor(moduleColor(c.mod), 0.15), weight: 2.5, opacity: 0.95, fill: false, dashArray: "4 3", className: "hover-child-outline" },
+        interactive: false
+      }).addTo(hoverOutlineGroup);
+    }
+    if (children.length > shown) {
+      // honesty: never silently drop coverage (see OPTIMIZATION_PLAYBOOK)
+      console.warn("hover explorer: " + (children.length - shown) + " contained district(s) not outlined (cap " + HOVER_MAX_OUTLINES + ")");
+    }
+    hoverOutlineGroup.bringToFront();
+  }
+
+  function clearHoverVisuals() {
+    hideHover();
+    clearHoverOutlines();
+    hoverLastParentFeature = null;
+  }
+
   function hideHover() {
     if (hoverPopup) hoverPopup.close(); // idempotent; removes it from the map if open
   }
@@ -3112,10 +3262,17 @@
 
   function updateHover() {
     hoverSeq += 1;
-    if (!hoverActive || !hoverLatLng) { hideHover(); return; }
+    if (!hoverActive || !hoverLatLng) { clearHoverVisuals(); return; }
     var hit = hoverParentAt({ lat: hoverLatLng.lat, lng: hoverLatLng.lng });
-    if (!hit) { hideHover(); return; }
+    if (!hit) { clearHoverVisuals(); return; }
+    // popup follows the cursor every frame…
     showHover(hoverLatLng, hoverContentHTML(hit.mod, hoverLabelFor(hit.mod, hit.feature)));
+    // …but the contained-child outlines only need recomputing when the cursor
+    // crosses into a different parent feature.
+    if (hit.feature !== hoverLastParentFeature) {
+      hoverLastParentFeature = hit.feature;
+      drawHoverOutlines(hoverContainedChildren(hit.mod, hit.feature));
+    }
   }
 
   map.on("mousemove", function (e) {
@@ -3124,7 +3281,7 @@
     if (hoverRAF) return; // already scheduled for this frame — coalesce
     hoverRAF = requestAnimationFrame(function () { hoverRAF = null; updateHover(); });
   });
-  map.on("mouseout", function () { if (hoverActive) hideHover(); });
+  map.on("mouseout", function () { if (hoverActive) clearHoverVisuals(); });
 
   // Map-corner toggle that arms/disarms the hover explorer.
   var HoverControl = L.Control.extend({
@@ -3142,7 +3299,7 @@
         hoverActive = !hoverActive;
         btn.textContent = hoverActive ? "Hover: on" : "Hover: off";
         btn.setAttribute("aria-pressed", hoverActive ? "true" : "false");
-        if (!hoverActive) hideHover();
+        if (!hoverActive) clearHoverVisuals();
       });
       return wrap;
     }
