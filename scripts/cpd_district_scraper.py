@@ -102,7 +102,9 @@ class RequestsFetcher:
     def __init__(self):
         self.session = requests.Session()
 
-    def fetch(self, url, retries=3, timeout=20):
+    def fetch(self, url, retries=3, timeout=20, wait_ready=None):
+        # wait_ready is a browser-only readiness predicate; a plain HTTP client
+        # gets whatever the server sends in one shot, so it's ignored here.
         last_err = None
         for attempt in range(retries):
             try:
@@ -159,7 +161,7 @@ class PlaywrightFetcher:
                 return pw.chromium.launch(headless=True, executable_path=fallback)
             raise
 
-    def fetch(self, url, retries=2):
+    def fetch(self, url, retries=2, wait_ready=None):
         last_err = None
         for attempt in range(retries + 1):
             page = self.context.new_page()
@@ -170,6 +172,14 @@ class PlaywrightFetcher:
                 start = time.time()
                 while time.time() - start < self.challenge_wait_s and _looks_like_challenge(page.content()):
                     page.wait_for_timeout(1000)
+                # Some pages (the district finder) inject their real content via
+                # JS after the challenge clears; wait_ready is a JS predicate that
+                # lets the caller block until that content is actually present.
+                if wait_ready:
+                    try:
+                        page.wait_for_function(wait_ready, timeout=12000)
+                    except Exception:
+                        pass  # fall through with whatever rendered; caller copes
                 try:
                     page.wait_for_load_state("networkidle", timeout=8000)
                 except Exception:
@@ -208,10 +218,26 @@ def clean(text):
     return text or None
 
 
-def get_district_pages(fetcher):
-    """Return sorted list of unique (district_number, ordinal, slug, url) tuples."""
-    html = fetcher.fetch(BASE + FINDER_PATH)
-    seen = {}
+# CPD runs 22 active districts. Discovery reality (confirmed against the live
+# site via CI, 2026-07-09): the finder page is an address-search *widget* that
+# renders only one example district link, and per-district pages carry no
+# all-districts nav — so neither is a usable directory. The reliable roster of
+# every district page is CPD's WordPress sitemap (robots.txt points at it). We
+# still hit the finder first: it's cheap, occasionally yields a link, and — the
+# real reason — its Playwright navigation clears the Cloudflare challenge so the
+# cf_clearance cookie warms the whole context before we pull the sitemaps.
+EXPECTED_DISTRICTS = 22
+WP_SITEMAP = BASE + "/wp-sitemap.xml"
+FINDER_READY_JS = (
+    r"(document.documentElement.innerHTML.match(/\d(?:st|nd|rd|th)-district-/gi) || []).length >= 1"
+)
+# Any .xml URL (sitemap-index children), tag-agnostic so it survives Chromium's
+# XML-viewer rendering of the fetched sitemap.
+SUBSITEMAP_RE = re.compile(r"https?://[^\s\"'<>]+?\.xml", re.IGNORECASE)
+
+
+def _harvest_district_links(html, seen):
+    """Add every /Nth-district-slug/ link found in html to the seen map."""
     for match in DISTRICT_LINK_RE.finditer(html):
         ordinal, slug = match.group(1), match.group(2)
         number = int(re.match(r"\d+", ordinal).group(0))
@@ -219,6 +245,49 @@ def get_district_pages(fetcher):
             continue
         path = f"/{ordinal}-district-{slug}/"
         seen[number] = (number, ordinal, slug, urljoin(BASE, path))
+    return seen
+
+
+def _harvest_from_sitemap(fetcher, seen):
+    """Pull district page URLs from the WordPress sitemap index + its children."""
+    try:
+        index = fetcher.fetch(WP_SITEMAP)
+    except Exception as e:
+        print(f"sitemap index fetch failed: {e}", file=sys.stderr)
+        return
+    _harvest_district_links(index, seen)  # in case the index inlines page URLs
+    subs = []
+    for u in SUBSITEMAP_RE.findall(index):
+        if u not in subs and u.rstrip("/") != WP_SITEMAP.rstrip("/"):
+            subs.append(u)
+    print(f"sitemap index lists {len(subs)} sub-sitemap(s)", file=sys.stderr)
+    for sm in subs:
+        if len(seen) >= EXPECTED_DISTRICTS:
+            break
+        try:
+            _harvest_district_links(fetcher.fetch(sm), seen)
+        except Exception as e:
+            print(f"  sub-sitemap {sm} failed: {e}", file=sys.stderr)
+
+
+def get_district_pages(fetcher):
+    """Return sorted list of unique (district_number, ordinal, slug, url) tuples."""
+    seen = {}
+    try:
+        _harvest_district_links(fetcher.fetch(BASE + FINDER_PATH, wait_ready=FINDER_READY_JS), seen)
+    except Exception as e:
+        print(f"finder fetch failed: {e}", file=sys.stderr)
+    print(f"finder page yielded {len(seen)} district link(s)", file=sys.stderr)
+
+    if len(seen) < EXPECTED_DISTRICTS:
+        _harvest_from_sitemap(fetcher, seen)
+        print(f"after sitemap: {len(seen)} district link(s)", file=sys.stderr)
+
+    if len(seen) < EXPECTED_DISTRICTS:
+        print(
+            f"WARNING: discovered {len(seen)}/{EXPECTED_DISTRICTS} districts",
+            file=sys.stderr,
+        )
     return [seen[n] for n in sorted(seen)]
 
 
@@ -266,9 +335,20 @@ def parse_station_address(soup):
     return clean(match.group(0)) if match else None
 
 
+# Live CPD pages put the commander name inline in the heading, after an en/em
+# dash or hyphen: "Meet your commander – Sheamus Mannion" (verified via CI,
+# 2026-07-09). Group 2 is the name.
+COMMANDER_INLINE_RE = re.compile(
+    r"meet your (acting )?commander\s*[–—\-:]\s*(.+)$", re.IGNORECASE
+)
+
+
 def parse_commander(soup):
-    """Return (name, status) by finding the 'Meet your (acting) commander'
-    heading and taking the next short text block as the name."""
+    """Return (name, status, bio) for the district commander.
+
+    The live layout carries the name inline in the "Meet your commander – NAME"
+    heading; an older layout put it in a short block right after the heading.
+    Handle the inline form first, fall back to the trailing-block form."""
     heading = None
     for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "strong", "b", "p"]):
         if COMMANDER_HEADING_RE.search(tag.get_text()):
@@ -277,26 +357,40 @@ def parse_commander(soup):
     if heading is None:
         return None, None, None
 
-    status = "acting_commander" if re.search(r"\bacting\b", heading.get_text(), re.IGNORECASE) else "commander"
+    heading_text = clean(heading.get_text()) or ""
+    status = "acting_commander" if re.search(r"\bacting\b", heading_text, re.IGNORECASE) else "commander"
 
     name, bio = None, None
-    for elem in heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "strong", "b", "p"]):
-        text = clean(elem.get_text())
-        if not text or COMMANDER_HEADING_RE.search(text):
-            continue
-        if name is None:
-            # A name is short and has no sentence-ending punctuation; a bio
-            # paragraph is long prose. If the first block already reads like
-            # prose, there's no separate name element to find — leave name
-            # null rather than guess which words are the name.
-            if len(text) <= 60 and not re.search(r"[.!?]\s", text):
-                name = text
-                continue
-            else:
+    inline = COMMANDER_INLINE_RE.search(heading_text)
+    if inline:
+        candidate = clean(inline.group(2))
+        # A name is short; anything long after the dash is prose, not a name.
+        if candidate and len(candidate) <= 60:
+            name = candidate
+        # Bio: the first substantial following paragraph (not another heading).
+        for elem in heading.find_all_next(["p"]):
+            text = clean(elem.get_text())
+            if text and len(text) > 40 and not COMMANDER_HEADING_RE.search(text):
+                bio = text
                 break
-        else:
-            bio = text
-            break
+    else:
+        for elem in heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "strong", "b", "p"]):
+            text = clean(elem.get_text())
+            if not text or COMMANDER_HEADING_RE.search(text):
+                continue
+            if name is None:
+                # A name is short and has no sentence-ending punctuation; a bio
+                # paragraph is long prose. If the first block already reads like
+                # prose, there's no separate name element to find — leave name
+                # null rather than guess which words are the name.
+                if len(text) <= 60 and not re.search(r"[.!?]\s", text):
+                    name = text
+                    continue
+                else:
+                    break
+            else:
+                bio = text
+                break
     return name, status, bio
 
 
@@ -376,10 +470,14 @@ def scrape(engine, limit=None, delay=0.5):
         finally:
             fetcher.close()
 
-    # auto: probe the finder page with requests, keep it if it works.
+    # auto: one decisive probe — can plain requests clear the site at all? The
+    # finder page is Cloudflare-protected, so a 403/challenge here means every
+    # page will be too, and we switch to the browser engine. (This probe, not
+    # get_district_pages' return, drives the decision: discovery swallows a
+    # blocked finder and leans on the sitemap, so it can't be the block signal.)
     req = RequestsFetcher()
     try:
-        pages = get_district_pages(req)
+        req.fetch(BASE + FINDER_PATH)
     except Exception as e:
         req.close()
         print(f"requests engine blocked ({e}); falling back to Playwright", file=sys.stderr)
@@ -390,7 +488,7 @@ def scrape(engine, limit=None, delay=0.5):
             pw.close()
     else:
         try:
-            return scrape_all(req, limit=limit, delay=delay, pages=pages)
+            return scrape_all(req, limit=limit, delay=delay)
         finally:
             req.close()
 
@@ -414,7 +512,15 @@ def main():
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2)
 
-    print(f"Wrote {len(results)} records to {args.out}", file=sys.stderr)
+    # Per-field coverage summary — makes parser drift visible at a glance (e.g.
+    # "commander_name 1/22" says the pages were fetched but the commander block
+    # didn't parse), so a red build points straight at the field that broke.
+    ok = [r for r in results if not r.get("error")]
+    fields = ("commander_name", "commander_status", "main_phone", "caps_phone",
+              "caps_email", "station_address", "district_map_url")
+    coverage = "  ".join(f"{f}={sum(1 for r in ok if r.get(f))}/{len(ok)}" for f in fields)
+    print(f"Wrote {len(results)} records to {args.out} ({len(ok)} without error)", file=sys.stderr)
+    print(f"field coverage: {coverage}", file=sys.stderr)
 
 
 if __name__ == "__main__":
