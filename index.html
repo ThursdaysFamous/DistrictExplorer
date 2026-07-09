@@ -1800,6 +1800,34 @@
   var POLICE_DISTRICT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_District_Boundary_View");
   var loadPoliceDistricts = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
 
+  // Police_District_Stations_View (CPD's ArcGIS org) carries station address +
+  // phone per district straight from source, CORS-enabled. Shared by two
+  // consumers: the Police Station layer (nearest-3, below) and the Police
+  // District card, which falls back to it for address/phone when the commander
+  // roster (cpd-district-info.json) is empty or a weekly scrape was blocked.
+  var POLICE_STATION_SERVICE = arcgisServiceUrl("Police_District_Stations_View");
+  var loadPoliceStations = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
+
+  // Index the station points by bare district number ("8"), memoized on the
+  // FeatureCollection so repeated clicks don't rebuild it.
+  function policeStationsByDistrict(stationGeo) {
+    if (!stationGeo || !stationGeo.features) return {};
+    if (stationGeo.__byDistrict) return stationGeo.__byDistrict;
+    var byDistrict = {};
+    stationGeo.features.forEach(function (f) {
+      var p = f.properties || {};
+      var key = extractDistrictNumber(p, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+      if (key && !byDistrict[key]) {
+        byDistrict[key] = {
+          address: findPropCI(p, ["address", "addr", "location", "street_address"]),
+          phone: findPropCI(p, ["phone", "phone_number", "telephone", "phone_no"])
+        };
+      }
+    });
+    stationGeo.__byDistrict = byDistrict;
+    return byDistrict;
+  }
+
   /* ---------- Commander + CAPS/station contact roster, keyed by district
    * number. CPD's per-district pages (chicagopolice.org/{ordinal}-district-
    * {slug}/) are the only source for commander name and CAPS unit phone/
@@ -1828,25 +1856,33 @@
     query: function (point, seq) {
       return Promise.all([
         loadPoliceDistricts(),
-        loadCpdDistrictInfo().catch(function () { return {}; })
+        loadCpdDistrictInfo().catch(function () { return {}; }),
+        // Address/phone have a CORS-native source independent of the commander
+        // scrape; best-effort so a station-fetch failure never blocks the card.
+        loadPoliceStations().catch(function () { return null; })
       ]).then(function (results) {
-        var geojson = results[0], cpdInfo = results[1];
+        var geojson = results[0], cpdInfo = results[1], stationGeo = results[2];
         var feature = findFeatureContaining(geojson, point);
         if (!feature) return null;
         var props = feature.properties || {};
-        var number = findPropCI(props, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+        // ArcGIS district views zero-pad ("008"); extractDistrictNumber strips
+        // it to the bare integer so the roster and station joins key alike.
+        var number = extractDistrictNumber(props, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
         var label = findPropCI(props, ["name", "dist_label", "district_name", "dist_name"]);
-        var info = number ? cpdInfo[String(number)] : null;
+        var info = number ? cpdInfo[number] : null;
+        var station = number ? policeStationsByDistrict(stationGeo)[number] : null;
         return {
           seq: seq,
           number: number,
           label: label,
           commanderName: info ? info.commanderName : null,
           commanderStatus: info ? info.commanderStatus : null,
-          mainPhone: info ? info.mainPhone : null,
+          // Prefer the scraped roster; fall back to the ArcGIS station view so
+          // address/phone still show when the commander scrape is blocked.
+          mainPhone: (info && info.mainPhone) || (station && station.phone) || null,
           capsPhone: info ? info.capsPhone : null,
           capsEmail: info ? info.capsEmail : null,
-          stationAddress: info ? info.stationAddress : null,
+          stationAddress: (info && info.stationAddress) || (station && station.address) || null,
           districtMapUrl: info ? info.districtMapUrl : null
         };
       });
@@ -1874,13 +1910,12 @@
    * New layer, not in the original playbook registry — CPD's ArcGIS org
    * (Police_District_Stations_View) surfaces station address + phone
    * straight from source, which the Chicago Data Portal registry never had.
-   * Same nearest-N pattern as Fire Stations below. Field names (NAME,
-   * ADDRESS, DISTRICT, PHONE) per playbook §2a; not live-spot-checked in
-   * this sandbox for the same egress-policy reason as the boundary layer
-   * above. */
+   * Same nearest-N pattern as Fire Stations below. Field names NAME, ADDRESS,
+   * DISTRICT, PHONE live-verified against the FeatureServer (22 stations, one
+   * per district). loadPoliceStations is defined with the boundary loader
+   * above, since the Police District card shares it for its address/phone
+   * fallback. */
   var POLICE_STATION_COUNT = 3;
-  var POLICE_STATION_SERVICE = arcgisServiceUrl("Police_District_Stations_View");
-  var loadPoliceStations = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
 
   registerLayer({
     id: "police-station",
