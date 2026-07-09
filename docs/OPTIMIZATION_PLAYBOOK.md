@@ -13,6 +13,12 @@ All numbers were measured against this working tree unless marked *(not live-ver
 - **Item 3:** `scripts/validate_index.py` (node --check + registerLayer floor + embedded-blob round-trip + rewrite-target presence), wired into both roster workflows between the rewrite and the PR; tested against a simulated module-deletion and a corrupted-blob.
 - **Item 4:** `sw.js` fetch handler is now network-first with cache fallback.
 
+**Execution log (PR-D — externalization):** Matrix items **2, 6, 26 shipped** together (item 6 is a hard dependency of item 2 — the roster builders had to stop rewriting the now-removed HTML blocks).
+- **Item 2 (P0):** all seven embedded datasets moved to `data/app/*.json` — three boundary geometries (`school-board-districts`, `il-supreme-court-districts`, `ccbr-districts`) and four rosters (`il-senate-members`, `il-house-members`, `school-board-members`, `cpd-district-info`), extracted verbatim so geometry classification is byte-identical. Each loader now `fetchJSONWithRetry`s its file lazily on first toggle via the existing cached-loader machinery; geometry failures surface the per-layer error card + Retry, while the enrichment rosters join best-effort (`Promise.all` + `.catch(() => {})`) so a roster outage degrades to "district number + official link" instead of blanking the card. `index.html` **409,777 → 111,811 B (−73%)**. Verified end-to-end in real Chromium: the three offline layers classify correctly (school-board D12/6b → *Jessica Biggs*, supreme-court D1, board-of-review D3), the roster joins resolve (senate D5 → *Lakesia Collins*, house D40 → *Jaime Andrade Jr.*), and a forced roster-fetch failure degrades gracefully.
+- **Item 6:** `build_il_roster.py` / `build_cpd_roster.py` now `json.dump` to `data/app/` instead of regex-splicing `index.html` — the DOTALL over-match risk, the `</script`-escaping and the (previously no-op) U+2028/U+2029 escaping all cease to exist. `build_embedded_boundaries.py` writes `data/app/school-board-districts.json`; `validate_index.py` was repurposed to gate the app + data files (no inline blobs remain, every `data/app` file present and well formed) and both weekly workflows now build/commit the JSON files.
+- **Item 26:** README updated (embedded→fetched, offline/SW-caching semantics, `data/app/` simplification provenance, repo layout); the not-in-repo Playwright/parse5 Validation claim was replaced with the real `validate_index.py` gate (the smoke test itself remains item 5).
+- **Deliberately not folded in:** SW shell-entry dedupe (item 22) and the `timeoutMs` overrides for the now-fetched large geometry (item 11) — `sw.js` `CACHE_NAME` was bumped to `-v2` and given cache-first geometry / network-first roster handling for `data/app/*`, but the pre-existing `"./"`+`"./index.html"` duplication is left for item 22.
+
 ---
 
 ## 1. Executive Summary
@@ -161,11 +167,11 @@ Zero `tileerror` handlers (grep-verified); offline users get a booted app (the S
 |---|------|--------|--------|----------|
 | 0 | ~~Remove Capacitor/Android/iOS stack~~ — **done in this PR** | — | — | Architecture |
 | 1 | ~~Simplify school-board geometry (−892 KB raw / −74% gzip; topology-aware)~~ — **done in this PR (also covers #13)** | **High** | **Low** | Data/Assets |
-| 2 | Externalize geometry + rosters to `data/app/*.json`, lazy per-layer fetch — P0 | **High** | Medium | Architecture |
+| 2 | ~~Externalize geometry + rosters to `data/app/*.json`, lazy per-layer fetch~~ — **done (P0; index.html 410 KB → 112 KB)** | **High** | Medium | Architecture |
 | 3 | ~~`node --check` + output invariants between rewrite and PR in both workflows~~ — **done in this PR (`scripts/validate_index.py`)** | **High** | **Low** | DevEx |
 | 4 | ~~SW shell → network-first (fixes guaranteed-stale rosters)~~ — **done in this PR** | **High** | **Low** | Frontend |
 | 5 | Commit the Playwright boot smoke test on `pull_request` — R4 | **High** | Medium | DevEx |
-| 6 | Builders emit JSON; shared module; fix U+2028 no-op; fail-on-multi-match — R1 | **High** | Medium | Pipeline |
+| 6 | ~~Builders emit JSON (regex splice + `</script`/U+2028 escaping gone entirely)~~ — **done with #2** | **High** | Medium | Pipeline |
 | 7 | Surface overlay-load failures (15/18 layers currently silent) — R5 | **High** | **Low** | Frontend |
 | 8 | Build-time IL congress roster; drop multi-MB runtime fetch — P2 | **High** | Medium | Network |
 | 9 | `geometryPrecision=6` + trimmed `outFields` on 3 Esri loaders — P3 | Medium | **Low** | Network |
@@ -185,7 +191,7 @@ Zero `tileerror` handlers (grep-verified); offline users get a booted app (the S
 | 23 | Release Leaflet layer graph on toggle-off — P11 | Low | **Low** | Frontend |
 | 24 | Canvas renderer for school-zone layers (highlight trade-off) — P10 | Low-Med | Medium | Frontend |
 | 25 | Drop-shadow rasterization: pause filter during pan, or restyle — P9 | Low | Low | Frontend |
-| 26 | README: fix "Validation" tense + simplification claim until R4/R2 land | Low | **Low** | DevEx |
+| 26 | ~~README: fix embedded→fetched/offline + simplification claims; drop the not-in-repo Playwright claim~~ — **done with #2** (Playwright smoke test itself is still #5) | Low | **Low** | DevEx |
 
 Coherent PR groupings: **PR-A** (items 1+13, one regenerated line + one script), **PR-B** (3+19, workflow safety), **PR-C** (4+22, sw.js), **PR-D** (2+6+26, the externalization — the structural centerpiece), **PR-E** (7+16, failure honesty), **PR-F** (9+10+11+15, network etiquette), **PR-G** (12+17, click path). Land PR-B before PR-D so the pipeline change is born validated; land item 5 before item 21.
 

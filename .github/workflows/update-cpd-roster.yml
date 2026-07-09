@@ -1,7 +1,7 @@
 name: Update CPD district commander/contact roster
 
-# Weekly refresh of the Police District card's embedded commander/CAPS/
-# station-address roster (see index.html's CPD_DISTRICT_INFO). Re-scrapes
+# Weekly refresh of the Police District card's commander/CAPS/station-address
+# roster (data/app/cpd-district-info.json, fetched by index.html). Re-scrapes
 # CPD's per-district pages and, if anything changed, opens a PR rather than
 # committing directly to main — officeholder data should get a human look
 # before it ships.
@@ -31,19 +31,19 @@ jobs:
       - name: Scrape CPD district commander/contact pages
         run: python3 scripts/cpd_district_scraper.py --out /tmp/cpd_district_info.json
 
-      - name: Rebuild embedded roster in index.html
-        run: python3 scripts/build_cpd_roster.py /tmp/cpd_district_info.json index.html
+      - name: Rebuild roster data file
+        run: python3 scripts/build_cpd_roster.py /tmp/cpd_district_info.json
 
-      # Gate the rewrite before it can reach a PR: the splice must not have
-      # broken the inline script, dropped a layer module, or corrupted an
-      # embedded data blob. node is preinstalled on ubuntu-latest.
-      - name: Validate rewritten index.html
+      # Gate the regenerated data before it can reach a PR: the app must still
+      # parse and carry every layer, and every data/app file must be present
+      # and well formed. node is preinstalled on ubuntu-latest.
+      - name: Validate app + data files
         run: python3 scripts/validate_index.py index.html
 
       - name: Check for changes
         id: diff
         run: |
-          if git diff --quiet -- index.html; then
+          if git diff --quiet -- data/app/; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -58,7 +58,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add index.html
+          git add data/app/cpd-district-info.json
           git commit -m "Update CPD district commander/contact roster"
           git push -u origin "$branch"
           gh pr create \

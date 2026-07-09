@@ -1,10 +1,10 @@
 name: Update IL Senate/House roster
 
-# Weekly refresh of the IL Senate/House district cards' embedded roster
-# (see index.html's IL_SENATE_MEMBERS / IL_HOUSE_MEMBERS). Re-scrapes
-# ilga.gov and, if anything changed, opens a PR rather than committing
-# directly to main — officeholder data should get a human look before
-# it ships.
+# Weekly refresh of the IL Senate/House district cards' roster
+# (data/app/il-senate-members.json / il-house-members.json, fetched by
+# index.html). Re-scrapes ilga.gov and, if anything changed, opens a PR
+# rather than committing directly to main — officeholder data should get a
+# human look before it ships.
 
 on:
   schedule:
@@ -31,19 +31,19 @@ jobs:
       - name: Scrape ILGA member rosters
         run: python3 scripts/ilga_scraper.py --chamber both --out /tmp/ilga_network.json
 
-      - name: Rebuild embedded roster in index.html
-        run: python3 scripts/build_il_roster.py /tmp/ilga_network.json index.html
+      - name: Rebuild roster data files
+        run: python3 scripts/build_il_roster.py /tmp/ilga_network.json
 
-      # Gate the rewrite before it can reach a PR: the splice must not have
-      # broken the inline script, dropped a layer module, or corrupted an
-      # embedded data blob. node is preinstalled on ubuntu-latest.
-      - name: Validate rewritten index.html
+      # Gate the regenerated data before it can reach a PR: the app must still
+      # parse and carry every layer, and every data/app file must be present
+      # and well formed. node is preinstalled on ubuntu-latest.
+      - name: Validate app + data files
         run: python3 scripts/validate_index.py index.html
 
       - name: Check for changes
         id: diff
         run: |
-          if git diff --quiet -- index.html; then
+          if git diff --quiet -- data/app/; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -58,7 +58,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add index.html
+          git add data/app/il-senate-members.json data/app/il-house-members.json
           git commit -m "Update IL Senate/House roster from ilga.gov"
           git push -u origin "$branch"
           gh pr create \

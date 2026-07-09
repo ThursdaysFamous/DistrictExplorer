@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Regenerate the embedded boundary blobs in index.html from the full-precision
+Regenerate the app-data boundary files in data/app/ from the full-precision
 GeoJSON in data/, applying the same topology-preserving simplification the
-other embedded layers already received.
+sibling boundary layers received.
 
-Why this exists: three layers ship their geometry inline in index.html as
-`var NAME = JSON.parse('...')` because they have no CORS-enabled endpoint and
-the app is served as a static page. Two of them (IL Supreme Court, Board of
-Review) were mapshaper-simplified and rounded to a handful of decimals before
-embedding; the school-board layer was embedded straight from the full-precision
-conversion (24,904 vertices at 14-15 decimals), which alone was ~75% of the
-whole page. This script makes that simplification reproducible instead of a
-one-off manual step, so the embedded copy can be regenerated whenever the
-source boundary changes and never silently drifts from data/.
+Why this exists: the boundary layers with no CORS-enabled endpoint are shipped
+as same-origin static files under data/app/, fetched lazily by index.html on
+first toggle (they used to be embedded inline in index.html; the P0 change moved
+them out). The school-board conversion is full-precision (24,904 vertices at
+14-15 decimals) and needs simplifying before it ships; this script makes that
+simplification reproducible instead of a one-off manual step, so the app-data
+copy can be regenerated whenever the source boundary changes and never silently
+drifts from data/.
 
 Simplification uses mapshaper (the same tool the sibling layers used), which
 builds a topology and simplifies shared arcs once, so adjacent districts keep
@@ -20,7 +19,7 @@ coincident boundaries — a per-ring simplifier would create gaps/overlaps and
 put some points in zero or two districts. The result is validated against the
 full-precision source before anything is written: point-in-district agreement
 must hold on the project's 2,000-random-point protocol and no point may fall
-in two districts. If validation fails, index.html is left untouched.
+in two districts. If validation fails, the data file is left untouched.
 
 Prerequisites: Node.js (mapshaper is fetched via `npx mapshaper@<pinned>`).
 This is an occasional operator step (boundaries change ~once a decade), not
@@ -34,25 +33,25 @@ Usage:
 import json
 import os
 import random
-import re
 import subprocess
 import sys
 import tempfile
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INDEX_HTML = os.path.join(REPO_ROOT, "index.html")
+APP_DATA_DIR = os.path.join(REPO_ROOT, "data", "app")
 MAPSHAPER = "mapshaper@0.6.102"  # pinned for reproducible output
 
-# var_name -> how to regenerate it.
+# name -> how to regenerate its data/app/<out> file.
 #   source:   full-precision GeoJSON under data/ (the source of truth)
+#   out:      the app-data file index.html fetches for this layer
 #   simplify: mapshaper Visvalingam retain percentage (topology-aware, keep-shapes)
 #   precision: coordinate rounding on export (0.000001 = 6 decimals ~= 0.11 m)
 #   key_prop:  the property findFeatureContaining/findPropCI keys on, used only
 #              to validate point-in-district agreement below
 LAYERS = {
     "school-board": {
-        "var": "SCHOOL_BOARD_DISTRICTS_GEOJSON",
         "source": "data/school-board-districts.geojson",
+        "out": "school-board-districts.json",
         "simplify": "15%",
         "precision": "0.000001",
         "key_prop": "district",
@@ -174,36 +173,15 @@ def validate(source_features, simplified_features, key_prop, samples=2000, seed=
     return True, "%d/%d (%.2f%%) agreement, 0 overlaps" % (agree, samples, pct)
 
 
-def js_single_quoted(json_text):
-    """Escape a JSON string so it survives inside index.html's
-    `JSON.parse('...')` single-quoted literal (matches build_il_roster.py)."""
-    out = json_text.replace("\\", "\\\\").replace("'", "\\'")
-    out = out.replace("</", "<\\/")  # invisible to the HTML parser, identical to the JS engine
-    out = out.replace(chr(0x2028), "\\u2028").replace(chr(0x2029), "\\u2029")
-    return out
-
-
-def splice(html, var_name, json_text):
-    new_line = "  var %s = JSON.parse('%s');" % (var_name, js_single_quoted(json_text))
-    pattern = re.compile(r"^  var " + re.escape(var_name) + r" = JSON\.parse\('.*'\);$", re.MULTILINE)
-    matches = pattern.findall(html)
-    if len(matches) != 1:
-        raise RuntimeError(
-            "expected exactly one %s line to replace, found %d" % (var_name, len(matches))
-        )
-    # callable replacement: the return value is used literally, no backslash processing
-    return pattern.sub(lambda _m: new_line, html, count=1)
-
-
-def build_layer(name, cfg, html):
+def build_layer(name, cfg):
     source_path = os.path.join(REPO_ROOT, cfg["source"])
     with open(source_path) as f:
         source = json.load(f)
 
     with tempfile.TemporaryDirectory() as tmp:
-        out_path = os.path.join(tmp, name + ".geojson")
-        run_mapshaper(source_path, cfg["simplify"], cfg["precision"], out_path)
-        with open(out_path) as f:
+        tmp_path = os.path.join(tmp, name + ".geojson")
+        run_mapshaper(source_path, cfg["simplify"], cfg["precision"], tmp_path)
+        with open(tmp_path) as f:
             simplified = json.load(f)
 
     ok, msg = validate(source["features"], simplified["features"], cfg["key_prop"])
@@ -211,25 +189,23 @@ def build_layer(name, cfg, html):
         raise RuntimeError("%s validation failed: %s" % (name, msg))
 
     compact = json.dumps(simplified, separators=(",", ":"))
-    html = splice(html, cfg["var"], compact)
+    out_path = os.path.join(APP_DATA_DIR, cfg["out"])
 
-    # Round-trip: re-extract the spliced literal and confirm it re-parses to the
-    # same object the app will see, so an escaping bug can't ship silently.
-    extracted = re.search(
-        r"  var " + re.escape(cfg["var"]) + r" = JSON\.parse\('(.*)'\);", html
-    ).group(1)
-    unescaped = (
-        extracted.replace("\\/", "/").replace("\\'", "'").replace("\\\\", "\\")
-    )
-    if json.loads(unescaped) != simplified:
-        raise RuntimeError("%s round-trip mismatch after splicing" % name)
+    # Round-trip: re-read what we're about to write and confirm it parses back
+    # to the same object the app will fetch, so a serialization bug can't ship
+    # silently. (Only after this passes is the real file overwritten.)
+    if json.loads(compact) != simplified:
+        raise RuntimeError("%s round-trip mismatch before writing" % name)
+
+    os.makedirs(APP_DATA_DIR, exist_ok=True)
+    with open(out_path, "w") as f:
+        f.write(compact)
 
     print(
-        "%s: %s; embedded %d bytes (%s)"
-        % (name, msg, len(compact), cfg["simplify"] + " retain, " + cfg["precision"] + " precision"),
+        "%s -> data/app/%s: %s; %d bytes (%s)"
+        % (name, cfg["out"], msg, len(compact), cfg["simplify"] + " retain, " + cfg["precision"] + " precision"),
         file=sys.stderr,
     )
-    return html
 
 
 def main():
@@ -239,16 +215,8 @@ def main():
         print("unknown layer(s): %s; known: %s" % (unknown, list(LAYERS)), file=sys.stderr)
         sys.exit(1)
 
-    with open(INDEX_HTML) as f:
-        html = f.read()
-    before = len(html)
-
     for name in targets:
-        html = build_layer(name, LAYERS[name], html)
-
-    with open(INDEX_HTML, "w") as f:
-        f.write(html)
-    print("index.html: %d -> %d bytes" % (before, len(html)), file=sys.stderr)
+        build_layer(name, LAYERS[name])
 
 
 if __name__ == "__main__":
