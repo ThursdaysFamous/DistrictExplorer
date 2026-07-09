@@ -563,10 +563,16 @@
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(20, 24, 28, 0.45);
   }
-  .hover-popup .leaflet-popup-content { margin: 6px 10px; font-size: 12.5px; line-height: 1.3; }
+  .hover-popup .leaflet-popup-content { margin: 6px 9px; font-size: 12px; line-height: 1.3; }
   .hover-popup .leaflet-popup-tip { background: rgba(20, 24, 28, 0.92); }
-  .hover-popup .hover-layer-label { opacity: 0.72; font-size: 11px; letter-spacing: 0.02em; }
-  .hover-popup .hover-district { font-weight: 600; }
+  /* multi-layer civic snapshot: one row per containing layer, broad→granular */
+  .hover-snapshot { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 6px; align-items: baseline; }
+  .hover-row { display: contents; }
+  .hover-dot { width: 8px; height: 8px; border-radius: 50%; align-self: center; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
+  .hover-row-label { opacity: 0.68; font-size: 11px; white-space: nowrap; }
+  .hover-row-value { font-weight: 600; }
+  .hover-row-parent .hover-row-label,
+  .hover-row-parent .hover-row-value { font-size: 12.5px; }
 
   /* the map-corner toggle that arms/disarms the hover explorer */
   .hover-ctrl button {
@@ -3149,8 +3155,14 @@
    * while the cursor stays within the same parent feature. Deliberately
    * separate from click-to-select — child outlines are drawn into their own
    * layer group, never by mutating the real overlays' styles, so they can't
-   * disturb the click-selection highlight — and it never fires a network
-   * request, reading only already-loaded boundaries. (Phase 3: mini profile.)
+   * disturb the click-selection highlight.
+   *
+   * (Phase 3) The popup is a compact multi-layer civic snapshot: one row per
+   * active layer containing the cursor, broad→granular, each showing that
+   * layer's district identity for the spot. It is built entirely from
+   * already-loaded feature properties — it never fires a network request and
+   * never joins a roster, so it stays instant under a moving cursor.
+   * Officeholder/contact details remain on the network-backed click cards.
    * ======================================================================= */
 
   var hoverActive = false;    // armed via the map-corner toggle; default off
@@ -3174,22 +3186,40 @@
     "number"
   ];
 
-  // Short display name for a hovered feature. A module may override precisely
-  // via mod.hoverName(feature); otherwise fall back to "<layer label> <number>"
-  // (or just the layer label when no number can be extracted).
-  function hoverLabelFor(mod, feature) {
+  // Name-ish property keys that read better than a bare district number when a
+  // feature carries one — deliberately narrow (community-area + school names).
+  // The generic "name"/"dist_label"/"longname" fields are excluded on purpose:
+  // for the legislative TIGER layers those are just "Congressional District 7",
+  // which duplicates the number this pairs with.
+  var HOVER_NAME_KEYS = [
+    "community", "community_area_name", "commarea", "comarea",
+    "short_name", "school_nam", "school_nm", "school_name", "schoolname", "sch_name"
+  ];
+
+  // The bare identity value for one feature (no layer label — the snapshot row
+  // prints that separately). A module may override via mod.hoverName(feature);
+  // otherwise prefer a human name, then a district number, over nothing.
+  function hoverValue(mod, feature) {
     if (mod.hoverName) {
       try { var custom = mod.hoverName(feature); if (custom) return String(custom); } catch (e) { /* fall through */ }
     }
-    var num = extractDistrictNumber(feature.properties || {}, HOVER_NUMBER_KEYS);
-    return num ? (mod.label + " " + num) : mod.label;
+    var props = feature.properties || {};
+    var name = findPropCI(props, HOVER_NAME_KEYS);
+    var num = extractDistrictNumber(props, HOVER_NUMBER_KEYS);
+    if (name && num) return String(name) + " (" + num + ")";
+    if (name) return String(name);
+    if (num) return String(num);
+    return "—"; // em dash — feature has no extractable identity
   }
 
-  // Largest active POLYGON layer (LAYER_AREA_RANK is largest-first) whose
-  // geometry contains the point. Point datasets (police/fire stations) have no
-  // flat overlay.style and are skipped — findFeatureContaining wouldn't match
-  // their Point geometry anyway.
-  function hoverParentAt(point) {
+  // Every active POLYGON layer whose geometry contains the point, ordered
+  // largest→smallest (LAYER_AREA_RANK order) so the returned list reads like a
+  // civic profile from broad to granular; the first entry is the "parent" the
+  // contained-child outlining keys off. Point datasets (police/fire stations)
+  // have no flat overlay.style and are skipped — findFeatureContaining wouldn't
+  // match their Point geometry anyway.
+  function hoverContainingLayers(point) {
+    var out = [];
     for (var i = 0; i < LAYER_AREA_RANK.length; i++) {
       var id = LAYER_AREA_RANK[i];
       if (!state.layersOn[id]) continue;
@@ -3198,14 +3228,26 @@
       var mod = getLayerById(id);
       if (!mod || !mod.overlay || !mod.overlay.style) continue;
       var feature = findFeatureContaining(rt.geojson, point);
-      if (feature) return { mod: mod, feature: feature };
+      if (feature) out.push({ mod: mod, feature: feature });
     }
-    return null;
+    return out;
   }
 
-  function hoverContentHTML(mod, label) {
-    return '<span class="hover-layer-label">' + sanitize(mod.label) + '</span><br>' +
-           '<span class="hover-district">' + sanitize(label) + "</span>";
+  // Compact multi-layer civic snapshot for the hovered spot — one row per
+  // containing layer (broad→granular), each a color dot + layer label + value.
+  // Built entirely from already-loaded feature properties: no network, no
+  // roster joins (officeholder/contact stay on the network-backed click cards).
+  function hoverSnapshotHTML(rows) {
+    var html = '<div class="hover-snapshot">';
+    for (var i = 0; i < rows.length; i++) {
+      var mod = rows[i].mod;
+      html += '<div class="hover-row' + (i === 0 ? " hover-row-parent" : "") + '">' +
+        '<span class="hover-dot" style="background:' + sanitize(moduleColor(mod)) + '"></span>' +
+        '<span class="hover-row-label">' + sanitize(mod.label) + '</span>' +
+        '<span class="hover-row-value">' + sanitize(hoverValue(mod, rows[i].feature)) + "</span>" +
+        "</div>";
+    }
+    return html + "</div>";
   }
 
   /* Every smaller active polygon layer's feature that falls fully inside the
@@ -3286,15 +3328,16 @@
   function updateHover() {
     hoverSeq += 1;
     if (!hoverActive || !hoverLatLng) { clearHoverVisuals(); return; }
-    var hit = hoverParentAt({ lat: hoverLatLng.lat, lng: hoverLatLng.lng });
-    if (!hit) { clearHoverVisuals(); return; }
-    // popup follows the cursor every frame…
-    showHover(hoverLatLng, hoverContentHTML(hit.mod, hoverLabelFor(hit.mod, hit.feature)));
-    // …but the contained-child outlines only need recomputing when the cursor
-    // crosses into a different parent feature.
-    if (hit.feature !== hoverLastParentFeature) {
-      hoverLastParentFeature = hit.feature;
-      drawHoverOutlines(hoverContainedChildren(hit.mod, hit.feature));
+    var rows = hoverContainingLayers({ lat: hoverLatLng.lat, lng: hoverLatLng.lng });
+    if (!rows.length) { clearHoverVisuals(); return; }
+    // the multi-layer snapshot follows the cursor every frame…
+    showHover(hoverLatLng, hoverSnapshotHTML(rows));
+    // …but the contained-child outlines (keyed off the largest/parent layer)
+    // only need recomputing when the cursor crosses into a different parent.
+    var parent = rows[0];
+    if (parent.feature !== hoverLastParentFeature) {
+      hoverLastParentFeature = parent.feature;
+      drawHoverOutlines(hoverContainedChildren(parent.mod, parent.feature));
     }
   }
 
