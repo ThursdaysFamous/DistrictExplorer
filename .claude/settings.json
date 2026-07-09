@@ -2,12 +2,32 @@
   "sandbox": {
     "enabled": true,
     "allowedDomains": [
-      "chicagopolice.org",
-      "www.chicagopolice.org",
+      "data.cityofchicago.org",
+      "services2.arcgis.com",
+      "gis.cookcountyil.gov",
+      "tigerweb.geo.census.gov",
+      "nominatim.openstreetmap.org",
+
+      "a.basemaps.cartocdn.com",
+      "b.basemaps.cartocdn.com",
+      "c.basemaps.cartocdn.com",
+      "d.basemaps.cartocdn.com",
+
+      "cdnjs.cloudflare.com",
       "unpkg.com",
       "cdn.jsdelivr.net",
-      "cdnjs.cloudflare.com"
-      "services2.arcgis.com"
+      "fonts.googleapis.com",
+      "fonts.gstatic.com",
+
+      "chicagopolice.org",
+      "www.chicagopolice.org",
+      "ccpsa.chicago.gov",
+      "www.ilga.gov",
+      "unitedstates.github.io",
+
+      "registry.npmjs.org",
+      "cdn.playwright.dev",
+      "playwright.download.prss.microsoft.com"
     ]
   }
 }
