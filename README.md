@@ -63,7 +63,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 | [chicagopolice.org](https://www.chicagopolice.org) per-district pages (scraped weekly by CI) | Police district commander, CAPS unit phone/email, station address (`data/app/cpd-district-info.json`) |
 | Cook County GIS (`gis.cookcountyil.gov/traditional/rest/services/politicalBoundary`) | Cook County Commissioner District boundaries + office roster |
 | [U.S. Census TIGERweb](https://tigerweb.geo.census.gov) | Congressional, IL Senate, IL House boundaries |
-| [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) | U.S. House roster |
+| [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) (rebuilt weekly by CI) | U.S. House roster — IL's 17 reps only, `data/app/congress-roster.json` |
 | [ilga.gov](https://www.ilga.gov) (scraped weekly by CI) | IL Senate/House member rosters (`data/app/il-{senate,house}-members.json`) |
 | ERSB shapefile (`ERSB_20_Sub_District_Map_FA1_SB_15`) | Elected School Board sub-districts (`data/app/school-board-*.json`) |
 | PA 102-0011 / PA 102-0012 shapefiles | IL Supreme Court + Cook County Board of Review districts (`data/app/*.json`) |
@@ -81,6 +81,7 @@ data/source/                intermediate conversions
 data/source/raw/            original shapefiles / KML / KMZ / XLSX as supplied
 scripts/ilga_scraper.py     scrapes ilga.gov member rosters
 scripts/build_il_roster.py  writes data/app/il-{senate,house}-members.json from scraper output
+scripts/build_congress_roster.py  writes data/app/congress-roster.json (IL U.S. House reps) from congress-legislators
 scripts/cpd_district_scraper.py  scrapes chicagopolice.org per-district commander/contact pages
 scripts/build_cpd_roster.py      writes data/app/cpd-district-info.json from scraper output
 scripts/build_embedded_boundaries.py  simplifies data/*.geojson into data/app/*.json (occasional operator step)
@@ -96,7 +97,7 @@ docs/screenshot.png         README screenshot
 
 Two gates run in CI:
 
-- **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered, no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 5 + 3 court/board districts). A bad data regeneration can't reach `main` unreviewed.
+- **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered, no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts). A bad data regeneration can't reach `main` unreviewed.
 - **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 18 layers, classifies a known downtown point with the three no-API layers against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 
 ## Not for legal or official use

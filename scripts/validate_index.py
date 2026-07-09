@@ -50,6 +50,7 @@ ROSTER_FILES = {
     "il-senate-members.json": 59,
     "il-house-members.json": 118,
     "school-board-members.json": 20,
+    "congress-roster.json": 17,
     "cpd-district-info.json": 0,
 }
 
