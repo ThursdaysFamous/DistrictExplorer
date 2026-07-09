@@ -102,7 +102,9 @@ class RequestsFetcher:
     def __init__(self):
         self.session = requests.Session()
 
-    def fetch(self, url, retries=3, timeout=20):
+    def fetch(self, url, retries=3, timeout=20, wait_ready=None):
+        # wait_ready is a browser-only readiness predicate; a plain HTTP client
+        # gets whatever the server sends in one shot, so it's ignored here.
         last_err = None
         for attempt in range(retries):
             try:
@@ -159,7 +161,7 @@ class PlaywrightFetcher:
                 return pw.chromium.launch(headless=True, executable_path=fallback)
             raise
 
-    def fetch(self, url, retries=2):
+    def fetch(self, url, retries=2, wait_ready=None):
         last_err = None
         for attempt in range(retries + 1):
             page = self.context.new_page()
@@ -170,6 +172,14 @@ class PlaywrightFetcher:
                 start = time.time()
                 while time.time() - start < self.challenge_wait_s and _looks_like_challenge(page.content()):
                     page.wait_for_timeout(1000)
+                # Some pages (the district finder) inject their real content via
+                # JS after the challenge clears; wait_ready is a JS predicate that
+                # lets the caller block until that content is actually present.
+                if wait_ready:
+                    try:
+                        page.wait_for_function(wait_ready, timeout=12000)
+                    except Exception:
+                        pass  # fall through with whatever rendered; caller copes
                 try:
                     page.wait_for_load_state("networkidle", timeout=8000)
                 except Exception:
@@ -208,10 +218,21 @@ def clean(text):
     return text or None
 
 
-def get_district_pages(fetcher):
-    """Return sorted list of unique (district_number, ordinal, slug, url) tuples."""
-    html = fetcher.fetch(BASE + FINDER_PATH)
-    seen = {}
+# CPD runs 22 active districts. The finder page has been observed to render only
+# a sparse subset of district links after its challenge clears (the rest sit
+# behind a JS map/widget), so discovery both (a) waits for the full list to
+# appear and (b) self-heals by harvesting the all-districts nav that every
+# per-district page carries. This readiness predicate blocks the browser until
+# the finder DOM actually holds the pattern many times (tag-agnostic: matches
+# <a href>, <option value>, data-attrs — however CPD encodes them).
+EXPECTED_DISTRICTS = 22
+FINDER_READY_JS = (
+    r"(document.documentElement.innerHTML.match(/\d(?:st|nd|rd|th)-district-/gi) || []).length >= 15"
+)
+
+
+def _harvest_district_links(html, seen):
+    """Add every /Nth-district-slug/ link found in html to the seen map."""
     for match in DISTRICT_LINK_RE.finditer(html):
         ordinal, slug = match.group(1), match.group(2)
         number = int(re.match(r"\d+", ordinal).group(0))
@@ -219,6 +240,33 @@ def get_district_pages(fetcher):
             continue
         path = f"/{ordinal}-district-{slug}/"
         seen[number] = (number, ordinal, slug, urljoin(BASE, path))
+    return seen
+
+
+def get_district_pages(fetcher):
+    """Return sorted list of unique (district_number, ordinal, slug, url) tuples."""
+    seen = {}
+    _harvest_district_links(fetcher.fetch(BASE + FINDER_PATH, wait_ready=FINDER_READY_JS), seen)
+    print(f"finder page yielded {len(seen)} district link(s)", file=sys.stderr)
+
+    # If the finder was sparse, harvest the district nav from the pages we did
+    # find (each district page footer links every other district). Keep pulling
+    # from newly-discovered pages until the set stops growing or we hit the full
+    # roster — bounded by the finite district count, so it always terminates.
+    tried = set()
+    while len(seen) < EXPECTED_DISTRICTS and (set(seen) - tried):
+        number = min(set(seen) - tried)
+        tried.add(number)
+        try:
+            _harvest_district_links(fetcher.fetch(seen[number][3]), seen)
+        except Exception as e:
+            print(f"  harvest from district {number} failed: {e}", file=sys.stderr)
+
+    if len(seen) < EXPECTED_DISTRICTS:
+        print(
+            f"WARNING: discovered {len(seen)}/{EXPECTED_DISTRICTS} districts after harvest",
+            file=sys.stderr,
+        )
     return [seen[n] for n in sorted(seen)]
 
 
