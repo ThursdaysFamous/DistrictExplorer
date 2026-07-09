@@ -1224,6 +1224,10 @@
     // look the beat sub-selection is for.
     "police-beat",      // Police Beat (~277)
     "police-district",  // Police District (22)
+    // CCPSA District Council shares the police-district geometry exactly (22,
+    // one council per district); place it just after so its outline draws on
+    // top when both are on and its distinct teal dash stays legible.
+    "ccpsa-district-council",
     "community-area",   // Community Area (77)
     "zip-code",         // ZIP Code
     "cps-high",         // High School attendance zone
@@ -2202,6 +2206,76 @@
       // outlineOnly at L.geoJSON construction time, so no restyle is needed yet.
       var districtMod = getLayerById("police-district");
       if (districtMod && districtRt.overlayLayer) updateLayerHighlight(districtMod);
+    }
+  });
+
+  /* ---------- CCPSA District Council (elected District Councilors) ----------
+   * The Community Commission for Public Safety and Accountability's 22 District
+   * Councils — three Councilors each, elected in the regular municipal elections
+   * to four-year terms — map one-to-one onto CPD's police districts and share
+   * their exact boundaries. So this layer reuses the police-district boundary the
+   * app already loads (loadPoliceDistricts, a cached loader — sharing it means no
+   * second download and no duplicate geometry file) rather than shipping its own.
+   * The Councilor roster is the only new data: the elected names are in no
+   * queryable open dataset (confirmed 2026-07-09) and ccpsa.chicago.gov sends no
+   * CORS header, so they can't be fetched client-side. The roster is therefore
+   * generated build-side (scripts/ccpsa_scraper.py + scripts/build_ccpsa_roster.py
+   * scrape the CCPSA per-council pages) and shipped as the same-origin
+   * data/app/ccpsa-district-councils.json, fetched lazily on first click. A
+   * roster-fetch failure degrades gracefully (District number only, best-effort
+   * .catch below), same as the Police District commander roster above. ---------- */
+  var loadCcpsaDistrictCouncils = makeCached(function () {
+    return fetchJSONWithRetry("data/app/ccpsa-district-councils.json", {}, 2);
+  });
+
+  registerLayer({
+    id: "ccpsa-district-council",
+    group: "safety",
+    label: "CCPSA District Council",
+    overlay: {
+      load: loadPoliceDistricts, // shares the CPD police-district geometry (cached loader — no double fetch)
+      // teal + a distinct dash so it reads apart from the red Police District /
+      // Police Beat styling when several Safety layers are on at once
+      style: { color: "#0B7A6B", weight: 1.5, fillColor: "#14B8A6", fillOpacity: 0.06, dashArray: "6 3" }
+    },
+    query: function (point, seq) {
+      return Promise.all([
+        loadPoliceDistricts(),
+        loadCcpsaDistrictCouncils().catch(function () { return {}; })
+      ]).then(function (results) {
+        var geojson = results[0], councils = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        // Same zero-pad-stripping district key as the Police District card, so
+        // the roster join keys alike ("008" -> "8").
+        var number = extractDistrictNumber(props, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+        var council = number ? councils[number] : null;
+        return {
+          seq: seq,
+          number: number,
+          members: (council && council.members) || [],
+          sourceUrl: council ? council.sourceUrl : null
+        };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.number ? String(result.number) : "Unknown" }];
+      var members = result.members || [];
+      members.forEach(function (m) {
+        if (!m || !m.name) return;
+        var label = m.role ? String(m.role) : "Councilor";
+        var profile = safeHttpUrl(m.profileUrl); // scheme-check the external URL before it becomes an href
+        if (profile) {
+          fields.push({ label: label, html: '<a href="' + sanitize(profile) + '" target="_blank" rel="noopener">' + sanitize(m.name) + '</a>' });
+        } else {
+          fields.push({ label: label, value: String(m.name) });
+        }
+      });
+      if (!members.length) fields.push({ label: "Councilors", value: "Not available" });
+      var councilPage = safeHttpUrl(result.sourceUrl);
+      if (councilPage) fields.push({ label: "Council page", html: '<a href="' + sanitize(councilPage) + '" target="_blank" rel="noopener">ccpsa.chicago.gov</a>' });
+      return renderFieldList(fields);
     }
   });
 
