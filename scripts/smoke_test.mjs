@@ -144,7 +144,10 @@ try {
     // so the survivors' matched regions must stay lit exactly through the toggle.
     // With all three offline layers on and a point selected, drop ccbr: its single
     // highlight leaves, the other two stay untouched (before-1); re-add it and the
-    // count returns to baseline.
+    // count returns to baseline. Re-adding it also exercises P11: ccbr's Leaflet
+    // layer graph is released on toggle-off and rebuilt from the cached geojson on
+    // toggle-on — the highlight can only reappear (afterOn === before) if that
+    // rebuild produced a working, highlightable overlay with no refetch.
     const toggled = await page.evaluate(async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const count = () => document.querySelectorAll("#map .chi-region-highlight").length;

@@ -2141,6 +2141,16 @@
     });
   }
 
+  // Build a layer's Leaflet overlay from its raw geojson. Factored out so both
+  // the first (post-fetch) build and the P11 rebuild-on-re-toggle path produce an
+  // identical layer graph — same base style and optional point renderer.
+  function buildOverlayLayer(mod, geojson) {
+    return L.geoJSON(geojson, {
+      style: baseStyleFor(mod) || undefined,
+      pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
+    });
+  }
+
   function onLayerToggled(mod) {
     var rt = layerRuntime[mod.id];
     var on = !!state.layersOn[mod.id];
@@ -2150,7 +2160,15 @@
     if (!on) {
       clearLayerHighlight(mod); // revert style before hiding, so it doesn't linger if re-toggled with a different point later
       clearLayerPoi(mod);
-      if (rt.overlayLayer) map.removeLayer(rt.overlayLayer);
+      if (rt.overlayLayer) {
+        map.removeLayer(rt.overlayLayer);
+        // Release the Leaflet layer graph (P11) — ~2 MB of L.LatLng objects for a
+        // big layer, otherwise retained forever and unbounded across a long
+        // session. The raw geojson (rt.geojson) stays cached, so re-toggle rebuilds
+        // the layer from it synchronously (instant, no refetch) and query()'s
+        // shared geojson is untouched.
+        rt.overlayLayer = null;
+      }
       rt.cardBody.className = "layer-card-body state-off";
       rt.cardBody.textContent = "Layer off.";
       refreshActiveLayerOpacities(); // active count just dropped — remaining active layers get more opaque
@@ -2166,16 +2184,21 @@
       return;
     }
 
-    // turning on: (1) lazy-load the overlay if needed, (2) run the query if a point exists
-    if (!rt.overlayLoaded) {
+    // turning on: (1) build/attach the overlay, (2) run the query if a point exists
+    if (rt.geojson) {
+      // geometry already cached from an earlier toggle. The Leaflet layer graph is
+      // released on toggle-off (P11), so rebuild it synchronously from the cached
+      // geojson (no refetch) unless a re-entrant path already rebuilt it.
+      if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
+      rt.overlayLayer.addTo(map);
+      refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
+      reorderActiveLayers();
+    } else if (!rt.overlayLoaded) {
       rt.overlayLoaded = true; // mark immediately to avoid duplicate loads on rapid toggling
       mod.overlay.load()
         .then(function (geojson) {
           rt.geojson = geojson;
-          rt.overlayLayer = L.geoJSON(geojson, {
-            style: baseStyleFor(mod) || undefined,
-            pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
-          });
+          rt.overlayLayer = buildOverlayLayer(mod, geojson);
           // add only if the layer is STILL on — the user may have toggled it
           // off while the geojson was downloading (the old unconditional
           // .addTo(map) left orphaned boundaries on the map in that case)
@@ -2200,10 +2223,6 @@
             setCardError(mod, "Couldn't load this layer's boundaries. It won't affect other layers.");
           }
         });
-    } else if (rt.overlayLayer) {
-      rt.overlayLayer.addTo(map);
-      refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
-      reorderActiveLayers();
     }
 
     runLayerQuery(mod);
