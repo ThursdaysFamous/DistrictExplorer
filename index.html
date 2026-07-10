@@ -1777,10 +1777,40 @@
     };
   }
 
+  // The active-layer-count signature the P7 incremental highlight fast path keys
+  // on: a layer's faded/base styling depends only on the active count and its
+  // outline mode, and the matched-region highlight depends on neither — so a point
+  // move whose signature is unchanged restyles just the two paths whose role
+  // flipped instead of the whole layer.
+  function highlightSignature(rt) {
+    return activeLayerCount() + "|" + (rt.outlineOnly ? "1" : "0");
+  }
+
+  // Rescale only an already-painted layer's fill opacity to the current active
+  // count, without re-running the point-in-polygon highlight (P8). A count change
+  // affects nothing else: a layer that's showing a selection highlight has fixed,
+  // count-independent faded/highlight fill opacities, so it needs no restyle at
+  // all — just keep its stored signature current so the next point move can still
+  // take the P7 fast path; a layer with no active highlight only needs its flat
+  // fill opacity nudged (one setStyle({fillOpacity}) per path), not the full
+  // highlight recomputation the old refresh ran for every active layer on every
+  // toggle.
+  function rescaleLayerFill(mod) {
+    var rt = layerRuntime[mod.id];
+    if (!rt.overlayLayer) return;
+    if (rt.highlightApplied) { rt.highlightSignature = highlightSignature(rt); return; }
+    if (rt.outlineOnly) return; // outline-only layers carry no fill to rescale
+    var fillOpacity = scaledFillOpacity(mod);
+    if (fillOpacity == null) return; // point-dataset layer (no flat style object)
+    rt.overlayLayer.eachLayer(function (subLayer) {
+      if (subLayer.setStyle) subLayer.setStyle({ fillOpacity: fillOpacity });
+    });
+  }
+
   function refreshActiveLayerOpacities() {
     layers.forEach(function (mod) {
       if (!state.layersOn[mod.id]) return;
-      if (layerRuntime[mod.id].overlayLayer) updateLayerHighlight(mod);
+      rescaleLayerFill(mod);
     });
   }
 
@@ -1885,7 +1915,7 @@
     // layers on, user clicked a new point" case from ~N setStyle calls (the
     // measured dominant per-click cost) into 2. Any signature change (a layer
     // toggled on/off, outline mode flipped) falls back to the full sweep below.
-    var signature = activeLayerCount() + "|" + (rt.outlineOnly ? "1" : "0");
+    var signature = highlightSignature(rt);
     var prevMatch = rt.highlightedLayer;
     var incremental = rt.highlightApplied && rt.highlightSignature === signature && !!prevMatch;
     if (incremental && prevMatch.feature === feature) return; // same match, same styling — nothing changed
@@ -2146,6 +2176,16 @@
     });
   }
 
+  // Build a layer's Leaflet overlay from its raw geojson. Factored out so both
+  // the first (post-fetch) build and the P11 rebuild-on-re-toggle path produce an
+  // identical layer graph — same base style and optional point renderer.
+  function buildOverlayLayer(mod, geojson) {
+    return L.geoJSON(geojson, {
+      style: baseStyleFor(mod) || undefined,
+      pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
+    });
+  }
+
   function onLayerToggled(mod) {
     var rt = layerRuntime[mod.id];
     var on = !!state.layersOn[mod.id];
@@ -2155,11 +2195,23 @@
     if (!on) {
       clearLayerHighlight(mod); // revert style before hiding, so it doesn't linger if re-toggled with a different point later
       clearLayerPoi(mod);
-      if (rt.overlayLayer) map.removeLayer(rt.overlayLayer);
+      if (rt.overlayLayer) {
+        map.removeLayer(rt.overlayLayer);
+        // Release the Leaflet layer graph (P11) — ~2 MB of L.LatLng objects for a
+        // big layer, otherwise retained forever and unbounded across a long
+        // session. The raw geojson (rt.geojson) stays cached, so re-toggle rebuilds
+        // the layer from it synchronously (instant, no refetch) and query()'s
+        // shared geojson is untouched.
+        rt.overlayLayer = null;
+      }
       rt.cardBody.className = "layer-card-body state-off";
       rt.cardBody.textContent = "Layer off.";
       refreshActiveLayerOpacities(); // active count just dropped — remaining active layers get more opaque
-      reorderActiveLayers();
+      // No reorderActiveLayers() here (P8): removing one layer leaves the
+      // survivors' relative z-order — which the stacking invariant already
+      // established — untouched, so there's nothing to restack. (Toggle-on and
+      // query-resolve still reorder, because those insert a layer that must land
+      // at its size rank.)
       if (mod.onToggle) mod.onToggle(false); // let a layer react to being turned off (e.g. cascade its sub-layer)
       rt.pinBtn = null; // the card was cleared, detaching its pin button
       if (pinnedParentId === mod.id) { pinnedParentId = null; refreshAllPinButtons(); } // parent turned off — unpin
@@ -2167,16 +2219,21 @@
       return;
     }
 
-    // turning on: (1) lazy-load the overlay if needed, (2) run the query if a point exists
-    if (!rt.overlayLoaded) {
+    // turning on: (1) build/attach the overlay, (2) run the query if a point exists
+    if (rt.geojson) {
+      // geometry already cached from an earlier toggle. The Leaflet layer graph is
+      // released on toggle-off (P11), so rebuild it synchronously from the cached
+      // geojson (no refetch) unless a re-entrant path already rebuilt it.
+      if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
+      rt.overlayLayer.addTo(map);
+      refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
+      reorderActiveLayers();
+    } else if (!rt.overlayLoaded) {
       rt.overlayLoaded = true; // mark immediately to avoid duplicate loads on rapid toggling
       mod.overlay.load()
         .then(function (geojson) {
           rt.geojson = geojson;
-          rt.overlayLayer = L.geoJSON(geojson, {
-            style: baseStyleFor(mod) || undefined,
-            pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
-          });
+          rt.overlayLayer = buildOverlayLayer(mod, geojson);
           // add only if the layer is STILL on — the user may have toggled it
           // off while the geojson was downloading (the old unconditional
           // .addTo(map) left orphaned boundaries on the map in that case)
@@ -2201,10 +2258,6 @@
             setCardError(mod, "Couldn't load this layer's boundaries. It won't affect other layers.");
           }
         });
-    } else if (rt.overlayLayer) {
-      rt.overlayLayer.addTo(map);
-      refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
-      reorderActiveLayers();
     }
 
     runLayerQuery(mod);

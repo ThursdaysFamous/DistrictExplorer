@@ -1,0 +1,73 @@
+name: Deploy to GitHub Pages
+
+# Publishes only the files the app actually serves — index.html, sw.js,
+# manifest.webmanifest, CNAME, .nojekyll, icons/, and data/app/*.json — instead
+# of the whole branch. The classic "Deploy from a branch" flow shipped the entire
+# tree to the CDN: the scrapers/builders (scripts/), the docs (docs/), and ~5 MB
+# of build-only geometry (data/source/ raw zips+xlsx and the three full-precision
+# data/*.geojson originals that data/app/*.json is simplified from). None of that
+# is fetched at runtime, so this assembles a curated site directory and uploads
+# that as the Pages artifact.
+#
+# ONE-TIME OWNER SETUP REQUIRED: this workflow only takes effect once the repo's
+# Pages *source* is switched from "Deploy from a branch" to "GitHub Actions"
+# (Settings -> Pages -> Build and deployment -> Source). Until then the classic
+# branch deploy keeps serving the live site and this job's final deploy step will
+# fail (harmless — no outage, the classic deploy is still authoritative). After
+# the flip, this becomes the deploy path and the custom domain (CNAME) is
+# preserved by shipping the CNAME file in the artifact.
+#
+# The exclude list below is the ONLY thing standing between "app files" and "app
+# files + 5 MB of build inputs". Keep data/app in and data/source + data/*.geojson
+# out when either moves.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Least-privilege token set the Pages deploy needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let an in-progress deploy finish rather than
+# cancelling it mid-publish (which could leave the site half-updated).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site (app files only — drop scripts/docs/raw data)
+        run: |
+          mkdir _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.claude' \
+            --exclude='scripts' \
+            --exclude='docs' \
+            --exclude='data/source' \
+            --exclude='data/*.geojson' \
+            --exclude='node_modules' \
+            --exclude='CLAUDE.md' \
+            ./ _site/
+          echo "Published tree:" && find _site -type f | sort
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
