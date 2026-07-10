@@ -107,23 +107,30 @@
   .masthead-inner {
     max-width: 1800px;
     margin: 0 auto;
+  }
+  h1.title {
+    margin: 0;
+  }
+  /* Star + wordmark live in one non-wrapping row so they can never split onto
+     separate lines; align-items: center keeps the star vertically centered
+     against the title text's line box (the "C" in Chicago) rather than
+     bottom-aligned against the whole heading (title + subtitle). */
+  .title-row {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 14px;
-    flex-wrap: wrap;
   }
   .masthead-star {
     width: 34px;
     height: 34px;
     flex: none;
   }
-  h1.title {
+  .title-text {
     font-family: var(--font-display);
     font-weight: 900;
     font-size: clamp(28px, 4vw, 40px);
     letter-spacing: 0.01em;
     line-height: 0.95;
-    margin: 0;
     text-transform: uppercase;
   }
   h1.title small {
@@ -134,14 +141,14 @@
     text-transform: none;
     letter-spacing: 0;
     color: #C9D4DB;
-    margin-top: 4px;
+    margin-top: 6px;
   }
   /* On phones the masthead is competing with the map for the first screenful —
      shrink the branding so the interactive part of the app shows up sooner. */
   @media (max-width: 900px) {
     header.masthead { padding: 12px 16px 14px; }
     .masthead-star { width: 24px; height: 24px; }
-    h1.title { font-size: 22px; }
+    .title-text { font-size: 22px; }
     h1.title small { font-size: 12px; margin-top: 3px; }
   }
 
@@ -446,12 +453,13 @@
     }
   }
 
-  /* ---- On phones, tighten the search bar + Layers button into one cohesive
-     top row instead of two separately-floating widgets with a wide gap
-     between them. ---- */
+  /* ---- The Layers button collapses the results rail to widen the map — a
+     desktop-only affordance. On phones the layout is already a single
+     stacked column (no rail to widen into), so the button does nothing
+     useful; hide it and let the search bar use the full row. ---- */
   @media (max-width: 900px) {
-    .map-toolbar { top: 10px; left: 10px; right: 74px; }
-    .layer-toggle-btn { top: 10px; right: 10px; min-width: 54px; padding: 8px 8px; }
+    .layer-toggle-btn { display: none; }
+    .map-toolbar { left: 10px; right: 10px; }
   }
 
   /* ---- Results rail ---- */
@@ -899,10 +907,13 @@
 
 <header class="masthead">
   <div class="masthead-inner">
-    <svg class="masthead-star" viewBox="0 0 100 100" aria-hidden="true">
-      <path fill="var(--chi-red)" id="star-path-header"></path>
-    </svg>
-    <h1 class="title">Chicago District Explorer
+    <h1 class="title">
+      <span class="title-row">
+        <svg class="masthead-star" viewBox="0 0 100 100" aria-hidden="true">
+          <path fill="var(--chi-red)" id="star-path-header"></path>
+        </svg>
+        <span class="title-text">Chicago District Explorer</span>
+      </span>
       <small>Click the map or search an address to see every district that covers it, and who represents it.</small>
     </h1>
   </div>
@@ -2183,6 +2194,15 @@
   // baseIndex (top-level blocks only) is this card's position among its
   // group's flex-ordered .group-cards siblings; see the checkbox handler below
   // for how it's used to float checked cards to the top of the group.
+  // A card floats to the top of its group (order = baseIndex) while checked,
+  // and sinks back to its natural position among the other off cards
+  // (order = baseIndex + 1000) once unchecked. Shared by the initial render
+  // (always off — see checkbox.checked below) and the toggle handler so the
+  // two never drift out of sync with each other.
+  function cardOrder(baseIndex, checked) {
+    return baseIndex + (checked ? 0 : 1000);
+  }
+
   function buildLayerBlock(mod, baseIndex) {
     var block = document.createElement("div");
     block.className = "layer-block";
@@ -2190,7 +2210,7 @@
     // layer's map overlay/pins, so the sidebar reads as "this is the box
     // for the blue layer" at a glance
     block.style.setProperty("--layer-accent", moduleColor(mod));
-    if (typeof baseIndex === "number") block.style.order = String(baseIndex);
+    if (typeof baseIndex === "number") block.style.order = String(cardOrder(baseIndex, false));
 
     var head = document.createElement("div");
     head.className = "layer-block-head";
@@ -2237,10 +2257,9 @@
       // Float this card to the top of its group's flex-ordered stack while
       // it's on (so an active result never scrolls past a page of unchecked
       // ones), and back to its natural position among the other off cards
-      // when it's switched off. The +1000 offset just needs to clear the
-      // largest realistic sibling count while preserving relative order.
+      // when it's switched off.
       if (typeof baseIndex === "number") {
-        block.style.order = String(checkbox.checked ? baseIndex : baseIndex + 1000);
+        block.style.order = String(cardOrder(baseIndex, checkbox.checked));
       }
       onLayerToggled(mod);
       syncUrlHash();
