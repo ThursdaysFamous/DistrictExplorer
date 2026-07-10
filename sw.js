@@ -1,11 +1,11 @@
 // App-shell + app-data cache. Never serve live district/roster API responses
 // stale — a stale roster could name the wrong officeholder, and this app's
-// rule is that officeholder data is never guessed or served stale. The bump
-// to -v3 accompanies dropping the duplicate "./index.html" shell entry (see
-// below); the activate handler deletes every other-named cache, so the old
-// shell is reclaimed on first load. Bump CACHE_NAME whenever SHELL_URLS,
-// GEOMETRY_URLS, or ROSTER_URLS change so a removed entry can't live forever.
-const CACHE_NAME = "district-explorer-shell-v3";
+// rule is that officeholder data is never guessed or served stale. Bump
+// CACHE_NAME whenever SHELL_URLS, GEOMETRY_URLS, or ROSTER_URLS change so a
+// removed entry can't live forever; the activate handler deletes every
+// other-named cache. (-v3 dropped the duplicate "./index.html" shell entry;
+// -v4 added the two roster files missing from ROSTER_URLS.)
+const CACHE_NAME = "district-explorer-shell-v4";
 
 // "./" and "./index.html" resolve to the same GitHub Pages document, so we
 // precache only the canonical "./" — caching both stored two ~112 KB-gzip
@@ -41,6 +41,8 @@ const ROSTER_URLS = [
   "./data/app/il-house-members.json",
   "./data/app/school-board-members.json",
   "./data/app/cpd-district-info.json",
+  "./data/app/ccpsa-district-councils.json",
+  "./data/app/congress-roster.json",
 ];
 
 const PRECACHE_URLS = SHELL_URLS.concat(GEOMETRY_URLS);
