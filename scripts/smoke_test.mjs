@@ -186,6 +186,38 @@ try {
     );
     await context.close();
   }
+
+  // 5. Base-map tile failure surfaces an honest, dismissible banner (R6 / item
+  //    16), instead of a silently gray map. Fail the CARTO tile CDN and assert
+  //    the banner appears, then that dismissing it hides it.
+  {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    const page = await booted(context, BASE, (p) =>
+      // regex, not a glob: the tile host is `a.basemaps.cartocdn.com` (a dot,
+      // not a slash, before `basemaps`), which a `**/basemaps…` glob misses.
+      p.route(/basemaps\.cartocdn\.com/, (r) => r.fulfill({ status: 503, body: "down" }))
+    );
+    await page
+      .waitForFunction(() => {
+        const el = document.getElementById("tile-banner");
+        return el && !el.hidden;
+      }, null, { timeout: QUERY_TIMEOUT })
+      .catch(() => {});
+    const shown = await page.evaluate(() => {
+      const el = document.getElementById("tile-banner");
+      return !!el && !el.hidden;
+    });
+    let hiddenAfterDismiss = null;
+    if (shown) {
+      await page.click("#tile-banner-dismiss");
+      hiddenAfterDismiss = await page.evaluate(() => {
+        const el = document.getElementById("tile-banner");
+        return !!el && el.hidden;
+      });
+    }
+    check("tile failure shows dismissible banner", shown && hiddenAfterDismiss === true, `shown=${shown} hiddenAfterDismiss=${hiddenAfterDismiss}`);
+    await context.close();
+  }
 } finally {
   await browser.close();
 }

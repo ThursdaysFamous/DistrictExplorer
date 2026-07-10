@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://b.basemaps.cartocdn.com">
 <link rel="dns-prefetch" href="https://data.cityofchicago.org">
 <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="" />
 
@@ -305,6 +305,41 @@
     align-items: flex-start;
     gap: 8px;
   }
+  /* Honest, dismissible notice when the CDN basemap tiles fail — the app itself
+   * keeps working offline (SW shell + same-origin data), so the map just goes
+   * gray without this. Bottom-center so it clears the top toolbar and the
+   * bottom-left controls. */
+  .map-tile-banner {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(92%, 440px);
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-left: 4px solid var(--warn);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 18px rgba(20, 24, 28, 0.18);
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .map-tile-banner[hidden] { display: none; }
+  .tile-banner-dismiss {
+    flex: none;
+    border: none;
+    background: transparent;
+    color: var(--slate);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .tile-banner-dismiss:hover { color: var(--ink); }
   .hover-toggle-btn {
     font-family: var(--font-body);
     font-size: 12px;
@@ -817,6 +852,11 @@
         title="Hover explorer — show the districts under your cursor as you move the mouse">Hover: on</button>
       <div class="selected-point-chip" id="point-chip" hidden></div>
     </div>
+
+    <div class="map-tile-banner" id="tile-banner" role="status" aria-live="polite" hidden>
+      <span>Base map tiles unavailable — your selections and layers still work.</span>
+      <button type="button" id="tile-banner-dismiss" class="tile-banner-dismiss" aria-label="Dismiss this message">✕</button>
+    </div>
   </section>
 
   <section class="results-col" id="results-col" aria-label="Civic profile results" aria-live="polite">
@@ -1155,11 +1195,47 @@
 
   var map = L.map("map", { minZoom: 9, maxZoom: 18, zoomControl: false }).setView(CHI_CENTER, 11);
   L.control.zoom({ position: "bottomright" }).addTo(map);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  var baseTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
     subdomains: "abcd",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
   }).addTo(map);
+
+  /* ---------- base-map tile-failure notice (R6) ----------
+   * The app boots and stays usable offline (SW shell + same-origin data/app),
+   * but the CARTO basemap tiles come from a CDN — a tile outage otherwise leaves
+   * a silent gray map with no explanation. `tileerror` fires once per failed
+   * tile, so we debounce: only surface the banner after several failures in a
+   * short window (a single transient tile hiccup shouldn't flash it), and hide
+   * it the moment a tile loads again (the CDN recovered). Manual dismiss latches
+   * for the session — the user has acknowledged the base map is down. */
+  var tileBanner = document.getElementById("tile-banner");
+  var tileErrorCount = 0;
+  var tileErrorResetTimer = null;
+  var tileBannerDismissed = false;
+  var TILE_ERROR_THRESHOLD = 4;
+
+  baseTiles.on("tileerror", function () {
+    if (tileBannerDismissed) return;
+    tileErrorCount += 1;
+    if (tileErrorResetTimer) clearTimeout(tileErrorResetTimer);
+    // if errors stop arriving, let the running count decay so a slow trickle of
+    // one-off failures over minutes never accumulates into a false alarm
+    tileErrorResetTimer = setTimeout(function () { tileErrorCount = 0; }, 4000);
+    if (tileErrorCount >= TILE_ERROR_THRESHOLD && tileBanner) tileBanner.hidden = false;
+  });
+  baseTiles.on("tileload", function () {
+    tileErrorCount = 0;
+    if (tileBanner && !tileBanner.hidden) tileBanner.hidden = true; // tiles are flowing again
+  });
+
+  var tileBannerDismiss = document.getElementById("tile-banner-dismiss");
+  if (tileBannerDismiss) {
+    tileBannerDismiss.addEventListener("click", function () {
+      tileBannerDismissed = true;
+      if (tileBanner) tileBanner.hidden = true;
+    });
+  }
 
   var selectedMarker = null;
   var pointChip = document.getElementById("point-chip");
