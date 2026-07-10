@@ -2242,28 +2242,32 @@
     ];
   }
 
-  function loadSocrataGeoJSON(datasetId) {
-    var urls = socrataRouteUrls(datasetId);
+  /* ---------- walk a list of fallback routes, returning the first response that
+   * passes `validate`. Single catch per route: a fetch failure and a "200 but
+   * useless" response both advance to the next route exactly once — the old
+   * .then-recursion + .catch-recursion pair re-ran later routes twice, a bug
+   * this shared helper keeps fixed for both Socrata callers. Primary route (0)
+   * gets 2 retries, fallbacks 1. `label` only names the dataset in the reject. */
+  function tryRoutes(urls, validate, label) {
     function tryRoute(i) {
-      if (i >= urls.length) return Promise.reject(new Error("no route for " + datasetId + " returned usable geometry"));
+      if (i >= urls.length) return Promise.reject(new Error("no route for " + label + " succeeded"));
       return fetchJSONWithRetry(urls[i], {}, i === 0 ? 2 : 1)
-        .then(function (geojson) {
-          if (hasUsableGeometry(geojson)) return geojson;
-          throw new Error("route returned no usable geometry");
+        .then(function (data) {
+          if (validate(data)) return data;
+          throw new Error("route returned nothing usable");
         })
-        .catch(function () {
-          // single catch per route: a fetch failure and a "200 but useless"
-          // response both advance to the next route exactly once (the old
-          // .then-recursion + .catch-recursion pair re-ran later routes twice)
-          return tryRoute(i + 1);
-        });
+        .catch(function () { return tryRoute(i + 1); });
     }
     return tryRoute(0);
   }
 
+  function loadSocrataGeoJSON(datasetId) {
+    return tryRoutes(socrataRouteUrls(datasetId), hasUsableGeometry, datasetId + " geometry");
+  }
+
   /* ---------- one shared in-flight/cached promise per loader fn, so overlay.load()
    * and query() never trigger two separate downloads of the same boundaries ---------- */
-  function makeCachedLoaderFromFn(loadFn) {
+  function makeCached(loadFn) {
     var pending = null;
     return function () {
       if (!pending) {
@@ -2277,7 +2281,7 @@
   }
 
   function makeCachedLoader(datasetId) {
-    return makeCachedLoaderFromFn(function () { return loadSocrataGeoJSON(datasetId); });
+    return makeCached(function () { return loadSocrataGeoJSON(datasetId); });
   }
 
   /* ---------- fetch a CPD-hosted ArcGIS FeatureServer layer as GeoJSON.
@@ -2455,7 +2459,7 @@
   // new field names and the old Socrata ones, so this degrades gracefully
   // if either guess is wrong; still worth an operator spot-check.
   var POLICE_DISTRICT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_District_Boundary_View");
-  var loadPoliceDistricts = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
+  var loadPoliceDistricts = makeCached(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
 
   // Police_District_Stations_View (CPD's ArcGIS org) carries station address +
   // phone per district straight from source, CORS-enabled. Shared by two
@@ -2463,7 +2467,7 @@
   // District card, which falls back to it for address/phone when the commander
   // roster (cpd-district-info.json) is empty or a weekly scrape was blocked.
   var POLICE_STATION_SERVICE = arcgisServiceUrl("Police_District_Stations_View");
-  var loadPoliceStations = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
+  var loadPoliceStations = makeCached(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
 
   // Index the station points by bare district number ("8"), memoized on the
   // FeatureCollection so repeated clicks don't rebuild it.
@@ -2586,7 +2590,7 @@
    * other CPD layers), so findPropCI's alias lists cover the likely casings
    * and it degrades gracefully if a guess is wrong. ---------- */
   var POLICE_BEAT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_Beat_Boundary");
-  var loadPoliceBeats = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
+  var loadPoliceBeats = makeCached(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
   // Prefer the canonical 4-digit CPD beat number (BEAT_NUMBE, e.g. "2423").
   // "beat_num" is listed first for other possible schemas but does NOT match
   // the live "BEAT_NUMBE" field; the truncated "beat" digit ("3") is a
@@ -2993,7 +2997,7 @@
    * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears). */
   var SCHOOL_SITE_COUNT = 3;
   var SCHOOL_SITE_SERVICE = arcgisServiceUrl("Schools");
-  var loadSchoolSites = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
+  var loadSchoolSites = makeCached(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
 
   registerLayer({
     id: "school-site",
@@ -3091,16 +3095,6 @@
   /* ---------- generic cached-promise wrapper (Socrata-geojson-specific
    * makeCachedLoader above predates this; this variant memoizes any loader
    * function, used here for the roster/geometry JSON fetches and TIGERweb) ---------- */
-  function makeCached(fn) {
-    var pending = null;
-    return function () {
-      if (!pending) {
-        pending = fn().catch(function (err) { pending = null; throw err; });
-      }
-      return pending;
-    };
-  }
-
   /* ---------- fetch a Socrata dataset as plain JSON rows (not geometry) — used
    * for roster tables like the alderman list, which have no geometry column ---------- */
   function loadSocrataJSON(datasetId) {
@@ -3108,18 +3102,7 @@
       "https://data.cityofchicago.org/resource/" + datasetId + ".json?$limit=1000",
       "https://data.cityofchicago.org/api/v3/views/" + datasetId + "/query.json"
     ];
-    function tryRoute(i) {
-      if (i >= urls.length) return Promise.reject(new Error("no route for " + datasetId + " returned rows"));
-      return fetchJSONWithRetry(urls[i], {}, i === 0 ? 2 : 1)
-        .then(function (rows) {
-          if (Array.isArray(rows) && rows.length) return rows;
-          throw new Error("route returned no rows");
-        })
-        .catch(function () {
-          return tryRoute(i + 1); // single catch per route — see loadSocrataGeoJSON
-        });
-    }
-    return tryRoute(0);
+    return tryRoutes(urls, function (rows) { return Array.isArray(rows) && rows.length; }, datasetId + " rows");
   }
 
   /* ---------- Census TIGERweb Legislative MapServer (Esri REST, not Socrata) —
