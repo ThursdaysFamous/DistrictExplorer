@@ -1077,9 +1077,9 @@
   /* ---------- GoatCounter custom event — no-op if the count script didn't
    * load (blocked, offline, ad blocker), so analytics can never affect app
    * behavior ---------- */
-  function trackEvent(path) {
+  function trackEvent(path, title) {
     if (window.goatcounter && typeof window.goatcounter.count === "function") {
-      window.goatcounter.count({ path: path, title: path, event: true });
+      window.goatcounter.count({ path: path, title: title || path, event: true });
     }
   }
 
@@ -1374,6 +1374,7 @@
     copyBtn.title = "Copy a shareable link to this point and the layers currently on";
     copyBtn.addEventListener("click", function () {
       syncUrlHash(); // make sure the URL reflects the very latest state
+      trackEvent("share-permalink");
       function done(ok) {
         copyBtn.textContent = ok ? "Copied!" : "Copy failed";
         setTimeout(function () { copyBtn.textContent = "Copy link"; }, 1600);
@@ -1484,6 +1485,12 @@
         }
         geoStatusEl.textContent = "";
         geoResultsList.innerHTML = "";
+        // rounded to ~1km (2 decimal places) — coarse enough that it can't
+        // pin an individual's address, fine enough to see which part of the
+        // city geolocation gets used from. Path stays fixed so GoatCounter
+        // groups every hit under one "geolocate-success" event; the
+        // approximate area only shows up in the per-hit title.
+        trackEvent("geolocate-success", lat.toFixed(2) + "," + lng.toFixed(2));
         setSelectedPoint(lat, lng);
       },
       function (err) {
@@ -1685,6 +1692,7 @@
         // response can't re-open the list over the "Selected:" status
         clearTimeout(debounceTimer);
         if (inFlightController) inFlightController.abort();
+        trackEvent("address-search");
         setSelectedPoint(parseFloat(r.lat), parseFloat(r.lon));
         geoResultsList.innerHTML = "";
         geoStatus.textContent = "Selected: " + r.display_name;
