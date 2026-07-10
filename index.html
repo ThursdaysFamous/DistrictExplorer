@@ -1462,6 +1462,7 @@
   var geoStatusEl = document.getElementById("geo-status");
 
   locateBtn.addEventListener("click", function () {
+    trackEvent("geolocate");
     if (!("geolocation" in navigator)) {
       geoStatusEl.textContent = "Geolocation isn't supported in this browser.";
       geoStatusEl.className = "geo-status err";
