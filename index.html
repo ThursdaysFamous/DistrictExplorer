@@ -785,6 +785,11 @@
   .hover-dot { width: 8px; height: 8px; border-radius: 50%; align-self: center; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
   .hover-row-label { opacity: 0.68; font-size: 11px; white-space: nowrap; }
   .hover-row-value { font-weight: 600; }
+  /* the name identifier (alderperson, commissioner, network chief, …) sits after
+     the district number in normal weight so the number stays the primary identity
+     and the name reads as who/what it is. */
+  .hover-row-who { font-weight: 400; opacity: 0.82; }
+  .hover-row-who::before { content: "\00b7\00a0"; opacity: 0.55; }
   .hover-row-parent .hover-row-label,
   .hover-row-parent .hover-row-value { font-size: 12.5px; }
 
@@ -1670,6 +1675,10 @@
       // signature is unchanged, a point move only restyles the two paths whose
       // role flips instead of re-styling every path in the layer.
       highlightApplied: false, highlightSignature: null,
+      // prefetched officeholder roster (see hoverOfficial + prefetchHoverRoster):
+      // loaded in the background on toggle-on so the hover popup can name the
+      // representative without a network request as the cursor moves.
+      roster: null,
       // when true the layer draws its outline only (fillOpacity forced to 0),
       // regardless of its own style — used when a sub-layer takes over the fill
       // (e.g. Police Beat filling a Police District that's dropped to outline).
@@ -2159,7 +2168,22 @@
     }
 
     runLayerQuery(mod);
+    prefetchHoverRoster(mod); // background-load this layer's officeholder roster for the hover popup
     if (mod.onToggle) mod.onToggle(true); // let a layer react to being turned on (e.g. a sub-layer restyling its parent)
+  }
+
+  // Background-load a layer's officeholder roster on toggle-on so the hover popup
+  // can name the representative without a per-frame network request. The result
+  // is cached on the runtime (rt.roster) and read synchronously while hovering.
+  // Failure is swallowed here — the hover popup simply omits the name; the click
+  // card still surfaces the same roster failure with its own Retry.
+  function prefetchHoverRoster(mod) {
+    if (!mod.hoverOfficial || !mod.hoverOfficial.load) return;
+    var rt = layerRuntime[mod.id];
+    if (rt.roster) return; // already loaded (loaders are cached, but skip the extra call)
+    mod.hoverOfficial.load()
+      .then(function (data) { rt.roster = data; })
+      .catch(function () { /* hover omits the name; click card owns the error surface */ });
   }
 
   function setCardLoading(mod) {
@@ -2660,6 +2684,19 @@
       if (districtPage) fields.push({ label: "District Website", html: '<a href="' + sanitize(districtPage) + '" target="_blank" rel="noopener">' + sanitize(districtPage) + '</a>' });
       return renderFieldList(fields);
     },
+    // hover popup: name the district commander from the prefetched CPD info
+    // (keyed by the zero-pad-stripped district number, same as the query). An
+    // acting commander is tagged so the hover doesn't imply a permanent posting.
+    hoverOfficial: {
+      load: loadCpdDistrictInfo,
+      name: function (feature, info) {
+        if (!info) return null;
+        var n = extractDistrictNumber(feature.properties || {}, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+        var row = n ? info[n] : null;
+        if (!row || !row.commanderName) return null;
+        return row.commanderStatus === "acting_commander" ? row.commanderName + " (Acting)" : row.commanderName;
+      }
+    },
     onToggle: function (on) {
       // The Police Beat sub-layer only makes sense as a subdivision of a
       // visible district, so if the district is turned off, cascade its beat
@@ -2815,6 +2852,21 @@
       var councilPage = safeHttpUrl(result.sourceUrl);
       if (councilPage) fields.push({ label: "Council page", html: '<a href="' + sanitize(councilPage) + '" target="_blank" rel="noopener">ccpsa.chicago.gov</a>' });
       return renderFieldList(fields);
+    },
+    // hover popup: a district council is a body of three, so name the first
+    // councilor and note the rest with "+N" to keep the row to one line — the
+    // click card lists all members. Roster prefetched, keyed like the query.
+    hoverOfficial: {
+      load: loadCcpsaDistrictCouncils,
+      name: function (feature, councils) {
+        if (!councils) return null;
+        var n = extractDistrictNumber(feature.properties || {}, ["district", "dist_num", "dist_number", "dist", "district_number", "district_no"]);
+        var council = n ? councils[n] : null;
+        var members = (council && council.members) || [];
+        var names = members.filter(function (m) { return m && m.name; }).map(function (m) { return String(m.name); });
+        if (!names.length) return null;
+        return names.length > 1 ? names[0] + " +" + (names.length - 1) : names[0];
+      }
     }
   });
 
@@ -3061,6 +3113,13 @@
       pointOfInterest: function (result) {
         if (!result.address) return null;
         return { label: result.network ? "Network " + String(result.network) + " Office" : "CPS Network Office", address: String(result.address) };
+      },
+      // hover popup: the network chief's name lives in the boundary geometry, so
+      // no roster load is needed — read it straight from the feature properties.
+      hoverOfficial: {
+        name: function (feature) {
+          return findPropCI(feature.properties || {}, ["admin", "chief", "administrator"]) || null;
+        }
       }
     });
   }
@@ -3291,6 +3350,22 @@
       if (!result.address) return null;
       return { label: result.alderman ? "Ald. " + String(result.alderman) : "Ward Office", address: String(result.address) };
     },
+    // hover popup: name the alderperson from the prefetched roster (same ward-key
+    // join as the query above, run synchronously against the cached roster).
+    hoverOfficial: {
+      load: loadAldermen,
+      name: function (feature, roster) {
+        if (!Array.isArray(roster)) return null;
+        var wardRaw = findPropCI(feature.properties || {}, ["ward", "ward_num", "ward_number", "ward_id"]);
+        if (wardRaw === null || wardRaw === undefined) return null;
+        var ward = String(wardRaw).replace(/^0+(?=\d)/, "");
+        var row = roster.filter(function (r) {
+          var w = findPropCI(r, ["ward", "ward_num", "ward_number"]);
+          return w !== null && w !== undefined && String(w).replace(/^0+(?=\d)/, "") === ward;
+        })[0];
+        return row ? findPropCI(row, ["alderman", "alderman_name", "member", "name"]) : null;
+      }
+    },
     onToggle: function (on) {
       // Ward Precinct is a sub-selection of a visible ward, so if the ward is
       // turned off, cascade its precinct sub-selection off too (which restores
@@ -3422,6 +3497,17 @@
       var website = safeHttpUrl(result.url); // scheme-check external URLs before they become an href
       if (website) fields.push({ label: "Website", html: '<a href="' + sanitize(website) + '" target="_blank" rel="noopener">' + sanitize(website) + '</a>' });
       return renderFieldList(fields);
+    },
+    // hover popup: name the U.S. Representative from the prefetched roster (keyed
+    // by district number, same as the query).
+    hoverOfficial: {
+      load: loadCongressRoster,
+      name: function (feature, roster) {
+        if (!roster) return null;
+        var d = extractDistrictNumber(feature.properties || {}, CONGRESS_DISTRICT_FIELDS);
+        var rep = d != null ? roster[String(d)] : null;
+        return rep ? rep.name : null;
+      }
     }
   });
 
@@ -3502,6 +3588,17 @@
         var address = officeAddressForGeocode(member.districtOffice);
         if (!address) return null;
         return { label: member.name, address: address };
+      },
+      // hover popup: name the senator / state representative from the prefetched
+      // roster (keyed by district number, same as the query).
+      hoverOfficial: {
+        load: opts.loadRoster,
+        name: function (feature, roster) {
+          if (!roster) return null;
+          var d = extractDistrictNumber(feature.properties || {}, opts.districtFields);
+          var member = d != null ? roster[String(d)] : null;
+          return member ? member.name : null;
+        }
       }
     });
   }
@@ -3616,6 +3713,19 @@
         html: '<a href="https://www.cps.edu/about/chicago-board-of-education/" target="_blank" rel="noopener">Chicago Board of Education</a>'
       });
       return renderFieldList(fields);
+    },
+    // hover popup: name the board member from the prefetched roster (keyed by
+    // district number; the roster stores a bare name string, "VACANT" for empty
+    // seats — surfaced as "Vacant", same as the card).
+    hoverOfficial: {
+      load: loadSchoolBoardMembers,
+      name: function (feature, members) {
+        if (!members) return null;
+        var d = findPropCI(feature.properties || {}, ["district"]);
+        var m = d != null ? members[String(d)] : null;
+        if (!m) return null;
+        return m === "VACANT" ? "Vacant" : String(m);
+      }
     }
   });
 
@@ -3807,6 +3917,22 @@
       var addressLines = commissionerAddressLines(office);
       if (!addressLines.length) return null;
       return { label: name || "Commissioner Office", address: addressLines.join(", ") };
+    },
+    // hover popup: name the commissioner from the prefetched electedOfficials
+    // table (same relate_key join as the query, run against the cached roster).
+    hoverOfficial: {
+      load: loadCommissionerOffices,
+      name: function (feature, offices) {
+        if (!Array.isArray(offices)) return null;
+        var district = extractDistrictNumber(feature.properties || {}, COMMISSIONER_DISTRICT_FIELDS);
+        if (!district) return null;
+        var relateKey = "commissionerdistrict_" + parseInt(district, 10);
+        var office = offices.filter(function (row) {
+          var k = findPropCI(row, ["relate_key"]);
+          return k && String(k).toLowerCase() === relateKey;
+        })[0];
+        return office ? (commissionerName(office) || null) : null;
+      }
     }
   });
 
@@ -3893,18 +4019,41 @@
     return out;
   }
 
+  // The name identifier for one feature — the officeholder/entity name that reads
+  // alongside the district number (alderperson, senator, commander, network chief,
+  // …). A module opts in via mod.hoverOfficial.name(feature, roster); the roster is
+  // whatever prefetchHoverRoster cached on toggle-on (null if it isn't loaded yet,
+  // in which case the name is simply omitted this frame — never a network call).
+  // Layers whose name lives in the geometry (schools, community areas) surface it
+  // through hoverValue instead and don't need this.
+  function hoverOfficialName(mod, feature) {
+    if (!mod.hoverOfficial || !mod.hoverOfficial.name) return null;
+    try {
+      var rt = layerRuntime[mod.id];
+      var name = mod.hoverOfficial.name(feature, rt ? rt.roster : null);
+      return name ? String(name) : null;
+    } catch (e) {
+      return null; // a bad roster row never breaks the snapshot
+    }
+  }
+
   // Compact multi-layer civic snapshot for the hovered spot — one row per
   // containing layer (broad→granular), each a color dot + layer label + value.
-  // Built entirely from already-loaded feature properties: no network, no
-  // roster joins (officeholder/contact stay on the network-backed click cards).
+  // The value is the layer's district identity (from already-loaded geometry) plus,
+  // when available, its name identifier (officeholder/entity) from the prefetched
+  // roster. No network request is fired here — an un-prefetched roster just drops
+  // the name; full officeholder/contact detail stays on the click cards.
   function hoverSnapshotHTML(rows) {
     var html = '<div class="hover-snapshot">';
     for (var i = 0; i < rows.length; i++) {
       var mod = rows[i].mod;
+      var valueHtml = sanitize(hoverValue(mod, rows[i].feature));
+      var who = hoverOfficialName(mod, rows[i].feature);
+      if (who) valueHtml += '<span class="hover-row-who">' + sanitize(who) + "</span>";
       html += '<div class="hover-row' + (i === 0 ? " hover-row-parent" : "") + '">' +
         '<span class="hover-dot" style="background:' + sanitize(moduleColor(mod)) + '"></span>' +
         '<span class="hover-row-label">' + sanitize(mod.label) + '</span>' +
-        '<span class="hover-row-value">' + sanitize(hoverValue(mod, rows[i].feature)) + "</span>" +
+        '<span class="hover-row-value">' + valueHtml + "</span>" +
         "</div>";
     }
     return html + "</div>";
