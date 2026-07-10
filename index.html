@@ -1531,13 +1531,26 @@
    * away mid-interaction. Hover/focus-within (CSS) handle the rest. */
   var searchShellEl = document.querySelector(".search-shell");
   var geocodeInputEl = document.getElementById("geocode-input");
+  // Set true the moment a search result is chosen so the shell collapses back
+  // to just the input row — the "Selected: …" status plus the type-ahead
+  // controls otherwise stay open over the map (the input still holds the typed
+  // query and the status line is non-empty, so hasContent below would keep it
+  // pinned open forever). Cleared as soon as the user re-engages the box (focus
+  // or typing) so normal type-ahead expansion resumes.
+  var collapseAfterSelect = false;
   function refreshSearchShellExpanded() {
+    if (collapseAfterSelect) { searchShellEl.classList.remove("expanded"); return; }
     var hasContent = geocodeInputEl.value.trim() !== "" ||
       geoResultsList.children.length > 0 ||
       geoStatus.textContent.trim() !== "";
     searchShellEl.classList.toggle("expanded", hasContent);
   }
-  geocodeInputEl.addEventListener("input", refreshSearchShellExpanded);
+  function reengageSearchShell() {
+    collapseAfterSelect = false;
+    refreshSearchShellExpanded();
+  }
+  geocodeInputEl.addEventListener("input", reengageSearchShell);
+  geocodeInputEl.addEventListener("focus", reengageSearchShell);
   new MutationObserver(refreshSearchShellExpanded).observe(geoStatus, { childList: true, characterData: true, subtree: true });
   new MutationObserver(refreshSearchShellExpanded).observe(geoResultsList, { childList: true, subtree: true });
 
@@ -1608,6 +1621,11 @@
         setSelectedPoint(parseFloat(r.lat), parseFloat(r.lon));
         geoResultsList.innerHTML = "";
         geoStatus.textContent = "Selected: " + r.display_name;
+        // a point is now chosen — collapse the shell back to just the input row
+        // so the confirmation + type-ahead controls stop covering the map. The
+        // "Selected: …" text stays in the DOM, so it reappears on hover/focus.
+        collapseAfterSelect = true;
+        refreshSearchShellExpanded();
       });
       li.appendChild(btn);
       geoResultsList.appendChild(li);
@@ -1950,6 +1968,22 @@
     return run;
   }
 
+  // Nominatim's structured /search returns ZERO results when the query carries
+  // a secondary-unit fragment — "2929 S. Wabash Ave., Suite 102, Chicago, IL"
+  // and "121 North LaSalle Street, Room 300" both geocode to nothing, so those
+  // office cards silently drop their map pin. Strip any comma-part that reads as
+  // a unit designator (Suite/Ste/Room/Rm/Floor/Fl/Unit/Apt/No/#, each carrying a
+  // number); the street + city + ZIP that remain resolve to the right building.
+  // Verified against the ILGA district offices and the ward roster addresses.
+  function cleanPoiAddress(address) {
+    var UNIT_RE = /^\s*(?:suite|ste|room|rm|floor|fl|unit|apt|apartment|no|#)\b\D*\d/i;
+    var kept = String(address).split(",").filter(function (part) {
+      return !UNIT_RE.test(part);
+    });
+    var cleaned = kept.join(",").trim();
+    return cleaned || String(address); // never geocode an empty string
+  }
+
   function geocodePoiAddress(address, isCurrent) {
     if (Object.prototype.hasOwnProperty.call(poiGeocodeCache, address)) {
       return Promise.resolve(poiGeocodeCache[address]);
@@ -1965,7 +1999,7 @@
       if (isCurrent && !isCurrent()) return null;
       var viewbox = [CHI_BBOX.minLng, CHI_BBOX.maxLat, CHI_BBOX.maxLng, CHI_BBOX.minLat].join(",");
       var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&bounded=1&viewbox=" +
-        viewbox + "&q=" + encodeURIComponent(address);
+        viewbox + "&q=" + encodeURIComponent(cleanPoiAddress(address));
       return fetchJSONWithRetry(url, { headers: { "Accept": "application/json" } }, 1)
         .then(function (results) {
           var hit = results && results[0];
@@ -3625,10 +3659,13 @@
         if (member) {
           fields.push({ label: opts.memberLabel, value: String(member.name) });
           if (member.party) fields.push({ label: "Party", value: String(member.party) });
+          // District office first (it's the local, on-map one this card pins),
+          // Springfield second. The pin color ties the District Office address
+          // to the teardrop marker dropped at the same spot on the map.
+          var district_ = officeFieldHtml(member.districtOffice);
+          if (district_) fields.push({ label: "District Office", html: district_, pin: opts.style.color });
           var springfield = officeFieldHtml(member.springfieldOffice);
           if (springfield) fields.push({ label: "Springfield Office", html: springfield });
-          var district_ = officeFieldHtml(member.districtOffice);
-          if (district_) fields.push({ label: "District Office", html: district_ });
         }
         var profileUrl = member && member.url ? member.url : opts.ilgaUrl;
         fields.push({
