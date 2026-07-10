@@ -613,6 +613,18 @@
   .result-row dd .field-pin { display: inline-block; vertical-align: -2px; margin-right: 5px; line-height: 0; }
   dl.result-fields { margin: 0; }
 
+  /* ---- School Location layer: type filter + color-coded nearest list ---- */
+  .school-filter { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0 0 10px; }
+  .school-filter-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; user-select: none; }
+  .school-filter-item input { margin: 0; cursor: pointer; }
+  .school-filter-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .school-filter-note { margin: 8px 0 0; font-size: 11px; color: var(--slate-soft); line-height: 1.4; }
+  .school-list-intro { margin: 0 0 8px; }
+  .school-list { margin: 0; padding-left: 20px; }
+  .school-list li { margin: 2px 0; }
+  .school-list-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
+  .school-list-empty { list-style: none; margin-left: -20px; color: var(--slate); }
+
   /* ---- Footer: a dark bookend echoing the masthead ---- */
   footer.site-footer {
     background: var(--ink);
@@ -1861,17 +1873,43 @@
     return (style.fillOpacity || 0) * scaleFactorForActiveCount(n);
   }
 
-  function baseStyleFor(mod) {
+  function baseStyleFor(mod, feature) {
     var style = mod.overlay && mod.overlay.style;
     if (!style) return null;
     var rt = layerRuntime[mod.id];
-    return {
+    var base = {
       color: style.color,
       weight: style.weight,
       fillColor: style.fillColor,
       fillOpacity: (rt && rt.outlineOnly) ? 0 : scaledFillOpacity(mod),
       dashArray: style.dashArray
     };
+    // Optional per-feature override (e.g. the School Location layer color-codes
+    // each footprint by school type and hides types the card's filter turned
+    // off). Layered on top of the flat base so fill-opacity scaling still applies
+    // to the features that stay visible.
+    if (feature && mod.overlay.styleForFeature) {
+      var ov = mod.overlay.styleForFeature(feature);
+      if (ov) {
+        if (ov.color != null) base.color = ov.color;
+        if (ov.fillColor != null) base.fillColor = ov.fillColor;
+        if (ov.opacity != null) base.opacity = ov.opacity;
+        if (ov.fillOpacity != null) base.fillOpacity = ov.fillOpacity;
+        if (ov.dashArray != null) base.dashArray = ov.dashArray;
+      }
+    }
+    return base;
+  }
+
+  // Repaint every path in a layer's overlay from its per-feature base style —
+  // used when a layer's styling inputs change without the selected point moving
+  // (the School Location type filter toggling which categories are shown/colored).
+  function restyleOverlayFeatures(mod) {
+    var rt = layerRuntime[mod.id];
+    if (!rt || !rt.overlayLayer) return;
+    rt.overlayLayer.eachLayer(function (subLayer) {
+      if (subLayer.setStyle && subLayer.feature) subLayer.setStyle(baseStyleFor(mod, subLayer.feature));
+    });
   }
 
   // The active-layer-count signature the P7 incremental highlight fast path keys
@@ -1900,7 +1938,12 @@
     var fillOpacity = scaledFillOpacity(mod);
     if (fillOpacity == null) return; // point-dataset layer (no flat style object)
     rt.overlayLayer.eachLayer(function (subLayer) {
-      if (subLayer.setStyle) subLayer.setStyle({ fillOpacity: fillOpacity });
+      if (!subLayer.setStyle) return;
+      // A per-feature styler owns each path's fill (a filtered-out School
+      // Location footprint must stay hidden), so re-derive its full base style
+      // rather than force the flat scaled opacity back on.
+      if (mod.overlay.styleForFeature) subLayer.setStyle(baseStyleFor(mod, subLayer.feature));
+      else subLayer.setStyle({ fillOpacity: fillOpacity });
     });
   }
 
@@ -1989,13 +2032,18 @@
     rt.highlightSignature = null;
     if (!rt.overlayLayer) return;
     rt.overlayLayer.eachLayer(function (subLayer) {
-      if (subLayer.setStyle) subLayer.setStyle(baseStyleFor(mod));
+      if (subLayer.setStyle) subLayer.setStyle(baseStyleFor(mod, subLayer.feature));
       if (subLayer._path) subLayer._path.classList.remove(HIGHLIGHT_CLASS);
     });
   }
 
   function updateLayerHighlight(mod) {
     var rt = layerRuntime[mod.id];
+    // A color-coded layer (School Location) owns its per-feature appearance and
+    // is a nearest-N layer, not a containment one — fading every footprint but
+    // the one a click happens to land inside would defeat the type coloring, so
+    // skip the highlight/fade sweep and just keep the per-feature base styling.
+    if (mod.overlay && mod.overlay.styleForFeature) { clearLayerHighlight(mod); return; }
     if (!rt.overlayLayer || !rt.geojson || !state.selectedPoint) { clearLayerHighlight(mod); return; }
     var feature = findFeatureContaining(rt.geojson, state.selectedPoint);
     if (!feature) { clearLayerHighlight(mod); return; }
@@ -2357,8 +2405,14 @@
   // the first (post-fetch) build and the P11 rebuild-on-re-toggle path produce an
   // identical layer graph — same base style and optional point renderer.
   function buildOverlayLayer(mod, geojson) {
+    // A layer with a per-feature styler paints each path from its own feature
+    // (School Location color-codes footprints by school type); everything else
+    // shares the one flat base style.
+    var styleFn = mod.overlay.styleForFeature
+      ? function (feature) { return baseStyleFor(mod, feature); }
+      : (baseStyleFor(mod) || undefined);
     return L.geoJSON(geojson, {
-      style: baseStyleFor(mod) || undefined,
+      style: styleFn,
       pointToLayer: mod.overlay.pointToLayer // optional; used by point datasets (e.g. fire stations)
     });
   }
@@ -3445,10 +3499,64 @@
    * ~6 acres, so a click almost never lands inside one — we answer with the nearest
    * 3 by campus centroid (same haversine pattern as Police/Fire Stations), while the
    * overlay still draws the true footprints. Fields: SCHOOL_NAM, GRADES, ADDRESS
-   * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears). */
+   * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears).
+   *
+   * School TYPE is derived from GRADES (the dataset carries no public/private
+   * field): the ~330 parochial/independent schools ship a blank GRADES band and
+   * are bucketed "Private"; the ~686 CPS public+charter schools bucket by the CPS
+   * attendance-zone convention — K-8/PK-8 = Elementary, 6-8 = Middle, anything
+   * reaching grade 9+ = High. The three CPS buckets reuse the exact colors of
+   * their matching attendance-zone layers above; Private keeps the layer's green.
+   * The card's type filter drives both the list and which footprints paint. */
   var SCHOOL_SITE_COUNT = 3;
   var SCHOOL_SITE_SERVICE = arcgisServiceUrl("Schools");
   var loadSchoolSites = makeCached(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
+
+  var SCHOOL_CATS = ["Private", "Elem", "Middle", "High"];
+  var SCHOOL_CAT_META = {
+    // colors thematically match the CPS attendance-zone layers registered above
+    Private: { label: "Private", full: "Private",    color: "#1B7A3D" }, // the layer's own green — non-CPS
+    Elem:    { label: "Elem",    full: "Elementary", color: "#6A3FA0" }, // = CPS Elementary School Zone
+    Middle:  { label: "Middle",  full: "Middle",     color: "#A15C00" }, // = CPS Middle School Zone
+    High:    { label: "High",    full: "High",       color: "#0F6F6F" }  // = CPS High School Zone
+  };
+  // filter selection persists across point selections (a display preference for
+  // the layer, not per-result state); all types shown by default.
+  var schoolTypeFilter = { Private: true, Elem: true, Middle: true, High: true };
+
+  // one grade token -> numeric level (PK = -1, K = 0, 1..12); null if unparseable.
+  // handles bare numbers, "K"/"PK", and ordinal spellings ("10th", "1st").
+  function schoolGradeNum(tok) {
+    var t = String(tok).trim().toUpperCase().replace(/(ST|ND|RD|TH)$/, "");
+    if (!t) return null;
+    if (t === "PK" || t === "PREK" || t === "PRE-K") return -1;
+    if (t === "K") return 0;
+    var n = parseInt(t, 10);
+    return isNaN(n) ? null : n;
+  }
+  // Classify a raw GRADES string into one of SCHOOL_CATS. Blank/unparseable =>
+  // Private (no CPS-published band). GRADES arrives either comma-listed
+  // ("PK, K, 1, ..., 8") or as a dash range ("9-12", "K - 12", "10th-12th"); we
+  // only need the min and max level, so split on either delimiter and take the
+  // extremes rather than expanding the span.
+  function schoolCategory(gradesStr) {
+    var s = (gradesStr == null ? "" : String(gradesStr)).trim();
+    if (!s) return "Private";
+    var parts = s.split(/[-,\/]/);
+    var nums = [];
+    for (var i = 0; i < parts.length; i++) {
+      var n = schoolGradeNum(parts[i]);
+      if (n != null) nums.push(n);
+    }
+    if (!nums.length) return "Private";
+    var max = Math.max.apply(null, nums), min = Math.min.apply(null, nums);
+    if (max >= 9) return "High";   // reaches high school
+    if (min >= 6) return "Middle"; // 6-8 / 7-8 only
+    return "Elem";                 // includes a grade <= 5 and tops out by 8 (K-8, PK-8, K-5)
+  }
+  var schoolGradesOf = function (feature) {
+    return findPropCI((feature && feature.properties) || {}, ["grades", "grade", "grade_range", "boundarygr"]);
+  };
 
   registerLayer({
     id: "school-site",
@@ -3457,68 +3565,140 @@
     label: "School Location (all, incl. private, nearest " + SCHOOL_SITE_COUNT + ")",
     overlay: {
       load: loadSchoolSites,
-      // green — a hue none of the five CPS Schools layers use; "2 2" dash keeps
-      // the tiny footprints distinguishable where they overlap a zone boundary
-      style: { color: "#1B7A3D", weight: 1.5, fillColor: "#1B7A3D", fillOpacity: 0.12, dashArray: "2 2" }
+      // flat base kept for fill-opacity scaling + the layer's legend color; the
+      // per-feature styler below is what actually paints each footprint by type
+      style: { color: "#1B7A3D", weight: 1.5, fillColor: "#1B7A3D", fillOpacity: 0.12, dashArray: "2 2" },
+      // color-code each footprint by school type; hide the types the card's
+      // filter has turned off (stroke + fill dropped to 0 opacity).
+      styleForFeature: function (feature) {
+        var cat = schoolCategory(schoolGradesOf(feature));
+        if (!schoolTypeFilter[cat]) return { opacity: 0, fillOpacity: 0 };
+        var color = SCHOOL_CAT_META[cat].color;
+        return { color: color, fillColor: color, opacity: 1 };
+      }
+    },
+    // hover over a footprint surfaces the school's name, type and grade range
+    hoverName: function (feature) {
+      var props = feature.properties || {};
+      var name = findPropCI(props, ["school_nam", "school", "school_name", "schoolname", "name"]);
+      var grades = String(schoolGradesOf(feature) || "").trim();
+      var meta = SCHOOL_CAT_META[schoolCategory(grades)];
+      return (name ? String(name) : "School") + " — " + meta.full + (grades ? " (" + grades + ")" : "");
+    },
+    // matching the hover dot to the footprint's type color reinforces the legend
+    hoverDotColor: function (feature) {
+      return SCHOOL_CAT_META[schoolCategory(schoolGradesOf(feature))].color;
     },
     query: function (point, seq) {
       return loadSchoolSites().then(function (geojson) {
         var features = (geojson && geojson.features) || [];
+        // several records ship " " (a single space) for grades/address/website —
+        // trim to null so the card doesn't render empty parens or dangling dashes
+        var clean = function (v) { var s = v == null ? "" : String(v).trim(); return s ? s : null; };
         var withDistance = [];
         for (var i = 0; i < features.length; i++) {
           var latLng = polygonRepresentativeLatLng(features[i]);
           if (!latLng) continue;
+          var props = features[i].properties || {};
+          var grades = clean(findPropCI(props, ["grades", "grade", "grade_range", "boundarygr"]));
           withDistance.push({
-            feature: features[i],
+            name: clean(findPropCI(props, ["school_nam", "school", "school_name", "schoolname", "name"])),
+            grades: grades,
+            category: schoolCategory(grades),
+            address: clean(findPropCI(props, ["address", "school_add", "location_address"])),
+            website: clean(findPropCI(props, ["website", "link", "url"])),
             distanceMi: haversineMiles(point.lat, point.lng, latLng.lat, latLng.lng)
           });
         }
         if (!withDistance.length) return null;
         withDistance.sort(function (a, b) { return a.distanceMi - b.distanceMi; });
-        // several records ship " " (a single space) for grades/address/website —
-        // trim to null so the card doesn't render empty parens or dangling dashes
-        var clean = function (v) { var s = v == null ? "" : String(v).trim(); return s ? s : null; };
-        var nearest = withDistance.slice(0, SCHOOL_SITE_COUNT).map(function (w) {
-          var props = w.feature.properties || {};
-          return {
-            name: clean(findPropCI(props, ["school_nam", "school", "school_name", "schoolname", "name"])),
-            grades: clean(findPropCI(props, ["grades", "grade", "grade_range", "boundarygr"])),
-            address: clean(findPropCI(props, ["address", "school_add", "location_address"])),
-            website: clean(findPropCI(props, ["website", "link", "url"])),
-            distanceMi: w.distanceMi
-          };
-        });
-        return { seq: seq, schools: nearest };
+        // return the full sorted set (not just nearest 3) so the type filter can
+        // re-slice the list client-side without re-querying
+        return { seq: seq, schools: withDistance };
       });
     },
     render: function (result) {
       var wrap = document.createElement("div");
+
+      // ---- type filter — drives both the list below and the map footprints ----
+      var counts = { Private: 0, Elem: 0, Middle: 0, High: 0 };
+      result.schools.forEach(function (s) { counts[s.category]++; });
+      var filterWrap = document.createElement("div");
+      filterWrap.className = "school-filter";
+      SCHOOL_CATS.forEach(function (cat) {
+        var meta = SCHOOL_CAT_META[cat];
+        var label = document.createElement("label");
+        label.className = "school-filter-item";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!schoolTypeFilter[cat];
+        cb.addEventListener("change", function () {
+          schoolTypeFilter[cat] = cb.checked;
+          renderList();
+          var mod = getLayerById("school-site");
+          if (mod) restyleOverlayFeatures(mod); // repaint/hide footprints to match
+        });
+        var swatch = document.createElement("span");
+        swatch.className = "school-filter-swatch";
+        swatch.style.background = meta.color;
+        var txt = document.createElement("span");
+        txt.textContent = meta.label + " (" + counts[cat] + ")";
+        label.appendChild(cb);
+        label.appendChild(swatch);
+        label.appendChild(txt);
+        filterWrap.appendChild(label);
+      });
+      wrap.appendChild(filterWrap);
+
       var intro = document.createElement("p");
-      intro.style.margin = "0 0 8px";
+      intro.className = "school-list-intro";
       intro.textContent = "Nearest schools, straight-line distance:";
       wrap.appendChild(intro);
+
       var ol = document.createElement("ol");
-      ol.style.margin = "0";
-      ol.style.paddingLeft = "20px";
-      result.schools.forEach(function (s) {
-        var li = document.createElement("li");
-        var name = s.name ? String(s.name) : "School";
-        var gradesPart = s.grades ? " (" + String(s.grades) + ")" : "";
-        var addressPart = s.address ? " — " + String(s.address) : "";
-        li.textContent = name + gradesPart + addressPart + " — " + s.distanceMi.toFixed(2) + " mi";
-        var website = safeHttpUrl(s.website); // empty in current data; scheme-checked if ever populated
-        if (website) {
-          li.appendChild(document.createTextNode(" — "));
-          var a = document.createElement("a");
-          a.href = website;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.textContent = "website";
-          li.appendChild(a);
-        }
-        ol.appendChild(li);
-      });
+      ol.className = "school-list";
       wrap.appendChild(ol);
+
+      var note = document.createElement("p");
+      note.className = "school-filter-note";
+      note.textContent = "Type is inferred from the grade range. “Private” = schools with no CPS-published grade band (parochial/independent).";
+      wrap.appendChild(note);
+
+      function renderList() {
+        ol.innerHTML = "";
+        var shown = result.schools.filter(function (s) { return schoolTypeFilter[s.category]; }).slice(0, SCHOOL_SITE_COUNT);
+        if (!shown.length) {
+          var empty = document.createElement("li");
+          empty.className = "school-list-empty";
+          empty.textContent = "No schools of the selected type(s) nearby.";
+          ol.appendChild(empty);
+          return;
+        }
+        shown.forEach(function (s) {
+          var li = document.createElement("li");
+          var dot = document.createElement("span");
+          dot.className = "school-list-dot";
+          dot.style.background = SCHOOL_CAT_META[s.category].color;
+          li.appendChild(dot);
+          var name = s.name ? String(s.name) : "School";
+          var typePart = " — " + SCHOOL_CAT_META[s.category].full;
+          var gradesPart = s.grades ? " (" + String(s.grades) + ")" : "";
+          var addressPart = s.address ? " — " + String(s.address) : "";
+          li.appendChild(document.createTextNode(name + typePart + gradesPart + addressPart + " — " + s.distanceMi.toFixed(2) + " mi"));
+          var website = safeHttpUrl(s.website); // empty in current data; scheme-checked if ever populated
+          if (website) {
+            li.appendChild(document.createTextNode(" — "));
+            var a = document.createElement("a");
+            a.href = website;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.textContent = "website";
+            li.appendChild(a);
+          }
+          ol.appendChild(li);
+        });
+      }
+      renderList();
       return wrap;
     }
   });
@@ -4382,8 +4562,13 @@
       // if this row is the hovered pin's own layer, surface the pin's address
       // right under the value so it reads as "this office, in this district".
       if (poi && !poiPlaced && mod.id === poi.modId) { valueHtml += poiLine; poiPlaced = true; }
+      // The dot normally shows the layer's one color; a layer that color-codes its
+      // features (School Location, by school type) can override it per feature so
+      // the dot matches the footprint under the cursor.
+      var dotColor = moduleColor(mod);
+      if (mod.hoverDotColor) { try { dotColor = mod.hoverDotColor(rows[i].feature) || dotColor; } catch (e) { /* keep layer color */ } }
       html += '<div class="hover-row' + (i === 0 ? " hover-row-parent" : "") + '">' +
-        '<span class="hover-dot" style="background:' + sanitize(moduleColor(mod)) + '"></span>' +
+        '<span class="hover-dot" style="background:' + sanitize(dotColor) + '"></span>' +
         '<span class="hover-row-text">' +
           '<span class="hover-row-label">' + sanitize(mod.label) + '</span>' +
           '<span class="hover-row-value">' + valueHtml + "</span>" +
