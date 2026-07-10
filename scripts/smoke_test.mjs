@@ -92,6 +92,27 @@ try {
       return el ? el.innerText : "";
     });
     check("school-board joins member roster", /Board member/i.test(board), board.replace(/\s+/g, " ").slice(0, 70));
+
+    // Bonus: moving the selection re-classifies correctly. This exercises the
+    // incremental-restyle fast path (P7) — same layers on, new point — where
+    // updateLayerHighlight only flips the old/new matched paths instead of
+    // re-styling every path. 41.99,-87.66 is school-board district 4 (vs 12 at
+    // the Loop point above), and the matched-region highlight must move with it.
+    const moved = await page.evaluate(async () => {
+      window.ChiExplorer.setSelectedPoint(41.99, -87.66);
+      const el = document.getElementById("card-school-board");
+      for (let i = 0; i < 100; i++) {
+        if (el && !el.querySelector(".loading-row") && /District\s+4\b/i.test(el.innerText)) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const highlights = document.querySelectorAll("#map .chi-region-highlight").length;
+      return { text: el ? el.innerText.replace(/\s+/g, " ").trim() : "(no card)", highlights };
+    });
+    check(
+      "point move re-classifies (District 12 -> 4) and re-highlights",
+      /District\s+4\b/i.test(moved.text) && moved.highlights >= 1,
+      `${moved.text.slice(0, 60)} | highlights=${moved.highlights}`
+    );
     await context.close();
   }
 

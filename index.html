@@ -1552,6 +1552,12 @@
     layerRuntime[mod.id] = {
       overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null,
       highlightedLayer: null, poiMarker: null, block: null, pinBtn: null,
+      // highlight bookkeeping for the incremental-restyle fast path (P7): whether
+      // a highlight is currently applied, and a signature of the inputs the
+      // faded/base styles depend on (active-layer count + outline mode). When the
+      // signature is unchanged, a point move only restyles the two paths whose
+      // role flips instead of re-styling every path in the layer.
+      highlightApplied: false, highlightSignature: null,
       // when true the layer draws its outline only (fillOpacity forced to 0),
       // regardless of its own style — used when a sub-layer takes over the fill
       // (e.g. Police Beat filling a Police District that's dropped to outline).
@@ -1691,6 +1697,8 @@
   function clearLayerHighlight(mod) {
     var rt = layerRuntime[mod.id];
     rt.highlightedLayer = null;
+    rt.highlightApplied = false; // next updateLayerHighlight must do a full sweep, not an incremental diff
+    rt.highlightSignature = null;
     if (!rt.overlayLayer) return;
     rt.overlayLayer.eachLayer(function (subLayer) {
       if (subLayer.setStyle) subLayer.setStyle(baseStyleFor(mod));
@@ -1706,8 +1714,26 @@
 
     var faded = fadedStyle(baseStyleFor(mod));
     var highlight = highlightStyleFor(mod);
+
+    // Fast path (P7): the faded/base style of the non-matched paths depends only
+    // on the active-layer count and outline mode; the matched-region highlight
+    // depends on neither. So when that signature is unchanged and this layer is
+    // already showing a highlight, a point move only flips two paths — the old
+    // match back to faded and the new match to highlight — and every other path
+    // already shows the identical faded style. That turns the common "same
+    // layers on, user clicked a new point" case from ~N setStyle calls (the
+    // measured dominant per-click cost) into 2. Any signature change (a layer
+    // toggled on/off, outline mode flipped) falls back to the full sweep below.
+    var signature = activeLayerCount() + "|" + (rt.outlineOnly ? "1" : "0");
+    var prevMatch = rt.highlightedLayer;
+    var incremental = rt.highlightApplied && rt.highlightSignature === signature && !!prevMatch;
+    if (incremental && prevMatch.feature === feature) return; // same match, same styling — nothing changed
+
     rt.overlayLayer.eachLayer(function (subLayer) {
       var isMatch = subLayer.feature === feature;
+      // In the incremental case only the previous match and the new match change
+      // role; leave every other path's DOM untouched.
+      if (incremental && isMatch === (subLayer === prevMatch)) return;
       if (subLayer.setStyle) subLayer.setStyle(isMatch ? highlight : faded);
       if (subLayer._path) {
         if (isMatch) subLayer._path.classList.add(HIGHLIGHT_CLASS);
@@ -1722,6 +1748,8 @@
       // needs no z-order lift; size order stays authoritative.
       if (isMatch) rt.highlightedLayer = subLayer;
     });
+    rt.highlightApplied = true;
+    rt.highlightSignature = signature;
   }
 
   /* ---------- optional per-module "point of interest" pin (e.g. a school's
@@ -2210,11 +2238,24 @@
   }
 
   function findFeatureContaining(geojson, point) {
-    var features = (geojson && geojson.features) || [];
+    if (!geojson) return null;
+    // Memoize the (point -> feature) scan on the geojson object itself. A single
+    // click runs this once inside the layer's query() and again in
+    // updateLayerHighlight(), both against the SAME cached geojson and the SAME
+    // state.selectedPoint object (a fresh object per selection — see
+    // setSelectedPoint), so the second call is a free cache hit instead of a
+    // second full point-in-polygon sweep (P7). Keyed by point-object identity,
+    // so a new selection (new point object) always rescans; the cache is purely
+    // an optimization and never changes the answer.
+    var cache = geojson.__pointQueryCache;
+    if (cache && cache.point === point) return cache.feature;
+    var features = geojson.features || [];
+    var found = null;
     for (var i = 0; i < features.length; i++) {
-      if (pointInGeometry(point, features[i].geometry)) return features[i];
+      if (pointInGeometry(point, features[i].geometry)) { found = features[i]; break; }
     }
-    return null;
+    geojson.__pointQueryCache = { point: point, feature: found };
+    return found;
   }
 
   /* ---------- Community Area ---------- */
@@ -3956,6 +3997,7 @@
   window.ChiExplorer = {
     state: state,
     registerLayer: registerLayer,
+    setSelectedPoint: setSelectedPoint, // debug/programmatic point selection (also used by the smoke test)
     sanitize: sanitize,
     pointInGeometry: pointInGeometry,
     fetchJSONWithRetry: fetchJSONWithRetry,
