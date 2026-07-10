@@ -1,15 +1,20 @@
 // App-shell + app-data cache. Never serve live district/roster API responses
 // stale — a stale roster could name the wrong officeholder, and this app's
 // rule is that officeholder data is never guessed or served stale. The bump
-// to -v2 accompanies the move of the formerly-embedded datasets out of
-// index.html into data/app/*.json (see below); the activate handler deletes
-// every other-named cache, so the old v1 shell (which held the ~400 KB inline
-// page) is reclaimed on first load.
-const CACHE_NAME = "district-explorer-shell-v2";
+// to -v3 accompanies dropping the duplicate "./index.html" shell entry (see
+// below); the activate handler deletes every other-named cache, so the old
+// shell is reclaimed on first load. Bump CACHE_NAME whenever SHELL_URLS,
+// GEOMETRY_URLS, or ROSTER_URLS change so a removed entry can't live forever.
+const CACHE_NAME = "district-explorer-shell-v3";
 
+// "./" and "./index.html" resolve to the same GitHub Pages document, so we
+// precache only the canonical "./" — caching both stored two ~112 KB-gzip
+// copies under two keys and re-downloaded the page at install. The manifest's
+// start_url is still ./index.html and a deep bookmark may hit /index.html
+// directly; the navigate-request branch in the fetch handler serves the cached
+// "./" shell for any such navigation, so offline boot still works either way.
 const SHELL_URLS = [
   "./",
-  "./index.html",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -99,6 +104,20 @@ function cacheFirst(request) {
 
 self.addEventListener("fetch", (event) => {
   const href = new URL(event.request.url).href;
+
+  // Page navigations (including an installed PWA's ./index.html start_url and
+  // any deep /index.html bookmark): network-first so an online visitor always
+  // gets the current page, falling back offline to the cached canonical shell
+  // ("./") — which is why the duplicate "./index.html" precache entry could be
+  // dropped without losing offline boot.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      networkFirst(event.request).then(
+        (resp) => resp || caches.match(new URL("./", self.registration.scope).href)
+      )
+    );
+    return;
+  }
 
   // Shell and roster data: never stale online, cached only for offline boot.
   if (inList(href, SHELL_URLS) || inList(href, ROSTER_URLS)) {

@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://b.basemaps.cartocdn.com">
 <link rel="dns-prefetch" href="https://data.cityofchicago.org">
 <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="" />
 
@@ -305,6 +305,41 @@
     align-items: flex-start;
     gap: 8px;
   }
+  /* Honest, dismissible notice when the CDN basemap tiles fail — the app itself
+   * keeps working offline (SW shell + same-origin data), so the map just goes
+   * gray without this. Bottom-center so it clears the top toolbar and the
+   * bottom-left controls. */
+  .map-tile-banner {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(92%, 440px);
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-left: 4px solid var(--warn);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 18px rgba(20, 24, 28, 0.18);
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .map-tile-banner[hidden] { display: none; }
+  .tile-banner-dismiss {
+    flex: none;
+    border: none;
+    background: transparent;
+    color: var(--slate);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .tile-banner-dismiss:hover { color: var(--ink); }
   .hover-toggle-btn {
     font-family: var(--font-body);
     font-size: 12px;
@@ -817,6 +852,11 @@
         title="Hover explorer — show the districts under your cursor as you move the mouse">Hover: on</button>
       <div class="selected-point-chip" id="point-chip" hidden></div>
     </div>
+
+    <div class="map-tile-banner" id="tile-banner" role="status" aria-live="polite" hidden>
+      <span>Base map tiles unavailable — your selections and layers still work.</span>
+      <button type="button" id="tile-banner-dismiss" class="tile-banner-dismiss" aria-label="Dismiss this message">✕</button>
+    </div>
   </section>
 
   <section class="results-col" id="results-col" aria-label="Civic profile results" aria-live="polite">
@@ -1155,11 +1195,47 @@
 
   var map = L.map("map", { minZoom: 9, maxZoom: 18, zoomControl: false }).setView(CHI_CENTER, 11);
   L.control.zoom({ position: "bottomright" }).addTo(map);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  var baseTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
     subdomains: "abcd",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
   }).addTo(map);
+
+  /* ---------- base-map tile-failure notice (R6) ----------
+   * The app boots and stays usable offline (SW shell + same-origin data/app),
+   * but the CARTO basemap tiles come from a CDN — a tile outage otherwise leaves
+   * a silent gray map with no explanation. `tileerror` fires once per failed
+   * tile, so we debounce: only surface the banner after several failures in a
+   * short window (a single transient tile hiccup shouldn't flash it), and hide
+   * it the moment a tile loads again (the CDN recovered). Manual dismiss latches
+   * for the session — the user has acknowledged the base map is down. */
+  var tileBanner = document.getElementById("tile-banner");
+  var tileErrorCount = 0;
+  var tileErrorResetTimer = null;
+  var tileBannerDismissed = false;
+  var TILE_ERROR_THRESHOLD = 4;
+
+  baseTiles.on("tileerror", function () {
+    if (tileBannerDismissed) return;
+    tileErrorCount += 1;
+    if (tileErrorResetTimer) clearTimeout(tileErrorResetTimer);
+    // if errors stop arriving, let the running count decay so a slow trickle of
+    // one-off failures over minutes never accumulates into a false alarm
+    tileErrorResetTimer = setTimeout(function () { tileErrorCount = 0; }, 4000);
+    if (tileErrorCount >= TILE_ERROR_THRESHOLD && tileBanner) tileBanner.hidden = false;
+  });
+  baseTiles.on("tileload", function () {
+    tileErrorCount = 0;
+    if (tileBanner && !tileBanner.hidden) tileBanner.hidden = true; // tiles are flowing again
+  });
+
+  var tileBannerDismiss = document.getElementById("tile-banner-dismiss");
+  if (tileBannerDismiss) {
+    tileBannerDismiss.addEventListener("click", function () {
+      tileBannerDismissed = true;
+      if (tileBanner) tileBanner.hidden = true;
+    });
+  }
 
   var selectedMarker = null;
   var pointChip = document.getElementById("point-chip");
@@ -1552,6 +1628,12 @@
     layerRuntime[mod.id] = {
       overlayLayer: null, overlayLoaded: false, cardBody: null, geojson: null,
       highlightedLayer: null, poiMarker: null, block: null, pinBtn: null,
+      // highlight bookkeeping for the incremental-restyle fast path (P7): whether
+      // a highlight is currently applied, and a signature of the inputs the
+      // faded/base styles depend on (active-layer count + outline mode). When the
+      // signature is unchanged, a point move only restyles the two paths whose
+      // role flips instead of re-styling every path in the layer.
+      highlightApplied: false, highlightSignature: null,
       // when true the layer draws its outline only (fillOpacity forced to 0),
       // regardless of its own style — used when a sub-layer takes over the fill
       // (e.g. Police Beat filling a Police District that's dropped to outline).
@@ -1691,6 +1773,8 @@
   function clearLayerHighlight(mod) {
     var rt = layerRuntime[mod.id];
     rt.highlightedLayer = null;
+    rt.highlightApplied = false; // next updateLayerHighlight must do a full sweep, not an incremental diff
+    rt.highlightSignature = null;
     if (!rt.overlayLayer) return;
     rt.overlayLayer.eachLayer(function (subLayer) {
       if (subLayer.setStyle) subLayer.setStyle(baseStyleFor(mod));
@@ -1706,8 +1790,26 @@
 
     var faded = fadedStyle(baseStyleFor(mod));
     var highlight = highlightStyleFor(mod);
+
+    // Fast path (P7): the faded/base style of the non-matched paths depends only
+    // on the active-layer count and outline mode; the matched-region highlight
+    // depends on neither. So when that signature is unchanged and this layer is
+    // already showing a highlight, a point move only flips two paths — the old
+    // match back to faded and the new match to highlight — and every other path
+    // already shows the identical faded style. That turns the common "same
+    // layers on, user clicked a new point" case from ~N setStyle calls (the
+    // measured dominant per-click cost) into 2. Any signature change (a layer
+    // toggled on/off, outline mode flipped) falls back to the full sweep below.
+    var signature = activeLayerCount() + "|" + (rt.outlineOnly ? "1" : "0");
+    var prevMatch = rt.highlightedLayer;
+    var incremental = rt.highlightApplied && rt.highlightSignature === signature && !!prevMatch;
+    if (incremental && prevMatch.feature === feature) return; // same match, same styling — nothing changed
+
     rt.overlayLayer.eachLayer(function (subLayer) {
       var isMatch = subLayer.feature === feature;
+      // In the incremental case only the previous match and the new match change
+      // role; leave every other path's DOM untouched.
+      if (incremental && isMatch === (subLayer === prevMatch)) return;
       if (subLayer.setStyle) subLayer.setStyle(isMatch ? highlight : faded);
       if (subLayer._path) {
         if (isMatch) subLayer._path.classList.add(HIGHLIGHT_CLASS);
@@ -1722,6 +1824,8 @@
       // needs no z-order lift; size order stays authoritative.
       if (isMatch) rt.highlightedLayer = subLayer;
     });
+    rt.highlightApplied = true;
+    rt.highlightSignature = signature;
   }
 
   /* ---------- optional per-module "point of interest" pin (e.g. a school's
@@ -2138,28 +2242,32 @@
     ];
   }
 
-  function loadSocrataGeoJSON(datasetId) {
-    var urls = socrataRouteUrls(datasetId);
+  /* ---------- walk a list of fallback routes, returning the first response that
+   * passes `validate`. Single catch per route: a fetch failure and a "200 but
+   * useless" response both advance to the next route exactly once — the old
+   * .then-recursion + .catch-recursion pair re-ran later routes twice, a bug
+   * this shared helper keeps fixed for both Socrata callers. Primary route (0)
+   * gets 2 retries, fallbacks 1. `label` only names the dataset in the reject. */
+  function tryRoutes(urls, validate, label) {
     function tryRoute(i) {
-      if (i >= urls.length) return Promise.reject(new Error("no route for " + datasetId + " returned usable geometry"));
+      if (i >= urls.length) return Promise.reject(new Error("no route for " + label + " succeeded"));
       return fetchJSONWithRetry(urls[i], {}, i === 0 ? 2 : 1)
-        .then(function (geojson) {
-          if (hasUsableGeometry(geojson)) return geojson;
-          throw new Error("route returned no usable geometry");
+        .then(function (data) {
+          if (validate(data)) return data;
+          throw new Error("route returned nothing usable");
         })
-        .catch(function () {
-          // single catch per route: a fetch failure and a "200 but useless"
-          // response both advance to the next route exactly once (the old
-          // .then-recursion + .catch-recursion pair re-ran later routes twice)
-          return tryRoute(i + 1);
-        });
+        .catch(function () { return tryRoute(i + 1); });
     }
     return tryRoute(0);
   }
 
+  function loadSocrataGeoJSON(datasetId) {
+    return tryRoutes(socrataRouteUrls(datasetId), hasUsableGeometry, datasetId + " geometry");
+  }
+
   /* ---------- one shared in-flight/cached promise per loader fn, so overlay.load()
    * and query() never trigger two separate downloads of the same boundaries ---------- */
-  function makeCachedLoaderFromFn(loadFn) {
+  function makeCached(loadFn) {
     var pending = null;
     return function () {
       if (!pending) {
@@ -2173,7 +2281,7 @@
   }
 
   function makeCachedLoader(datasetId) {
-    return makeCachedLoaderFromFn(function () { return loadSocrataGeoJSON(datasetId); });
+    return makeCached(function () { return loadSocrataGeoJSON(datasetId); });
   }
 
   /* ---------- fetch a CPD-hosted ArcGIS FeatureServer layer as GeoJSON.
@@ -2210,40 +2318,97 @@
   }
 
   function findFeatureContaining(geojson, point) {
-    var features = (geojson && geojson.features) || [];
+    if (!geojson) return null;
+    // Memoize the (point -> feature) scan on the geojson object itself. A single
+    // click runs this once inside the layer's query() and again in
+    // updateLayerHighlight(), both against the SAME cached geojson and the SAME
+    // state.selectedPoint object (a fresh object per selection — see
+    // setSelectedPoint), so the second call is a free cache hit instead of a
+    // second full point-in-polygon sweep (P7). Keyed by point-object identity,
+    // so a new selection (new point object) always rescans; the cache is purely
+    // an optimization and never changes the answer.
+    var cache = geojson.__pointQueryCache;
+    if (cache && cache.point === point) return cache.feature;
+    var features = geojson.features || [];
+    var found = null;
     for (var i = 0; i < features.length; i++) {
-      if (pointInGeometry(point, features[i].geometry)) return features[i];
+      if (pointInGeometry(point, features[i].geometry)) { found = features[i]; break; }
     }
-    return null;
+    geojson.__pointQueryCache = { point: point, feature: found };
+    return found;
+  }
+
+  /* ---------- declarative factory for single-source polygon layers ----------
+   * The plain "load a boundary set, find the polygon containing the point, read
+   * a few properties, list them" shape recurs across layers with no async roster
+   * join. Rather than a near-identical query()/render() pair each time, describe
+   * the card as a `fields` list and let this build both from it. Layers that join
+   * a roster or a second source (Police District, Ward, Congress, Commissioner,
+   * CCPSA, …) keep their explicit registerLayer blocks — their multi-source,
+   * Promise.all query() doesn't fit this shape.
+   *
+   * opts: { id, group, label, loader, style, pointOfInterest?, fields: [...] }
+   * Each field is one of:
+   *   { name, label, keys:[...], primary:true } — always shown; findPropCI(keys)
+   *        with an "Unknown" fallback. Conventionally the first field (headline).
+   *   { name, label, keys:[...] }               — shown only when findPropCI hits.
+   *   { label, value:"..." }                    — a fixed text row (e.g. a note).
+   *   { label, html:"..." }                     — a fixed html row (e.g. a link;
+   *        the caller certifies the html exactly as a hand-written render would).
+   * An optional `when(result)` on any field gates it on the extracted values
+   * (e.g. the IL Supreme Court "District 1 is all of Cook County" note). */
+  function registerPolygonLayer(opts) {
+    var load = opts.loader;
+    var keyedFields = opts.fields.filter(function (f) { return f.keys; });
+    registerLayer({
+      id: opts.id,
+      group: opts.group,
+      label: opts.label,
+      overlay: { load: load, style: opts.style },
+      query: function (point, seq) {
+        return load().then(function (geojson) {
+          var feature = findFeatureContaining(geojson, point);
+          if (!feature) return null;
+          var props = feature.properties || {};
+          var result = { seq: seq };
+          keyedFields.forEach(function (f) { result[f.name] = findPropCI(props, f.keys); });
+          return result;
+        });
+      },
+      render: function (result) {
+        var rows = [];
+        opts.fields.forEach(function (f) {
+          if (f.when && !f.when(result)) return;
+          if (f.keys) {
+            var val = result[f.name];
+            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown" });
+            else if (val) rows.push({ label: f.label, value: String(val) });
+          } else if (f.html !== undefined) {
+            rows.push({ label: f.label, html: f.html });
+          } else {
+            rows.push({ label: f.label, value: f.value });
+          }
+        });
+        return renderFieldList(rows);
+      },
+      pointOfInterest: opts.pointOfInterest
+    });
   }
 
   /* ---------- Community Area ---------- */
   var loadCommunityAreas = makeCachedLoader("igwz-8jzy");
 
-  registerLayer({
+  registerPolygonLayer({
     id: "community-area",
     group: "geography",
     label: "Community Area",
-    overlay: {
-      load: loadCommunityAreas,
-      // dashed outline (not just a color) so it's distinguishable from ZIP without relying on hue alone
-      style: { color: "#3D6B49", weight: 1.5, fillColor: "#5C8F6B", fillOpacity: 0.06, dashArray: "5 3" }
-    },
-    query: function (point, seq) {
-      return loadCommunityAreas().then(function (geojson) {
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var props = feature.properties || {};
-        var name = findPropCI(props, ["community", "community_area_name", "commarea", "comarea"]);
-        var number = findPropCI(props, ["area_numbe", "area_num_1", "area_number", "community_area_number", "area_num"]);
-        return { seq: seq, name: name, number: number };
-      });
-    },
-    render: function (result) {
-      var fields = [{ label: "Name", value: result.name ? String(result.name) : "Unknown" }];
-      if (result.number) fields.push({ label: "Area #", value: String(result.number) });
-      return renderFieldList(fields);
-    }
+    loader: loadCommunityAreas,
+    // dashed outline (not just a color) so it's distinguishable from ZIP without relying on hue alone
+    style: { color: "#3D6B49", weight: 1.5, fillColor: "#5C8F6B", fillOpacity: 0.06, dashArray: "5 3" },
+    fields: [
+      { name: "name", label: "Name", keys: ["community", "community_area_name", "commarea", "comarea"], primary: true },
+      { name: "number", label: "Area #", keys: ["area_numbe", "area_num_1", "area_number", "community_area_number", "area_num"] }
+    ]
   });
 
   /* ---------- ZIP Code ---------- */
@@ -2252,29 +2417,16 @@
   // view id unjd-c2ca serves the same data with real geometry
   var loadZipCodes = makeCachedLoader("unjd-c2ca");
 
-  registerLayer({
+  registerPolygonLayer({
     id: "zip-code",
     group: "geography",
     label: "ZIP Code",
-    overlay: {
-      load: loadZipCodes,
-      // dotted outline (distinct pattern from Community Area's dashed one) + different hue
-      style: { color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "1 4" }
-    },
-    query: function (point, seq) {
-      return loadZipCodes().then(function (geojson) {
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var props = feature.properties || {};
-        var zip = findPropCI(props, ["zip", "zip_code", "zipcode", "zcta5ce10"]);
-        return { seq: seq, zip: zip };
-      });
-    },
-    render: function (result) {
-      return renderFieldList([
-        { label: "ZIP Code", value: result.zip ? String(result.zip) : "Unknown" }
-      ]);
-    }
+    loader: loadZipCodes,
+    // dotted outline (distinct pattern from Community Area's dashed one) + different hue
+    style: { color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "1 4" },
+    fields: [
+      { name: "zip", label: "ZIP Code", keys: ["zip", "zip_code", "zipcode", "zcta5ce10"], primary: true }
+    ]
   });
 
   /* =========================================================================
@@ -2338,7 +2490,7 @@
   // new field names and the old Socrata ones, so this degrades gracefully
   // if either guess is wrong; still worth an operator spot-check.
   var POLICE_DISTRICT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_District_Boundary_View");
-  var loadPoliceDistricts = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
+  var loadPoliceDistricts = makeCached(function () { return loadArcGISGeoJSON(POLICE_DISTRICT_BOUNDARY_SERVICE); });
 
   // Police_District_Stations_View (CPD's ArcGIS org) carries station address +
   // phone per district straight from source, CORS-enabled. Shared by two
@@ -2346,7 +2498,7 @@
   // District card, which falls back to it for address/phone when the commander
   // roster (cpd-district-info.json) is empty or a weekly scrape was blocked.
   var POLICE_STATION_SERVICE = arcgisServiceUrl("Police_District_Stations_View");
-  var loadPoliceStations = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
+  var loadPoliceStations = makeCached(function () { return loadArcGISGeoJSON(POLICE_STATION_SERVICE); });
 
   // Index the station points by bare district number ("8"), memoized on the
   // FeatureCollection so repeated clicks don't rebuild it.
@@ -2471,7 +2623,7 @@
    * other CPD layers), so findPropCI's alias lists cover the likely casings
    * and it degrades gracefully if a guess is wrong. ---------- */
   var POLICE_BEAT_BOUNDARY_SERVICE = arcgisServiceUrl("Police_Beat_Boundary");
-  var loadPoliceBeats = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
+  var loadPoliceBeats = makeCached(function () { return loadArcGISGeoJSON(POLICE_BEAT_BOUNDARY_SERVICE); });
   // Prefer the canonical 4-digit CPD beat number (BEAT_NUMBE, e.g. "2423").
   // "beat_num" is listed first for other possible schemas but does NOT match
   // the live "BEAT_NUMBE" field; the truncated "beat" digit ("3") is a
@@ -2878,7 +3030,7 @@
    * (LINK/WEBSITE ship empty today, so surface them only if a value ever appears). */
   var SCHOOL_SITE_COUNT = 3;
   var SCHOOL_SITE_SERVICE = arcgisServiceUrl("Schools");
-  var loadSchoolSites = makeCachedLoaderFromFn(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
+  var loadSchoolSites = makeCached(function () { return loadArcGISGeoJSON(SCHOOL_SITE_SERVICE); });
 
   registerLayer({
     id: "school-site",
@@ -2976,16 +3128,6 @@
   /* ---------- generic cached-promise wrapper (Socrata-geojson-specific
    * makeCachedLoader above predates this; this variant memoizes any loader
    * function, used here for the roster/geometry JSON fetches and TIGERweb) ---------- */
-  function makeCached(fn) {
-    var pending = null;
-    return function () {
-      if (!pending) {
-        pending = fn().catch(function (err) { pending = null; throw err; });
-      }
-      return pending;
-    };
-  }
-
   /* ---------- fetch a Socrata dataset as plain JSON rows (not geometry) — used
    * for roster tables like the alderman list, which have no geometry column ---------- */
   function loadSocrataJSON(datasetId) {
@@ -2993,18 +3135,7 @@
       "https://data.cityofchicago.org/resource/" + datasetId + ".json?$limit=1000",
       "https://data.cityofchicago.org/api/v3/views/" + datasetId + "/query.json"
     ];
-    function tryRoute(i) {
-      if (i >= urls.length) return Promise.reject(new Error("no route for " + datasetId + " returned rows"));
-      return fetchJSONWithRetry(urls[i], {}, i === 0 ? 2 : 1)
-        .then(function (rows) {
-          if (Array.isArray(rows) && rows.length) return rows;
-          throw new Error("route returned no rows");
-        })
-        .catch(function () {
-          return tryRoute(i + 1); // single catch per route — see loadSocrataGeoJSON
-        });
-    }
-    return tryRoute(0);
+    return tryRoutes(urls, function (rows) { return Array.isArray(rows) && rows.length; }, datasetId + " rows");
   }
 
   /* ---------- Census TIGERweb Legislative MapServer (Esri REST, not Socrata) —
@@ -3447,66 +3578,38 @@
     return fetchJSONWithRetry("data/app/il-supreme-court-districts.json", {}, 2);
   });
 
-  registerLayer({
+  registerPolygonLayer({
     id: "il-supreme-court",
     group: "political",
     label: "IL Supreme Court District",
-    overlay: {
-      load: loadSupremeCourtDistricts,
-      style: { color: "#8C6A2E", weight: 2, fillColor: "#8C6A2E", fillOpacity: 0.05, dashArray: "7 3" }
-    },
-    query: function (point, seq) {
-      return loadSupremeCourtDistricts().then(function (geojson) {
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var district = findPropCI(feature.properties || {}, ["districtn", "district"]);
-        return { seq: seq, district: district };
-      });
-    },
-    render: function (result) {
-      var fields = [{ label: "District", value: result.district ? String(result.district) : "Unknown" }];
-      if (String(result.district) === "1") {
-        // structural fact from the Illinois Constitution (art. VI), not
-        // officeholder data: District 1 is Cook County and elects three of
-        // the court's seven justices; districts 2-5 elect one each
-        fields.push({ label: "Note", value: "District 1 is all of Cook County and elects three of the seven justices." });
-      }
-      fields.push({
-        label: "Court info",
-        html: '<a href="https://www.illinoiscourts.gov/courts/supreme-court/" target="_blank" rel="noopener">Illinois Supreme Court</a>'
-      });
-      return renderFieldList(fields);
-    }
+    loader: loadSupremeCourtDistricts,
+    style: { color: "#8C6A2E", weight: 2, fillColor: "#8C6A2E", fillOpacity: 0.05, dashArray: "7 3" },
+    fields: [
+      { name: "district", label: "District", keys: ["districtn", "district"], primary: true },
+      // structural fact from the Illinois Constitution (art. VI), not
+      // officeholder data: District 1 is Cook County and elects three of the
+      // court's seven justices; districts 2-5 elect one each
+      { label: "Note", value: "District 1 is all of Cook County and elects three of the seven justices.",
+        when: function (r) { return String(r.district) === "1"; } },
+      { label: "Court info", html: '<a href="https://www.illinoiscourts.gov/courts/supreme-court/" target="_blank" rel="noopener">Illinois Supreme Court</a>' }
+    ]
   });
 
   var loadCcbrDistricts = makeCached(function () {
     return fetchJSONWithRetry("data/app/ccbr-districts.json", {}, 2);
   });
 
-  registerLayer({
+  registerPolygonLayer({
     id: "ccbr",
     group: "political",
     label: "Cook County Board of Review District",
-    overlay: {
-      load: loadCcbrDistricts,
-      style: { color: "#1E7A8C", weight: 2, fillColor: "#1E7A8C", fillOpacity: 0.05, dashArray: "4 4" }
-    },
-    query: function (point, seq) {
-      return loadCcbrDistricts().then(function (geojson) {
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var district = findPropCI(feature.properties || {}, ["districtn", "district"]);
-        return { seq: seq, district: district };
-      });
-    },
-    render: function (result) {
-      var fields = [
-        { label: "District", value: result.district ? String(result.district) : "Unknown" },
-        { label: "What it does", value: "Hears property-tax assessment appeals; one commissioner is elected per district." },
-        { label: "Board info", html: '<a href="https://www.cookcountyboardofreview.com/" target="_blank" rel="noopener">Cook County Board of Review</a>' }
-      ];
-      return renderFieldList(fields);
-    }
+    loader: loadCcbrDistricts,
+    style: { color: "#1E7A8C", weight: 2, fillColor: "#1E7A8C", fillOpacity: 0.05, dashArray: "4 4" },
+    fields: [
+      { name: "district", label: "District", keys: ["districtn", "district"], primary: true },
+      { label: "What it does", value: "Hears property-tax assessment appeals; one commissioner is elected per district." },
+      { label: "Board info", html: '<a href="https://www.cookcountyboardofreview.com/" target="_blank" rel="noopener">Cook County Board of Review</a>' }
+    ]
   });
 
   /* ---------- Cook County Commissioner District — the one Political layer
@@ -3958,6 +4061,7 @@
   window.ChiExplorer = {
     state: state,
     registerLayer: registerLayer,
+    setSelectedPoint: setSelectedPoint, // debug/programmatic point selection (also used by the smoke test)
     sanitize: sanitize,
     pointInGeometry: pointInGeometry,
     fetchJSONWithRetry: fetchJSONWithRetry,

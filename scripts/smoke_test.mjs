@@ -92,6 +92,27 @@ try {
       return el ? el.innerText : "";
     });
     check("school-board joins member roster", /Board member/i.test(board), board.replace(/\s+/g, " ").slice(0, 70));
+
+    // Bonus: moving the selection re-classifies correctly. This exercises the
+    // incremental-restyle fast path (P7) — same layers on, new point — where
+    // updateLayerHighlight only flips the old/new matched paths instead of
+    // re-styling every path. 41.99,-87.66 is school-board district 4 (vs 12 at
+    // the Loop point above), and the matched-region highlight must move with it.
+    const moved = await page.evaluate(async () => {
+      window.ChiExplorer.setSelectedPoint(41.99, -87.66);
+      const el = document.getElementById("card-school-board");
+      for (let i = 0; i < 100; i++) {
+        if (el && !el.querySelector(".loading-row") && /District\s+4\b/i.test(el.innerText)) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const highlights = document.querySelectorAll("#map .chi-region-highlight").length;
+      return { text: el ? el.innerText.replace(/\s+/g, " ").trim() : "(no card)", highlights };
+    });
+    check(
+      "point move re-classifies (District 12 -> 4) and re-highlights",
+      /District\s+4\b/i.test(moved.text) && moved.highlights >= 1,
+      `${moved.text.slice(0, 60)} | highlights=${moved.highlights}`
+    );
     await context.close();
   }
 
@@ -163,6 +184,38 @@ try {
       !res.pointSelected && res.errored && res.hasRetry && res.visible,
       `point=${res.pointSelected} err=${res.errored} retry=${res.hasRetry} visible=${res.visible}`
     );
+    await context.close();
+  }
+
+  // 5. Base-map tile failure surfaces an honest, dismissible banner (R6 / item
+  //    16), instead of a silently gray map. Fail the CARTO tile CDN and assert
+  //    the banner appears, then that dismissing it hides it.
+  {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    const page = await booted(context, BASE, (p) =>
+      // regex, not a glob: the tile host is `a.basemaps.cartocdn.com` (a dot,
+      // not a slash, before `basemaps`), which a `**/basemaps…` glob misses.
+      p.route(/basemaps\.cartocdn\.com/, (r) => r.fulfill({ status: 503, body: "down" }))
+    );
+    await page
+      .waitForFunction(() => {
+        const el = document.getElementById("tile-banner");
+        return el && !el.hidden;
+      }, null, { timeout: QUERY_TIMEOUT })
+      .catch(() => {});
+    const shown = await page.evaluate(() => {
+      const el = document.getElementById("tile-banner");
+      return !!el && !el.hidden;
+    });
+    let hiddenAfterDismiss = null;
+    if (shown) {
+      await page.click("#tile-banner-dismiss");
+      hiddenAfterDismiss = await page.evaluate(() => {
+        const el = document.getElementById("tile-banner");
+        return !!el && el.hidden;
+      });
+    }
+    check("tile failure shows dismissible banner", shown && hiddenAfterDismiss === true, `shown=${shown} hiddenAfterDismiss=${hiddenAfterDismiss}`);
     await context.close();
   }
 } finally {
