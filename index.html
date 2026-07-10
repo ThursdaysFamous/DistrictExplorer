@@ -561,6 +561,7 @@
   .result-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
   .result-row dt { color: var(--slate); font-size: 12px; flex: none; }
   .result-row dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: break-word; }
+  .result-row dd .field-pin { display: inline-block; vertical-align: -2px; margin-right: 5px; line-height: 0; }
   dl.result-fields { margin: 0; }
 
   footer.site-footer {
@@ -1913,6 +1914,17 @@
     return icon;
   }
 
+  // In-card twin of the map's POI pin — same teardrop + white eye, sized to sit
+  // inline on the address text so a card visually ties back to the pin dropped
+  // on the map. `color` is a layer theme value (internal), and the SVG is our
+  // own markup — neither is external data, so this is safe to inject as HTML.
+  function poiPinInlineSvg(color) {
+    return '<svg viewBox="0 0 24 32" width="11" height="14" aria-hidden="true">' +
+      '<path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="' + color + '" stroke="#ffffff" stroke-width="1.5"/>' +
+      '<circle cx="12" cy="12" r="4.2" fill="#ffffff"/>' +
+      "</svg>";
+  }
+
   function clearLayerPoi(mod) {
     var rt = layerRuntime[mod.id];
     if (rt.poiMarker) { map.removeLayer(rt.poiMarker); rt.poiMarker = null; }
@@ -2193,7 +2205,22 @@
       var dt = document.createElement("dt");
       dt.textContent = f.label;
       var dd = document.createElement("dd");
-      if (f.html) {
+      if (f.pin) {
+        // a small copy of the layer's map pin, so an address in the card reads
+        // as the point that's pinned on the map. f.pin is the layer theme color.
+        var pin = document.createElement("span");
+        pin.className = "field-pin";
+        pin.setAttribute("aria-hidden", "true");
+        pin.innerHTML = poiPinInlineSvg(f.pin);
+        dd.appendChild(pin);
+        if (f.html) {
+          var pinnedVal = document.createElement("span");
+          pinnedVal.innerHTML = f.html; // caller certifies this html was built with sanitize()
+          dd.appendChild(pinnedVal);
+        } else {
+          dd.appendChild(document.createTextNode(f.value));
+        }
+      } else if (f.html) {
         dd.innerHTML = f.html; // caller certifies this html was built with sanitize()
       } else {
         dd.textContent = f.value;
@@ -2926,7 +2953,7 @@
       render: function (result) {
         var fields = [{ label: "School", value: result.name ? String(result.name) : "Unknown" }];
         if (result.grades) fields.push({ label: "Grades", value: String(result.grades) });
-        if (result.address) fields.push({ label: "Address", value: String(result.address) });
+        if (result.address) fields.push({ label: "Address", value: String(result.address), pin: opts.style.color });
         var profileHtml = schoolProfileHtml(result.schoolId);
         if (profileHtml) fields.push({ label: "Profile", html: profileHtml });
         return renderFieldList(fields);
@@ -2993,7 +3020,7 @@
         var fields = [{ label: "Network", value: result.network ? String(result.network) : "Unknown" }];
         if (result.chief) fields.push({ label: "Network Chief", value: String(result.chief) });
         if (result.phone) fields.push({ label: "Phone", value: String(result.phone) });
-        if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
+        if (result.address) fields.push({ label: "Office Address", value: String(result.address), pin: opts.style.color });
         return renderFieldList(fields);
       },
       pointOfInterest: function (result) {
@@ -3219,7 +3246,7 @@
       var fields = [{ label: "Ward", value: result.ward ? String(result.ward) : "Unknown" }];
       if (result.alderman) fields.push({ label: "Alderman", value: String(result.alderman) });
       if (result.phone) fields.push({ label: "Office Phone", value: String(result.phone) });
-      if (result.address) fields.push({ label: "Office Address", value: String(result.address) });
+      if (result.address) fields.push({ label: "Office Address", value: String(result.address), pin: "#0B5394" });
       if (result.email) {
         fields.push({ label: "Email", html: '<a href="mailto:' + sanitize(result.email) + '">' + sanitize(result.email) + '</a>' });
       }
@@ -3724,7 +3751,7 @@
         var name = commissionerName(office);
         if (name) fields.push({ label: "Commissioner", value: name });
         var addressLines = commissionerAddressLines(office);
-        if (addressLines.length) fields.push({ label: "Office Address", html: addressLines.map(sanitize).join("<br>") });
+        if (addressLines.length) fields.push({ label: "Office Address", html: addressLines.map(sanitize).join("<br>"), pin: "#B8622E" });
         var phone = findPropCI(office, ["phone1"]);
         if (phone) fields.push({ label: "Phone", value: String(phone) });
         var email = findPropCI(office, ["email1"]);
