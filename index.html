@@ -136,6 +136,14 @@
     color: #C9D4DB;
     margin-top: 4px;
   }
+  /* On phones the masthead is competing with the map for the first screenful —
+     shrink the branding so the interactive part of the app shows up sooner. */
+  @media (max-width: 900px) {
+    header.masthead { padding: 12px 16px 14px; }
+    .masthead-star { width: 24px; height: 24px; }
+    h1.title { font-size: 22px; }
+    h1.title small { font-size: 12px; margin-top: 3px; }
+  }
 
   main.layout {
     max-width: 1800px;
@@ -306,6 +314,23 @@
     align-items: flex-start;
     gap: 8px;
   }
+  /* Below 900px the map is only 48vh tall (see #map media query) — floating the
+     hover toggle + coordinate chip over the tiles crowds an already-short strip
+     and can collide with the search bar. Drop them into normal flow as a slim
+     static toolbar under the map instead; the sticky .map-col keeps it pinned
+     alongside the map as the results column scrolls underneath. */
+  @media (max-width: 900px) {
+    .map-bottom-left {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+    }
+  }
   /* Honest, dismissible notice when the CDN basemap tiles fail — the app itself
    * keeps working offline (SW shell + same-origin data), so the map just goes
    * gray without this. Bottom-center so it clears the top toolbar and the
@@ -421,6 +446,14 @@
     }
   }
 
+  /* ---- On phones, tighten the search bar + Layers button into one cohesive
+     top row instead of two separately-floating widgets with a wide gap
+     between them. ---- */
+  @media (max-width: 900px) {
+    .map-toolbar { top: 10px; left: 10px; right: 74px; }
+    .layer-toggle-btn { top: 10px; right: 10px; min-width: 54px; padding: 8px 8px; }
+  }
+
   /* ---- Results rail ---- */
   .results-col {
     background: var(--panel);
@@ -473,6 +506,13 @@
   .group-safety .dot { background: var(--chi-red); }
   .group-schools .dot { background: #E8A324; }
   .group-geography .dot { background: #5C8F6B; }
+
+  /* Lets each top-level card's inline `order` (set in buildLayerBlock/its
+     change handler) float checked layers above unchecked ones within a group. */
+  .group-cards {
+    display: flex;
+    flex-direction: column;
+  }
 
   .layer-block {
     border: 1px solid var(--line);
@@ -2110,38 +2150,47 @@
         icon: poiPinIcon(moduleColor(mod)),
         keyboard: false,
         alt: poi.label + " location"
-      })
-        .on("mouseover", function () {
-          hoveredPoi = {
-            modId: mod.id,
-            label: poi.label,
-            address: poi.address,
-            latlng: poiLatLng,
-            color: moduleColor(mod),
-            layerLabel: mod.label
-          };
-          updateHover();
-        })
-        .on("mouseout", function () {
-          if (hoveredPoi && hoveredPoi.modId === mod.id) {
-            hoveredPoi = null;
+      });
+      // Touch devices have no real hover state (see hoverCapable) — skip wiring
+      // the hover popup to this pin there so a tap can't pop it up unexpectedly.
+      if (hoverCapable) {
+        rt.poiMarker
+          .on("mouseover", function () {
+            hoveredPoi = {
+              modId: mod.id,
+              label: poi.label,
+              address: poi.address,
+              latlng: poiLatLng,
+              color: moduleColor(mod),
+              layerLabel: mod.label
+            };
             updateHover();
-          }
-        })
-        .addTo(map);
+          })
+          .on("mouseout", function () {
+            if (hoveredPoi && hoveredPoi.modId === mod.id) {
+              hoveredPoi = null;
+              updateHover();
+            }
+          });
+      }
+      rt.poiMarker.addTo(map);
     });
   }
 
   // Build one layer's sidebar block (head with toggle + card body) and wire
   // its change handler. Returned detached so the caller can append it either
   // at the group's top level or nested inside a parent block (sub-layers).
-  function buildLayerBlock(mod) {
+  // baseIndex (top-level blocks only) is this card's position among its
+  // group's flex-ordered .group-cards siblings; see the checkbox handler below
+  // for how it's used to float checked cards to the top of the group.
+  function buildLayerBlock(mod, baseIndex) {
     var block = document.createElement("div");
     block.className = "layer-block";
     // ties this card's accent border + dot to the same color used for the
     // layer's map overlay/pins, so the sidebar reads as "this is the box
     // for the blue layer" at a glance
     block.style.setProperty("--layer-accent", moduleColor(mod));
+    if (typeof baseIndex === "number") block.style.order = String(baseIndex);
 
     var head = document.createElement("div");
     head.className = "layer-block-head";
@@ -2185,6 +2234,14 @@
 
     checkbox.addEventListener("change", function () {
       state.layersOn[mod.id] = checkbox.checked;
+      // Float this card to the top of its group's flex-ordered stack while
+      // it's on (so an active result never scrolls past a page of unchecked
+      // ones), and back to its natural position among the other off cards
+      // when it's switched off. The +1000 offset just needs to clear the
+      // largest realistic sibling count while preserving relative order.
+      if (typeof baseIndex === "number") {
+        block.style.order = String(checkbox.checked ? baseIndex : baseIndex + 1000);
+      }
       onLayerToggled(mod);
       syncUrlHash();
     });
@@ -2208,11 +2265,18 @@
       heading.innerHTML = '<span class="dot" aria-hidden="true"></span>' + sanitize(group.label);
       section.appendChild(heading);
 
+      // Flex column so each top-level card's inline `order` (set above, and
+      // updated on toggle) can float checked/active layers to the top of the
+      // group without reshuffling the DOM.
+      var cardsWrap = document.createElement("div");
+      cardsWrap.className = "group-cards";
+
       // Top-level layers only; a sub-layer (mod.subOf) is rendered nested
       // inside its parent's block below, not as a sibling in the group.
+      var baseIndex = 0;
       groupLayers.forEach(function (mod) {
         if (mod.subOf) return;
-        var block = buildLayerBlock(mod);
+        var block = buildLayerBlock(mod, baseIndex++);
         // nest any sub-layers (e.g. Police Beat under Police District) so the
         // sidebar reads them as a sub-selection of the parent
         layers.forEach(function (sub) {
@@ -2225,9 +2289,10 @@
           subBlock.hidden = !state.layersOn[mod.id];
           block.appendChild(subBlock);
         });
-        section.appendChild(block);
+        cardsWrap.appendChild(block);
       });
 
+      section.appendChild(cardsWrap);
       root.appendChild(section);
     });
   }
@@ -4159,7 +4224,13 @@
    * Officeholder/contact details remain on the network-backed click cards.
    * ======================================================================= */
 
-  var hoverActive = true;     // on by default; toggled via the bottom-left button
+  // Touch devices have no real hover state — Leaflet/mobile browsers can still
+  // synthesize a mousemove or marker mouseover from a tap, which used to pop the
+  // cursor-following snapshot up wherever the user tapped (colliding with the
+  // search bar). Gate the whole hover-explorer subsystem on genuine hover+fine-
+  // pointer support so touch users only ever get the tap → result-card flow.
+  var hoverCapable = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  var hoverActive = hoverCapable;     // on by default (where supported); toggled via the bottom-left button
   var hoverRAF = null;        // pending requestAnimationFrame handle
   var hoverLatLng = null;     // most recent cursor position (map coords)
   var hoverPopup = null;      // single reused L.popup that follows the cursor
@@ -4330,29 +4401,36 @@
     showHover(latlng, hoverSnapshotHTML(rows, poi));
   }
 
-  map.on("mousemove", function (e) {
-    if (!hoverActive) return;
-    hoverLatLng = e.latlng;
-    if (hoverRAF) return; // already scheduled for this frame — coalesce
-    hoverRAF = requestAnimationFrame(function () { hoverRAF = null; updateHover(); });
-  });
-  map.on("mouseout", function () { if (hoverActive) clearHoverVisuals(); });
-
-  // Bottom-left toggle (above the selected-point chip) that arms/disarms the
-  // hover explorer. It's a plain DOM button over the map, not a Leaflet control,
-  // so it stacks cleanly with the coordinate chip in .map-bottom-left.
   var hoverToggleBtn = document.getElementById("hover-toggle");
-  function syncHoverToggle() {
-    hoverToggleBtn.textContent = hoverActive ? "Hover: on" : "Hover: off";
-    hoverToggleBtn.setAttribute("aria-pressed", hoverActive ? "true" : "false");
+
+  if (hoverCapable) {
+    map.on("mousemove", function (e) {
+      if (!hoverActive) return;
+      hoverLatLng = e.latlng;
+      if (hoverRAF) return; // already scheduled for this frame — coalesce
+      hoverRAF = requestAnimationFrame(function () { hoverRAF = null; updateHover(); });
+    });
+    map.on("mouseout", function () { if (hoverActive) clearHoverVisuals(); });
+
+    // Bottom-left toggle (above the selected-point chip) that arms/disarms the
+    // hover explorer. It's a plain DOM button over the map, not a Leaflet control,
+    // so it stacks cleanly with the coordinate chip in .map-bottom-left.
+    var syncHoverToggle = function () {
+      hoverToggleBtn.textContent = hoverActive ? "Hover: on" : "Hover: off";
+      hoverToggleBtn.setAttribute("aria-pressed", hoverActive ? "true" : "false");
+    };
+    syncHoverToggle(); // reflect the default (on) in the button at boot
+    hoverToggleBtn.addEventListener("click", function () {
+      hoverActive = !hoverActive;
+      syncHoverToggle();
+      if (!hoverActive) clearHoverVisuals();
+      updateRelLegend(); // the pin legend shows only while hover is on
+    });
+  } else {
+    // Nothing to arm/disarm on a touch device — drop the toggle rather than
+    // show a control for a feature that can never fire.
+    hoverToggleBtn.hidden = true;
   }
-  syncHoverToggle(); // reflect the default (on) in the button at boot
-  hoverToggleBtn.addEventListener("click", function () {
-    hoverActive = !hoverActive;
-    syncHoverToggle();
-    if (!hoverActive) clearHoverVisuals();
-    updateRelLegend(); // the pin legend shows only while hover is on
-  });
 
   /* =========================================================================
    * PIN-PARENT RELATIONSHIPS — pick a district as the "parent" from its sidebar
