@@ -2423,7 +2423,9 @@
           capsPhone: info ? info.capsPhone : null,
           capsEmail: info ? info.capsEmail : null,
           stationAddress: (info && info.stationAddress) || (station && station.address) || null,
-          districtMapUrl: info ? info.districtMapUrl : null
+          // CPD's own per-district page — the page the commander/CAPS data is
+          // scraped from — rather than the ArcGIS instant-map app.
+          sourceUrl: info ? info.sourceUrl : null
         };
       });
     },
@@ -2440,8 +2442,8 @@
       if (result.capsEmail) {
         fields.push({ label: "CAPS Email", html: '<a href="mailto:' + sanitize(result.capsEmail) + '">' + sanitize(result.capsEmail) + '</a>' });
       }
-      var districtMap = safeHttpUrl(result.districtMapUrl); // scheme-check external URLs before they become an href
-      if (districtMap) fields.push({ label: "District Map", html: '<a href="' + sanitize(districtMap) + '" target="_blank" rel="noopener">' + sanitize(districtMap) + '</a>' });
+      var districtPage = safeHttpUrl(result.sourceUrl); // scheme-check external URLs before they become an href
+      if (districtPage) fields.push({ label: "District Website", html: '<a href="' + sanitize(districtPage) + '" target="_blank" rel="noopener">' + sanitize(districtPage) + '</a>' });
       return renderFieldList(fields);
     },
     onToggle: function (on) {
