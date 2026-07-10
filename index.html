@@ -900,6 +900,9 @@
   }
   .rel-unpin-btn:hover { background: #FBECEE; }
 </style>
+
+<script data-goatcounter="https://chidistricts.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 
@@ -1069,6 +1072,15 @@
    * contains neither, so it would otherwise pass straight into an href ---------- */
   function safeHttpUrl(url) {
     return /^https?:\/\//i.test(String(url || "")) ? String(url) : null;
+  }
+
+  /* ---------- GoatCounter custom event — no-op if the count script didn't
+   * load (blocked, offline, ad blocker), so analytics can never affect app
+   * behavior ---------- */
+  function trackEvent(path, title) {
+    if (window.goatcounter && typeof window.goatcounter.count === "function") {
+      window.goatcounter.count({ path: path, title: title || path, event: true });
+    }
   }
 
   /* ---------- point-in-polygon: GeoJSON Polygon / MultiPolygon, holes-aware ---------- */
@@ -1362,6 +1374,7 @@
     copyBtn.title = "Copy a shareable link to this point and the layers currently on";
     copyBtn.addEventListener("click", function () {
       syncUrlHash(); // make sure the URL reflects the very latest state
+      trackEvent("share-permalink");
       function done(ok) {
         copyBtn.textContent = ok ? "Copied!" : "Copy failed";
         setTimeout(function () { copyBtn.textContent = "Copy link"; }, 1600);
@@ -1450,6 +1463,7 @@
   var geoStatusEl = document.getElementById("geo-status");
 
   locateBtn.addEventListener("click", function () {
+    trackEvent("geolocate");
     if (!("geolocation" in navigator)) {
       geoStatusEl.textContent = "Geolocation isn't supported in this browser.";
       geoStatusEl.className = "geo-status err";
@@ -1471,6 +1485,12 @@
         }
         geoStatusEl.textContent = "";
         geoResultsList.innerHTML = "";
+        // rounded to ~1km (2 decimal places) — coarse enough that it can't
+        // pin an individual's address, fine enough to see which part of the
+        // city geolocation gets used from. Path stays fixed so GoatCounter
+        // groups every hit under one "geolocate-success" event; the
+        // approximate area only shows up in the per-hit title.
+        trackEvent("geolocate-success", lat.toFixed(2) + "," + lng.toFixed(2));
         setSelectedPoint(lat, lng);
       },
       function (err) {
@@ -1672,6 +1692,7 @@
         // response can't re-open the list over the "Selected:" status
         clearTimeout(debounceTimer);
         if (inFlightController) inFlightController.abort();
+        trackEvent("address-search");
         setSelectedPoint(parseFloat(r.lat), parseFloat(r.lon));
         geoResultsList.innerHTML = "";
         geoStatus.textContent = "Selected: " + r.display_name;
@@ -2261,6 +2282,7 @@
       if (typeof baseIndex === "number") {
         block.style.order = String(cardOrder(baseIndex, checkbox.checked));
       }
+      if (checkbox.checked) trackEvent("layer/" + mod.id);
       onLayerToggled(mod);
       syncUrlHash();
     });
