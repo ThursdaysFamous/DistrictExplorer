@@ -662,21 +662,24 @@
     gap: 4px 18px;
   }
   .footer-meta strong { color: #fff; font-weight: 600; }
-  .footer-sources {
+  .footer-sources,
+  .footer-explorers {
     margin-top: 18px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
   }
-  .footer-sources-label {
+  .footer-sources-label,
+  .footer-explorers-label {
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--slate-soft);
   }
-  .footer-sources a {
+  .footer-sources a,
+  .footer-explorers a {
     color: #C9D4DB;
     text-decoration: none;
     border: 1px solid rgba(217,225,231,0.22);
@@ -684,7 +687,8 @@
     padding: 3px 11px;
     transition: color .12s, border-color .12s, background .12s;
   }
-  .footer-sources a:hover {
+  .footer-sources a:hover,
+  .footer-explorers a:hover {
     color: #fff;
     border-color: var(--chi-blue);
     background: rgba(65,182,230,0.14);
@@ -1009,6 +1013,9 @@
       <a href="https://www.ilsenateredistricting.com" target="_blank" rel="noopener">School board district map (ilsenateredistricting.com)</a>
       <a href="https://www.illinoiscourts.gov" target="_blank" rel="noopener">IL Supreme Court districts (PA 102-0011 shapefile)</a>
       <a href="https://www.cookcountyboardofreview.com" target="_blank" rel="noopener">Cook County Board of Review districts (PA 102-0012 shapefile)</a>
+    </div>
+    <div class="footer-explorers" id="footer-explorers" hidden>
+      <span class="footer-explorers-label">Explore other metros</span>
     </div>
     <div class="footer-links">
       <button type="button" id="feedback-btn" class="footer-link-btn">💬 Report a bug or leave a comment</button>
@@ -4871,6 +4878,22 @@
 
   var verifiedEl = document.getElementById("verified-date");
   verifiedEl.textContent = "July 9, 2026";
+
+  // Sibling explorers for other metro areas — add an entry here when a new
+  // city launches and the footer row picks it up automatically.
+  var METRO_EXPLORERS = [
+    { label: "🗽 New York City", url: "https://nyc.chidistricts.com/" }
+  ];
+  var explorersEl = document.getElementById("footer-explorers");
+  METRO_EXPLORERS.forEach(function (metro) {
+    var a = document.createElement("a");
+    a.href = metro.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = metro.label;
+    explorersEl.appendChild(a);
+  });
+  if (METRO_EXPLORERS.length) explorersEl.hidden = false;
 
   // expose a couple of things for later module threads / debugging, without
   // polluting global scope beyond one namespace
