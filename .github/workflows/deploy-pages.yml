@@ -57,6 +57,7 @@ jobs:
             --exclude='scripts' \
             --exclude='docs' \
             --exclude='data/source' \
+            --exclude='icons/source' \
             --exclude='data/*.geojson' \
             --exclude='node_modules' \
             --exclude='CLAUDE.md' \

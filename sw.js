@@ -4,8 +4,9 @@
 // CACHE_NAME whenever SHELL_URLS, GEOMETRY_URLS, or ROSTER_URLS change so a
 // removed entry can't live forever; the activate handler deletes every
 // other-named cache. (-v3 dropped the duplicate "./index.html" shell entry;
-// -v4 added the two roster files missing from ROSTER_URLS.)
-const CACHE_NAME = "district-explorer-shell-v4";
+// -v4 added the two roster files missing from ROSTER_URLS; -v5 added the
+// water-taxi marker icon shown when a point lands on water.)
+const CACHE_NAME = "district-explorer-shell-v5";
 
 // "./" and "./index.html" resolve to the same GitHub Pages document, so we
 // precache only the canonical "./" — caching both stored two ~112 KB-gzip
@@ -18,6 +19,7 @@ const SHELL_URLS = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./icons/water-taxi.png",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js",
 ];

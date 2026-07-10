@@ -1069,6 +1069,43 @@
     iconAnchor: [17, 17]
   });
 
+  /* ---------- water-taxi marker: the selection marker becomes the Chicago Water
+   * Taxi seal when a clicked/searched point lands on water (Lake Michigan or the
+   * river) instead of on land — see maybeUseWaterTaxiMarker(). The logo is a
+   * circular seal (icons/water-taxi.png, cropped from the supplied art — see
+   * icons/source/README.md), so it's presented as a round white badge sized to
+   * read at map scale. It's preloaded here and only swapped in once it actually
+   * loads, so a missing/broken asset cleanly falls back to the default star. ---------- */
+  var WATER_TAXI_ICON_URL = "icons/water-taxi.png";
+  var waterTaxiDivIcon = L.divIcon({
+    className: "chi-water-taxi-marker",
+    html: '<img src="' + WATER_TAXI_ICON_URL + '" width="46" height="46" ' +
+          'alt="Selected point (on water)" ' +
+          'style="display:block;border-radius:50%;background:#ffffff;' +
+          'border:2px solid #ffffff;box-shadow:0 2px 4px rgba(0,0,0,0.45)">',
+    iconSize: [50, 50],
+    iconAnchor: [25, 25]
+  });
+  // Preload once at boot so a water selection swaps instantly; track load state
+  // so a broken/blocked asset never produces a broken-image marker.
+  var waterTaxiImg = new Image();
+  var waterTaxiImgState = "loading"; // "loading" | "ready" | "failed"
+  waterTaxiImg.addEventListener("load", function () { waterTaxiImgState = "ready"; });
+  waterTaxiImg.addEventListener("error", function () { waterTaxiImgState = "failed"; });
+  waterTaxiImg.src = WATER_TAXI_ICON_URL;
+
+  // Run cb(true) once the logo image has loaded, cb(false) if it failed. Callable
+  // any time — resolves synchronously if the state is already known, otherwise
+  // waits for the in-flight preload without clobbering other waiters.
+  function whenWaterTaxiImgReady(cb) {
+    if (waterTaxiImgState === "ready") { cb(true); return; }
+    if (waterTaxiImgState === "failed") { cb(false); return; }
+    var done = false;
+    function finish(ok) { if (done) return; done = true; cb(ok); }
+    waterTaxiImg.addEventListener("load", function () { finish(true); });
+    waterTaxiImg.addEventListener("error", function () { finish(false); });
+  }
+
   /* ---------- sanitize: escape any external string before it touches innerHTML ---------- */
   function sanitize(str) {
     if (str === null || str === undefined) return "";
@@ -1366,6 +1403,28 @@
   var selectedMarker = null;
   var pointChip = document.getElementById("point-chip");
 
+  /* ---------- swap the default star marker for the Chicago Water Taxi seal when
+   * the selected point lands on water. "Water" = outside every Chicago community
+   * area, i.e. Lake Michigan, the river, or beyond the city — the tool is
+   * Chicago-scoped, so an out-of-city point counting as "not on land" is fine.
+   * Reuses the Community Area layer's own cached boundary loader and the shared
+   * pointInGeometry test (via findFeatureContaining), so detection adds no extra
+   * fetch. Preserves both app invariants: the swap is stale-async guarded by
+   * `seq` (a newer selection bails), and it's fully isolated — a boundary-load
+   * failure or a missing/broken logo silently leaves the default marker. ---------- */
+  function maybeUseWaterTaxiMarker(point, seq, marker) {
+    loadCommunityAreas().then(function (geojson) {
+      if (seq !== state.sequence || marker !== selectedMarker) return;
+      if (findFeatureContaining(geojson, point)) return; // on land — keep the default marker
+      whenWaterTaxiImgReady(function (ok) {
+        // re-check after the (possibly async) image load: a newer point may have
+        // been selected, or the asset may have failed to load
+        if (!ok || seq !== state.sequence || marker !== selectedMarker) return;
+        marker.setIcon(waterTaxiDivIcon);
+      });
+    }).catch(function () { /* boundary load failed — keep the default marker */ });
+  }
+
   function setSelectedPoint(lat, lng, opts) {
     opts = opts || {};
     state.selectedPoint = { lat: lat, lng: lng };
@@ -1373,6 +1432,7 @@
 
     if (selectedMarker) map.removeLayer(selectedMarker);
     selectedMarker = L.marker([lat, lng], { icon: starDivIcon, alt: "Selected point" }).addTo(map);
+    maybeUseWaterTaxiMarker(state.selectedPoint, state.sequence, selectedMarker);
     if (!opts.skipPan) map.setView([lat, lng], Math.max(map.getZoom(), 15));
 
     pointChip.hidden = false;
