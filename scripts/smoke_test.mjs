@@ -136,6 +136,32 @@ try {
       /District\s+4\b/i.test(moved.text) && moved.highlights >= 1,
       `${moved.text.slice(0, 60)} | highlights=${moved.highlights}`
     );
+
+    // Bonus: toggling one layer off/on must NOT disturb the other active layers'
+    // highlights (P8). The opacity rescale on a count change now skips layers that
+    // already show a selection highlight (their faded/highlight fill is
+    // count-independent) instead of re-running the full highlight for every layer,
+    // so the survivors' matched regions must stay lit exactly through the toggle.
+    // With all three offline layers on and a point selected, drop ccbr: its single
+    // highlight leaves, the other two stay untouched (before-1); re-add it and the
+    // count returns to baseline.
+    const toggled = await page.evaluate(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const count = () => document.querySelectorAll("#map .chi-region-highlight").length;
+      const box = document.getElementById("toggle-ccbr");
+      const before = count();
+      box.click(); // ccbr off
+      await wait(150);
+      const afterOff = count();
+      box.click(); // ccbr back on
+      for (let i = 0; i < 100; i++) { if (count() >= before) break; await wait(100); }
+      return { before, afterOff, afterOn: count() };
+    });
+    check(
+      "layer toggle preserves other layers' highlights (opacity rescale, P8)",
+      toggled.before >= 2 && toggled.afterOff === toggled.before - 1 && toggled.afterOn === toggled.before,
+      `before=${toggled.before} afterOff=${toggled.afterOff} afterOn=${toggled.afterOn}`
+    );
     await context.close();
   }
 
