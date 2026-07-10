@@ -2782,6 +2782,22 @@
     return fetchJSONWithRetry("data/app/cpd-district-info.json", {}, 2);
   });
 
+  // CPD's boundary NAME is a dash-joined slug that repeats the district number
+  // already shown on the card — "9th-district-deering", "8th-district-chicago-
+  // lawn". Strip the "{ordinal}-district-" prefix and de-dash + title-case the
+  // neighborhood name that remains ("Deering", "Chicago Lawn"). Degrades to a
+  // plain de-dashed title-case of whatever's there if the slug shape changes.
+  function cleanPoliceDistrictLabel(raw) {
+    if (!raw) return null;
+    var name = String(raw).replace(/^\s*\d+\s*(?:st|nd|rd|th)?-?\s*district-?/i, "");
+    name = name.replace(/-/g, " ").trim();
+    if (!name) name = String(raw).replace(/-/g, " ").trim();
+    name = name.replace(/\S+/g, function (w) {
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    });
+    return name || null;
+  }
+
   registerLayer({
     id: "police-district",
     group: "safety",
@@ -2829,12 +2845,13 @@
     },
     render: function (result) {
       var fields = [{ label: "District", value: result.number ? String(result.number) : "Unknown" }];
-      if (result.label) fields.push({ label: "Label", value: String(result.label) });
+      var cleanName = cleanPoliceDistrictLabel(result.label);
+      if (cleanName) fields.push({ label: "Name", value: cleanName });
       if (result.commanderName) {
         var commanderLabel = result.commanderStatus === "acting_commander" ? "Commander (Acting)" : "Commander";
         fields.push({ label: commanderLabel, value: String(result.commanderName) });
       }
-      if (result.stationAddress) fields.push({ label: "Station Address", value: String(result.stationAddress) });
+      if (result.stationAddress) fields.push({ label: "Station Address", value: String(result.stationAddress), pin: "#9C0B24" });
       if (result.mainPhone) fields.push({ label: "Station Phone", value: String(result.mainPhone) });
       if (result.capsPhone) fields.push({ label: "CAPS Phone", value: String(result.capsPhone) });
       if (result.capsEmail) {
@@ -2856,6 +2873,16 @@
         if (!row || !row.commanderName) return null;
         return row.commanderStatus === "acting_commander" ? row.commanderName + " (Acting)" : row.commanderName;
       }
+    },
+    // drop a map pin at the district station, matching the inline Station
+    // Address icon on the card (the station always sits inside its own district,
+    // so the pin lands within this layer's highlighted polygon).
+    pointOfInterest: function (result) {
+      if (!result.stationAddress) return null;
+      var name = cleanPoliceDistrictLabel(result.label);
+      var label = name ? name + " District Station"
+        : (result.number ? "District " + String(result.number) + " Station" : "Police Station");
+      return { label: label, address: String(result.stationAddress) };
     },
     onToggle: function (on) {
       // The Police Beat sub-layer only makes sense as a subdivision of a
