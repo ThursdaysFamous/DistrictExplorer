@@ -796,6 +796,9 @@
      and the name reads as who/what it is. */
   .hover-row-who { font-weight: 400; opacity: 0.82; }
   .hover-row-who::before { content: "\00b7\00a0"; opacity: 0.55; }
+  /* the hovered pin's office address, on its own line under the layer value */
+  .hover-row-poi { display: block; margin-top: 2px; font-weight: 400; font-size: 11px; opacity: 0.85; }
+  .hover-row-poi::before { content: "📍\00a0"; font-size: 10px; }
   .hover-row-parent .hover-row-label { font-size: 11.5px; }
   .hover-row-parent .hover-row-value { font-size: 12.5px; }
 
@@ -2046,6 +2049,13 @@
   function clearLayerPoi(mod) {
     var rt = layerRuntime[mod.id];
     if (rt.poiMarker) { map.removeLayer(rt.poiMarker); rt.poiMarker = null; }
+    // if the pin being torn down is the one under the cursor, drop the stale
+    // reference so the hover popup stops trying to surface it. updateHover is
+    // defined later in the same scope (hoisted); guard in case of early calls.
+    if (hoveredPoi && hoveredPoi.modId === mod.id) {
+      hoveredPoi = null;
+      if (typeof updateHover === "function") updateHover();
+    }
   }
 
   function updateLayerPoi(mod, result, seq) {
@@ -2059,12 +2069,35 @@
       clearLayerPoi(mod);
       if (!coords) return; // couldn't geocode — address is still shown as text in the card
       var rt = layerRuntime[mod.id];
-      rt.poiMarker = L.marker([coords.lat, coords.lng], {
+      // No per-pin white tooltip anymore: hovering the pin instead surfaces its
+      // office address inside the shared dark hover popup, under this layer's
+      // row (see updateHover / hoverSnapshotHTML). One marker mouseover records
+      // which pin is hovered; mouseout clears it (guarded so moving pin A -> B
+      // doesn't let A's mouseout wipe B). Works regardless of the Hover toggle,
+      // preserving the old always-available "hover a pin to identify it".
+      var poiLatLng = L.latLng(coords.lat, coords.lng);
+      rt.poiMarker = L.marker(poiLatLng, {
         icon: poiPinIcon(moduleColor(mod)),
         keyboard: false,
         alt: poi.label + " location"
       })
-        .bindTooltip(sanitize(poi.label), { direction: "top", offset: [0, -26] })
+        .on("mouseover", function () {
+          hoveredPoi = {
+            modId: mod.id,
+            label: poi.label,
+            address: poi.address,
+            latlng: poiLatLng,
+            color: moduleColor(mod),
+            layerLabel: mod.label
+          };
+          updateHover();
+        })
+        .on("mouseout", function () {
+          if (hoveredPoi && hoveredPoi.modId === mod.id) {
+            hoveredPoi = null;
+            updateHover();
+          }
+        })
         .addTo(map);
     });
   }
@@ -4051,6 +4084,11 @@
   var hoverLatLng = null;     // most recent cursor position (map coords)
   var hoverPopup = null;      // single reused L.popup that follows the cursor
   var hoverSeq = 0;           // bumped each update so stale rAF work can bail
+  // The POI pin the cursor is currently over, if any. Set by each pin marker's
+  // mouseover (see updateLayerPoi) so the hover snapshot can surface the pin's
+  // office address under its layer's row — replacing the old white per-pin
+  // tooltip. {modId, label, address, latlng, color, layerLabel} | null.
+  var hoveredPoi = null;
 
   // Broad district-number key list spanning every polygon layer's own naming,
   // fed through extractDistrictNumber (which adds a name-field regex fallback
@@ -4135,18 +4173,35 @@
   // when available, its name identifier (officeholder/entity) from the prefetched
   // roster. No network request is fired here — an un-prefetched roster just drops
   // the name; full officeholder/contact detail stays on the click cards.
-  function hoverSnapshotHTML(rows) {
+  function hoverSnapshotHTML(rows, poi) {
+    // the hovered pin's office address, tucked under its own layer's row below
+    var poiLine = poi ? '<span class="hover-row-poi">' + sanitize(poi.address) + "</span>" : "";
+    var poiPlaced = false;
     var html = '<div class="hover-snapshot">';
     for (var i = 0; i < rows.length; i++) {
       var mod = rows[i].mod;
       var valueHtml = sanitize(hoverValue(mod, rows[i].feature));
       var who = hoverOfficialName(mod, rows[i].feature);
       if (who) valueHtml += '<span class="hover-row-who">' + sanitize(who) + "</span>";
+      // if this row is the hovered pin's own layer, surface the pin's address
+      // right under the value so it reads as "this office, in this district".
+      if (poi && !poiPlaced && mod.id === poi.modId) { valueHtml += poiLine; poiPlaced = true; }
       html += '<div class="hover-row' + (i === 0 ? " hover-row-parent" : "") + '">' +
         '<span class="hover-dot" style="background:' + sanitize(moduleColor(mod)) + '"></span>' +
         '<span class="hover-row-text">' +
           '<span class="hover-row-label">' + sanitize(mod.label) + '</span>' +
           '<span class="hover-row-value">' + valueHtml + "</span>" +
+        "</span>" +
+        "</div>";
+    }
+    // pin's layer wasn't among the containing rows (rare — e.g. a non-polygon
+    // layer) → add a standalone row so the address still shows.
+    if (poi && !poiPlaced) {
+      html += '<div class="hover-row">' +
+        '<span class="hover-dot" style="background:' + sanitize(poi.color) + '"></span>' +
+        '<span class="hover-row-text">' +
+          '<span class="hover-row-label">' + sanitize(poi.layerLabel) + '</span>' +
+          '<span class="hover-row-value">' + sanitize(poi.label) + poiLine + "</span>" +
         "</span>" +
         "</div>";
     }
@@ -4178,13 +4233,21 @@
 
   function updateHover() {
     hoverSeq += 1;
-    if (!hoverActive || !hoverLatLng) { clearHoverVisuals(); return; }
-    var rows = hoverContainingLayers({ lat: hoverLatLng.lat, lng: hoverLatLng.lng });
-    if (!rows.length) { clearHoverVisuals(); return; }
+    var poi = hoveredPoi;
+    // Explorer off AND no pin under the cursor → nothing to show. A pin still
+    // surfaces its address here even when the explorer is toggled off, since
+    // that popup is the pin's only identifier now (the white tooltip is gone).
+    if (!hoverActive && !poi) { clearHoverVisuals(); return; }
+    // when a pin is hovered, anchor the popup to the pin itself; otherwise it
+    // follows the cursor as before.
+    var latlng = poi ? poi.latlng : hoverLatLng;
+    if (!latlng) { clearHoverVisuals(); return; }
+    var rows = hoverContainingLayers({ lat: latlng.lat, lng: latlng.lng });
+    if (!rows.length && !poi) { clearHoverVisuals(); return; }
     // the multi-layer snapshot follows the cursor every frame. (Parent/child
     // outlining is no longer hover-driven — it's pinned from the sidebar cards;
     // see the PIN-PARENT RELATIONSHIPS block below.)
-    showHover(hoverLatLng, hoverSnapshotHTML(rows));
+    showHover(latlng, hoverSnapshotHTML(rows, poi));
   }
 
   map.on("mousemove", function (e) {
