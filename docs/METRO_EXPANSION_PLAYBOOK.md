@@ -12,7 +12,7 @@ Same working style as `BUILD_PLAYBOOK_1.md`: build in small, cheap, focused thre
 
 ## 1. What the fork keeps vs. rewrites
 
-`index.html` (4,605 lines as of July 2026) is roughly **60–65% metro-agnostic engine**: the map boot, layer registry + result-card framework, `state`/`sequence` machinery, URL-hash permalinks, hover explorer, highlight/reorder machinery, and the shared utilities (`sanitize`, `pointInGeometry`, `fetchJSONWithRetry`, `haversineMiles`, `findPropCI`, the Socrata/ArcGIS loaders and caching wrappers). All of that ports untouched. What a new metro rewrites is the ~1,500 lines of layer modules (≈ lines 2709–4260) plus a fixed, enumerable set of hardcoded core values.
+`index.html` (4,608 lines as of July 2026) is roughly **60–65% metro-agnostic engine**: the map boot, layer registry + result-card framework, `state`/`sequence` machinery, URL-hash permalinks, hover explorer, highlight/reorder machinery, and the shared utilities (`sanitize`, `pointInGeometry`, `fetchJSONWithRetry`, `haversineMiles`, `findPropCI`, the Socrata/ArcGIS loaders and caching wrappers). All of that ports untouched. What a new metro rewrites is the ~1,500 lines of layer modules (≈ lines 2712–4263) plus a fixed, enumerable set of hardcoded core values.
 
 **Core constants to swap (line anchors verified against the July 2026 tree — re-locate by name if drifted):**
 
@@ -22,13 +22,13 @@ Same working style as `BUILD_PLAYBOOK_1.md`: build in small, cheap, focused thre
 | Permalink sanity gate | `index.html:1416` (independent of `CHI_BBOX` — easy to miss) | `lat 41–42.6, lng -88.6–-87` |
 | Geolocation out-of-area string | `index.html:1456–1457` | "…outside the Chicago area this app covers." |
 | Type-ahead geocoder bias/bbox | Photon call, `index.html:1638–1639` | `lat=41.88&lon=-87.63` + `CHI_BBOX` |
-| POI geocoder viewbox | Nominatim call, `index.html:2073–2074` | `CHI_BBOX`, `bounded=1` |
+| POI geocoder viewbox | Nominatim call, `index.html:2076–2077` | `CHI_BBOX`, `bounded=1` |
 | Group taxonomy | `GROUPS`, `index.html:1723–1728` | political / safety / schools / geography |
-| Z-order ranking | `LAYER_AREA_RANK`, `index.html:1734–1763` | 21 Chicago layer ids (see §3 rule) |
-| Socrata host | `socrataRouteUrls`, `index.html:2550–2552` | `data.cityofchicago.org` |
-| TIGERweb state filter | `loadTigerLayer`, `index.html:3518` | `STATE='17'` |
-| "Data last verified" date | `index.html:4583` | hardcoded string |
-| Debug namespace | `window.ChiExplorer`, `index.html:4587` — **twinned in `scripts/smoke_test.mjs:64`**; rename both or neither | — |
+| Z-order ranking | `LAYER_AREA_RANK`, `index.html:1734–1766` | all 22 Chicago layer ids (see §3 rule) |
+| Socrata host | `socrataRouteUrls`, `index.html:2553–2555` | `data.cityofchicago.org` |
+| TIGERweb state filter | `loadTigerLayer`, `index.html:3521` | `STATE='17'` |
+| "Data last verified" date | `index.html:4586` | hardcoded string |
+| Debug namespace | `window.ChiExplorer`, `index.html:4590` — **twinned in `scripts/smoke_test.mjs:64`**; rename both or neither | — |
 | Preconnect/dns-prefetch hosts | `index.html:19–24` | Chicago data hosts |
 | Branding | `<title>`/meta (6–11), palette `:root` (31–55), masthead (905–906), footer sources (976–986), feedback email (1498) | Chicago flag palette, star motif |
 
@@ -62,10 +62,10 @@ The five rules every module must honor are unchanged and non-negotiable: seq-tag
 
 **Reuse the four factories before writing a bespoke module:**
 
-- `registerPolygonLayer` (`index.html:2671`) — single boundary source, point-in-polygon, field list. Fits most layers.
-- `registerSchoolZone` (`index.html:3272`) — attendance-zone shape with POI pin; the school-profile URL builder inside it is city-specific, generalize it.
-- `registerCpsNetwork` (`index.html:3338`) — admin-region shape where the officeholder rides in the boundary dataset's own properties.
-- `registerIlgaChamber` (`index.html:3812`) — TIGERweb boundary + same-origin roster-file join; the pattern for any state-legislature chamber.
+- `registerPolygonLayer` (`index.html:2674`) — single boundary source, point-in-polygon, field list. Fits most layers.
+- `registerSchoolZone` (`index.html:3275`) — attendance-zone shape with POI pin; the school-profile URL builder inside it is city-specific, generalize it.
+- `registerCpsNetwork` (`index.html:3341`) — admin-region shape where the officeholder rides in the boundary dataset's own properties.
+- `registerIlgaChamber` (`index.html:3815`) — TIGERweb boundary + same-origin roster-file join; the pattern for any state-legislature chamber.
 
 Also reusable as-is: the `ward` module's two-live-datasets join (boundary + roster joined client-side on district number), the `ccpsa-district-council` module's shared-geometry pattern (one loader serving two layers), and the nearest-N haversine pattern (`police-station`/`fire-station`/`school-site`).
 
@@ -73,7 +73,7 @@ Also reusable as-is: the `ward` module's two-live-datasets join (boundary + rost
 
 1. **Fork** the Chicago repo. Don't start from scratch — the engine, gates, and CI shape are the value.
 2. **Swap the §1 core constants** and branding; rename the debug namespace in both files or leave it.
-3. **Decide the layer roster** for your city: walk Chicago's 22 layers, map each to the local equivalent, and be explicit where **no honest analog exists** — drop the layer rather than invent geometry or names for an appointed/citywide body. Add local layers Chicago lacks. Then write the full `LAYER_AREA_RANK`, largest→smallest. **Rule: every registered layer id appears in the rank, no exceptions** — an id missing from the list is silently skipped by `reorderActiveLayers` (`index.html:1884`) and never restacked. (Chicago itself has this latent bug: `ward-precinct` is absent from the 21-entry rank. Don't replicate it.) Sub-layers deliberately rank just *before* their parent so the parent outline frames the fills — see the police-beat comment in the Chicago rank.
+3. **Decide the layer roster** for your city: walk Chicago's 22 layers, map each to the local equivalent, and be explicit where **no honest analog exists** — drop the layer rather than invent geometry or names for an appointed/citywide body. Add local layers Chicago lacks. Then write the full `LAYER_AREA_RANK`, largest→smallest. **Rule: every registered layer id appears in the rank, no exceptions** — an id missing from the list is invisible to both consumers of the rank: `reorderActiveLayers` (`index.html:1887`) never restacks it, and `hoverContainingLayers` (`index.html:4291`) omits it from hover civic profiles entirely. (Chicago itself shipped this bug — `ward-precinct` was missing from the rank until it was fixed alongside this playbook.) Sub-layers deliberately rank just *before* their parent so the parent outline frames the fills — see the police-beat comment in the Chicago rank.
 4. **Build the data registry** (Part II §6 is the model): one row per layer, geometry source + roster source, each labeled VERIFIED only after a live fetch you performed. Record dataset IDs, exact query URLs, and observed field names.
 5. **Pick the offline anchors** (§4) and the smoke-test ground-truth points.
 6. **Map the pipeline**: for each roster, which scraper/builder pair template applies, which fetch engine, and the count guards (§9 is the model).
@@ -91,7 +91,7 @@ Chicago ships three layers whose boundaries have no reliable public API as same-
 
 **Every metro must pick ≥3 such layers** — prefer boundaries that essentially never change and whose live APIs are absent or unreliable — plus a well-known ground-truth point and a second point that lands in different districts (the re-highlight fast-path check).
 
-**New invariant for forks** (closes a known Chicago gap, where `ccpsa-district-councils.json` and `congress-roster.json` are fetched by the app but absent from both SW lists): **every file in `data/app/` appears in exactly one of `sw.js`'s `GEOMETRY_URLS` or `ROSTER_URLS`**, and the fork's `validate_index.py` checks it. Bump `CACHE_NAME` on every list change.
+**New invariant for forks** (a gap Chicago itself shipped — `ccpsa-district-councils.json` and `congress-roster.json` were fetched by the app but absent from both SW lists until fixed alongside this playbook): **every file in `data/app/` appears in exactly one of `sw.js`'s `GEOMETRY_URLS` or `ROSTER_URLS`**, and the fork's `validate_index.py` checks it. Bump `CACHE_NAME` on every list change.
 
 ## 5. Dataset verification protocol (lessons already paid for)
 
@@ -143,7 +143,7 @@ Everything below was researched and (where marked) live-verified **July 10, 2026
 **NYC Planning GeoSearch** (`geosearch.planninglabs.nyc`, Pelias-based, **keyless**, backed by the city's own PAD address file — more authoritative than OSM for NYC addresses):
 
 - `/v2/autocomplete?text=…` — **VERIFIED**; replaces the Photon type-ahead (`index.html:1562–1716`).
-- `/v2/search?text=…` — **VERIFIED** (sample: "120 Broadway Manhattan" → `[-74.010542, 40.708233]`); replaces the Nominatim POI geocode (`index.html:2073–2074`) — `pointOfInterest` geocodes street addresses, exactly what PAD covers.
+- `/v2/search?text=…` — **VERIFIED** (sample: "120 Broadway Manhattan" → `[-74.010542, 40.708233]`); replaces the Nominatim POI geocode (`index.html:2076–2077`) — `pointOfInterest` geocodes street addresses, exactly what PAD covers.
 
 Both return GeoJSON; NYC-scoped by construction, so no viewbox needed. Display the attribution line. Be a courteous client (keep the existing debounce). Nominatim stays as documented fallback only — its usage policy (1 req/s, **no as-you-type autocomplete**) makes it unfit as a public site's primary geocoder. NYC GeoClient/Geoservice requires a key and is server-side-only — skip.
 
@@ -261,7 +261,7 @@ Every builder that splices text keeps the `js_string()` `</script>` + U+2028/U+2
 
 ## 10. Thread sequence (port order — differs from Chicago's greenfield order)
 
-- **Thread 0 — Fork & re-core.** Swap every Part I §1 constant, delete the Chicago modules (~`index.html:2709–4260`) leaving one stub layer, swap both geocoders to GeoSearch (§6a), temporary `EXPECT_LAYERS=1`. Deliverable: the engine boots on an NYC map with one stub card.
+- **Thread 0 — Fork & re-core.** Swap every Part I §1 constant, delete the Chicago modules (~`index.html:2712–4263`) leaving one stub layer, swap both geocoders to GeoSearch (§6a), temporary `EXPECT_LAYERS=1`. Deliverable: the engine boots on an NYC map with one stub card.
 - **Thread 1 — Offline anchors + Geography.** Convert the three §8 static files; register `borough`, `judicial-district`, `municipal-court`, `neighborhood`, `zip-code`; pin the smoke-test ground truth; Rockaways/islands MultiPolygon spot-check.
 - **Thread 2 — Safety.** 5 layers; `nypd-precinct-info.json` ships as empty placeholder.
 - **Thread 3 — Schools.** 6 layers; the honest choice-based empty states for MS/HS; `cec-members.json` placeholder.
