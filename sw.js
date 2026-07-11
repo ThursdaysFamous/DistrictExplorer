@@ -1,19 +1,33 @@
+/* ==== ENGINE:BEGIN sw-header ==== */
 // App-shell + app-data cache. Never serve live district/roster API responses
 // stale — a stale roster could name the wrong officeholder, and this app's
 // rule is that officeholder data is never guessed or served stale. Bump
 // CACHE_NAME whenever SHELL_URLS, GEOMETRY_URLS, or ROSTER_URLS change so a
 // removed entry can't live forever; the activate handler deletes every
-// other-named cache. (-v3 dropped the duplicate "./index.html" shell entry;
-// -v4 added the two roster files missing from ROSTER_URLS; -v5 added the
-// water-taxi marker icon shown when a point lands on water.)
-const CACHE_NAME = "district-explorer-shell-v5";
-
+// other-named cache.
+//
+// The config section below is this fork's METRO block (docs/ENGINE_SYNC.md):
+// a per-city cache name, the shell assets, and the fork's data/app/*.json
+// files split by caching policy — ~static boundary geometry (cache-first,
+// precached) vs officeholder rosters (network-first, never stale). Every file
+// under data/app/ must appear in exactly one of the two data lists;
+// validate_index.py enforces it. The handler logic below the config is shared
+// engine and stays byte-identical across every metro fork.
+//
 // "./" and "./index.html" resolve to the same GitHub Pages document, so we
 // precache only the canonical "./" — caching both stored two ~112 KB-gzip
 // copies under two keys and re-downloaded the page at install. The manifest's
 // start_url is still ./index.html and a deep bookmark may hit /index.html
 // directly; the navigate-request branch in the fetch handler serves the cached
 // "./" shell for any such navigation, so offline boot still works either way.
+/* ==== ENGINE:END sw-header ==== */
+
+/* ==== METRO:BEGIN sw-config ==== */
+// (-v3 dropped the duplicate "./index.html" shell entry; -v4 added the two
+// roster files missing from ROSTER_URLS; -v5 added the water-taxi marker
+// icon shown when a point lands on water.)
+const CACHE_NAME = "district-explorer-shell-v5";
+
 const SHELL_URLS = [
   "./",
   "./manifest.webmanifest",
@@ -46,7 +60,9 @@ const ROSTER_URLS = [
   "./data/app/ccpsa-district-councils.json",
   "./data/app/congress-roster.json",
 ];
+/* ==== METRO:END sw-config ==== */
 
+/* ==== ENGINE:BEGIN sw-handlers ==== */
 const PRECACHE_URLS = SHELL_URLS.concat(GEOMETRY_URLS);
 
 function inList(href, list) {
@@ -137,3 +153,4 @@ self.addEventListener("fetch", (event) => {
 
   // Everything else (all live district/roster API calls) hits the network normally.
 });
+/* ==== ENGINE:END sw-handlers ==== */

@@ -65,6 +65,31 @@ async function booted(context, url, routeFn) {
   return page;
 }
 
+// Wait for a layer card to finish loading, then return its normalized text.
+async function cardText(page, id) {
+  await page
+    .waitForFunction(
+      (cid) => {
+        const el = document.getElementById("card-" + cid);
+        return el && !el.querySelector(".loading-row") &&
+          (el.querySelector(".result-fields") || el.querySelector(".state-empty") ||
+           el.classList.contains("state-empty") || el.classList.contains("state-error") || el.querySelector(".state-error"));
+      },
+      id,
+      { timeout: QUERY_TIMEOUT }
+    )
+    .catch(() => {});
+  return page.evaluate((cid) => {
+    const el = document.getElementById("card-" + cid);
+    if (!el) return { text: "(no card)", error: true, empty: false };
+    return {
+      text: el.innerText.replace(/\s+/g, " ").trim(),
+      error: el.classList.contains("state-error") || !!el.querySelector(".state-error"),
+      empty: el.classList.contains("state-empty") || !!el.querySelector(".state-empty"),
+    };
+  }, id);
+}
+
 const browser = await chromium.launch();
 try {
   // 1. App boots and registers every layer.
@@ -86,21 +111,7 @@ try {
     const page = await booted(context, `${BASE}#point=${POINT}&layers=${OFFLINE.join(",")}`);
     const EXPECT_DISTRICT = { "school-board": "12", "il-supreme-court": "1", "ccbr": "3" };
     for (const id of OFFLINE) {
-      await page
-        .waitForFunction(
-          (cid) => {
-            const el = document.getElementById("card-" + cid);
-            return el && !el.querySelector(".loading-row") && /District/i.test(el.innerText);
-          },
-          id,
-          { timeout: QUERY_TIMEOUT }
-        )
-        .catch(() => {});
-      const info = await page.evaluate((cid) => {
-        const el = document.getElementById("card-" + cid);
-        if (!el) return { text: "(no card)", error: true };
-        return { text: el.innerText.replace(/\s+/g, " ").trim(), error: el.classList.contains("state-error") };
-      }, id);
+      const info = await cardText(page, id);
       const m = /District\s+(\S+)/i.exec(info.text);
       const got = m ? m[1] : null;
       check(
@@ -110,11 +121,8 @@ try {
       );
     }
     // Bonus: the school-board card joins its externalized member roster.
-    const board = await page.evaluate(() => {
-      const el = document.getElementById("card-school-board");
-      return el ? el.innerText : "";
-    });
-    check("school-board joins member roster", /Board member/i.test(board), board.replace(/\s+/g, " ").slice(0, 70));
+    const board = await cardText(page, "school-board");
+    check("school-board joins member roster", /Board member/i.test(board.text), board.text.slice(0, 70));
 
     // Bonus: moving the selection re-classifies correctly. This exercises the
     // incremental-restyle fast path (P7) — same layers on, new point — where

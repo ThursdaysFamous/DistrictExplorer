@@ -1,7 +1,7 @@
 name: Engine parity across metro forks
 
-# Weekly check that the fenced ENGINE blocks in index.html are still
-# byte-identical to each sibling metro fork's DEPLOYED site (which also
+# Weekly check that the fenced ENGINE blocks in index.html and sw.js are
+# still byte-identical to each sibling metro fork's DEPLOYED site (which also
 # catches "ported and merged, but the sibling never shipped").
 #
 # This scheduled watcher runs in the Chicago repo only — Chicago is the
@@ -31,15 +31,33 @@ jobs:
 
       - name: Compare ENGINE blocks against deployed siblings
         id: parity
-        # Stdlib only — no pip install. One invocation per sibling; add a
-        # block below when a new metro launches.
+        # Stdlib only — no pip install. One index.html + one sw.js invocation
+        # per sibling (add a pair when a new metro launches); all runs merge
+        # into one report and one worst-of status (fail > warn > ok). `touch`
+        # + `|| true` keep the merge running even if one run hard-fails; an
+        # empty status then reads as fail.
         continue-on-error: true
         run: |
+          touch parity-report.md status.txt status-sw.txt
           python3 scripts/check_engine_parity.py index.html \
             --against https://nyc.chidistricts.com/ \
             --label nyc \
             --report parity-report.md \
-            --status-file status.txt
+            --status-file status.txt || true
+          python3 scripts/check_engine_parity.py sw.js \
+            --against https://nyc.chidistricts.com/sw.js \
+            --label "nyc sw.js" \
+            --report parity-report-sw.md \
+            --status-file status-sw.txt || true
+          if [ -f parity-report-sw.md ]; then
+            sed -n '/^## Sibling/,$p' parity-report-sw.md >> parity-report.md
+          fi
+          s1="$(cat status.txt)"; s2="$(cat status-sw.txt)"
+          if [ "$s1" = fail ] || [ "$s2" = fail ] || [ -z "$s1" ] || [ -z "$s2" ]; then
+            echo fail > status.txt
+          elif [ "$s1" = warn ] || [ "$s2" = warn ]; then
+            echo warn > status.txt
+          fi
           echo "status=$(cat status.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Open or update tracking issue

@@ -25,6 +25,9 @@ Checks (all must pass; exits non-zero on the first failure):
      center — a bbox covering home would make the sibling-metro portal easter
      egg fire on every pan). Guards the copy-verbatim config diff every fork
      applies when a new metro launches.
+  6. sw.js exactly-one-list invariant: every data/app/*.json on disk is
+     cached in exactly one of the service worker's GEOMETRY_URLS / ROSTER_URLS,
+     so no data file is ever un-cached or double-listed.
 
 Usage:
     python3 scripts/validate_index.py [path/to/index.html]
@@ -190,6 +193,13 @@ def main():
     # 0b. METRO_EXPLORERS config list is sane (metro-portal easter egg)
     n_metros = check_metro_explorers(html)
 
+    # 0c. sw.js ENGINE fences are structurally sound too (the service worker's
+    # handler logic is shared engine; docs/ENGINE_SYNC.md). Absence is reported
+    # by check_sw_lists below with a clearer message.
+    sw_path = os.path.join(repo_root, "sw.js")
+    if os.path.exists(sw_path):
+        check_engine_markers(open(sw_path).read())
+
     # 1. main inline script parses
     scripts = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
     if not scripts:
@@ -246,11 +256,56 @@ def main():
         if len(roster) < min_keys:
             fail("data/app/%s has %d entries, expected at least %d" % (fname, len(roster), min_keys))
 
+    # 5. sw.js exactly-one-list invariant: every data/app/*.json on disk
+    # must be cached in exactly one of GEOMETRY_URLS (cache-first) or ROSTER_URLS
+    # (network-first). A boundary served network-first would be a needless fetch;
+    # a roster served cache-first could name a stale officeholder — the cardinal
+    # sin here. An un-listed file silently loses offline support.
+    check_sw_lists(repo_root, app_dir)
+
     print(
         "validate_index: OK — inline script parses, %d registerLayer( calls, "
         "no inline datasets, %d well-formed METRO_EXPLORERS entries, "
-        "all data/app files present and well formed" % (n, n_metros)
+        "all data/app files present and cached in exactly one sw.js list" % (n, n_metros)
     )
+
+
+def _sw_url_list(sw, name):
+    """Extract the ./data/app/*.json basenames from a `const NAME = [...]` array."""
+    m = re.search(r"const %s = \[(.*?)\];" % name, sw, re.DOTALL)
+    if not m:
+        fail("sw.js: %s array not found" % name)
+    return re.findall(r'\./data/app/([A-Za-z0-9._-]+\.json)', m.group(1))
+
+
+def check_sw_lists(repo_root, app_dir):
+    sw_path = os.path.join(repo_root, "sw.js")
+    if not os.path.exists(sw_path):
+        fail("sw.js not found next to index.html")
+    sw = open(sw_path).read()
+    geometry = _sw_url_list(sw, "GEOMETRY_URLS")
+    roster = _sw_url_list(sw, "ROSTER_URLS")
+
+    # No file appears in both lists.
+    both = sorted(set(geometry) & set(roster))
+    if both:
+        fail("sw.js: file(s) in BOTH GEOMETRY_URLS and ROSTER_URLS: %s" % ", ".join(both))
+
+    listed = geometry + roster
+    dupes = sorted(set(x for x in listed if listed.count(x) > 1))
+    if dupes:
+        fail("sw.js: file(s) listed more than once: %s" % ", ".join(dupes))
+
+    # Every listed file exists on disk.
+    for fname in listed:
+        if not os.path.exists(os.path.join(app_dir, fname)):
+            fail("sw.js caches data/app/%s but the file does not exist" % fname)
+
+    # Every data/app/*.json on disk is cached in exactly one list.
+    on_disk = set(f for f in os.listdir(app_dir) if f.endswith(".json"))
+    uncached = sorted(on_disk - set(listed))
+    if uncached:
+        fail("data/app file(s) not cached in any sw.js list: %s" % ", ".join(uncached))
 
 
 if __name__ == "__main__":

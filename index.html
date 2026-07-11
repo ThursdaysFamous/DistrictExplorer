@@ -29,10 +29,11 @@
 <style>
   :root {
     /* ---- Chicago flag palette ---- */
-    --chi-blue: #41B6E6;        /* flag stripe blue */
-    --chi-blue-deep: #0B5394;   /* deeper blue for text/links on light bg */
-    --chi-red: #C8102E;         /* flag star red */
-    --chi-red-deep: #9C0B24;
+    --accent: #41B6E6;        /* flag stripe blue */
+    --accent-deep: #0B5394;   /* deeper blue for text/links on light bg */
+    --accent-warm: #C8102E;         /* flag star red */
+    --accent-warm-deep: #9C0B24;
+  /* ==== ENGINE:BEGIN styles-core ==== */
 
     --ink: #14181C;
     --slate: #55626C;
@@ -51,7 +52,7 @@
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
     --radius: 8px;
-    --focus-ring: 3px solid var(--chi-red);
+    --focus-ring: 3px solid var(--accent-warm);
   }
 
   * { box-sizing: border-box; }
@@ -68,7 +69,7 @@
     background: var(--paper);
   }
 
-  a { color: var(--chi-blue-deep); }
+  a { color: var(--accent-deep); }
   a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
     outline: var(--focus-ring);
     outline-offset: 2px;
@@ -93,9 +94,9 @@
     height: 10px;
     background: linear-gradient(
       to bottom,
-      var(--chi-blue) 0 30%,
+      var(--accent) 0 30%,
       #fff 30% 70%,
-      var(--chi-blue) 70% 100%
+      var(--accent) 70% 100%
     );
   }
 
@@ -111,10 +112,10 @@
   h1.title {
     margin: 0;
   }
-  /* Star + wordmark live in one non-wrapping row so they can never split onto
-     separate lines; align-items: center keeps the star vertically centered
-     against the title text's line box (the "C" in Chicago) rather than
-     bottom-aligned against the whole heading (title + subtitle). */
+  /* Emblem + wordmark live in one non-wrapping row so they can never split
+     onto separate lines; align-items: center keeps the emblem vertically
+     centered against the title text's line box (the wordmark's first letter)
+     rather than bottom-aligned against the whole heading (title + subtitle). */
   .title-row {
     display: flex;
     align-items: center;
@@ -221,7 +222,7 @@
   }
   .search-row button {
     border: none;
-    background: var(--chi-blue-deep);
+    background: var(--accent-deep);
     color: #fff;
     border-radius: 6px;
     padding: 0 16px;
@@ -280,7 +281,8 @@
   .geo-status.err { color: var(--err); }
 
   /* ---------- sibling-metro portal (easter egg — see ENGINE metro-portal) ---------- */
-  #geocode-results li.sibling-result { border-top: 2px solid var(--chi-blue); }
+  /* ==== ENGINE:END styles-core ==== */
+  #geocode-results li.sibling-result { border-top: 2px solid var(--accent); }
   #geocode-results li.sibling-result button {
     display: flex;
     flex-direction: column;
@@ -290,9 +292,10 @@
   .sibling-result-hint {
     font-size: 11.5px;
     font-weight: 600;
-    color: var(--chi-blue-deep);
+    color: var(--accent-deep);
   }
 
+  /* ==== ENGINE:BEGIN styles-app ==== */
   #metro-portal {
     position: fixed;
     inset: 0;
@@ -307,7 +310,7 @@
   .metro-portal-card {
     background: var(--panel);
     border-radius: var(--radius);
-    border-top: 4px solid var(--chi-red);
+    border-top: 4px solid var(--accent-warm);
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
     max-width: 430px;
     width: 100%;
@@ -335,7 +338,7 @@
   .metro-portal-count {
     font-family: var(--font-mono);
     font-size: 12.5px;
-    color: var(--chi-blue-deep);
+    color: var(--accent-deep);
     min-height: 16px;
   }
   .metro-portal-actions {
@@ -354,8 +357,8 @@
     cursor: pointer;
   }
   .metro-portal-go {
-    background: var(--chi-blue-deep);
-    border: 1px solid var(--chi-blue-deep);
+    background: var(--accent-deep);
+    border: 1px solid var(--accent-deep);
     color: #fff;
   }
   .metro-portal-go:hover { background: #08406e; }
@@ -374,7 +377,7 @@
     padding: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--chi-blue-deep);
+    color: var(--accent-deep);
     cursor: pointer;
     font-family: var(--font-body);
   }
@@ -465,7 +468,7 @@
     font-size: 12px;
     padding: 5px 10px;
     background: #fff;
-    color: var(--chi-blue-deep, #08406e);
+    color: var(--accent-deep, #08406e);
     border: 1px solid rgba(20, 24, 28, 0.25);
     border-radius: 4px;
     cursor: pointer;
@@ -473,9 +476,9 @@
   }
   .hover-toggle-btn:hover { background: #EEF4F7; }
   .hover-toggle-btn[aria-pressed="true"] {
-    background: var(--chi-blue-deep, #08406e);
+    background: var(--accent-deep, #08406e);
     color: #fff;
-    border-color: var(--chi-blue-deep, #08406e);
+    border-color: var(--accent-deep, #08406e);
   }
   .selected-point-chip {
     background: var(--ink);
@@ -489,8 +492,8 @@
   .selected-point-chip .copy-link-btn {
     margin-left: 10px;
     background: transparent;
-    color: var(--chi-blue);
-    border: 1px solid var(--chi-blue);
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 4px;
     font-family: var(--font-mono);
     font-size: 11px;
@@ -597,8 +600,8 @@
     flex: none;
     border: 2px solid var(--ink);
   }
-  .group-political .dot { background: var(--chi-blue); }
-  .group-safety .dot { background: var(--chi-red); }
+  .group-political .dot { background: var(--accent); }
+  .group-safety .dot { background: var(--accent-warm); }
   .group-schools .dot { background: #E8A324; }
   .group-geography .dot { background: #5C8F6B; }
 
@@ -652,13 +655,13 @@
   }
   .layer-block-head input[type="checkbox"] {
     width: 17px; height: 17px;
-    accent-color: var(--chi-blue-deep);
+    accent-color: var(--accent-deep);
     cursor: pointer;
   }
   .stub-badge {
     font-family: var(--font-mono);
     font-size: 10px;
-    background: var(--chi-red);
+    background: var(--accent-warm);
     color: #fff;
     padding: 2px 6px;
     border-radius: 4px;
@@ -676,7 +679,7 @@
   .spinner {
     width: 14px; height: 14px; border-radius: 50%;
     border: 2px solid var(--line-strong);
-    border-top-color: var(--chi-blue-deep);
+    border-top-color: var(--accent-deep);
     animation: spin 0.8s linear infinite;
     flex: none;
   }
@@ -700,6 +703,7 @@
   .result-row dd .field-pin { display: inline-block; vertical-align: -2px; margin-right: 5px; line-height: 0; }
   dl.result-fields { margin: 0; }
 
+  /* ==== ENGINE:END styles-app ==== */
   /* ---- School Location layer: type filter + color-coded nearest list ---- */
   .school-filter { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0 0 10px; }
   .school-filter-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; user-select: none; }
@@ -712,6 +716,7 @@
   .school-list-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
   .school-list-empty { list-style: none; margin-left: -20px; color: var(--slate); }
 
+  /* ==== ENGINE:BEGIN styles-footer ==== */
   /* ---- Footer: a dark bookend echoing the masthead ---- */
   footer.site-footer {
     background: var(--ink);
@@ -730,7 +735,7 @@
     margin: 0 0 12px;
   }
   .footer-disclaimer {
-    border-left: 3px solid var(--chi-red);
+    border-left: 3px solid var(--accent-warm);
     padding: 10px 14px;
     background: rgba(200,16,46,0.14);
     border-radius: 0 6px 6px 0;
@@ -776,7 +781,7 @@
   .footer-sources a:hover,
   .footer-metros a:hover {
     color: #fff;
-    border-color: var(--chi-blue);
+    border-color: var(--accent);
     background: rgba(65,182,230,0.14);
   }
 
@@ -805,7 +810,7 @@
   .footer-links a {
     font: inherit;
     font-weight: 600;
-    color: var(--chi-blue);
+    color: var(--accent);
     background: none;
     border: none;
     padding: 0;
@@ -835,7 +840,7 @@
     position: relative;
     background: var(--panel);
     border-radius: 8px;
-    border-top: 4px solid var(--chi-red);
+    border-top: 4px solid var(--accent-warm);
     box-shadow: 0 12px 40px rgba(20, 24, 28, 0.35);
     max-width: 460px;
     width: 100%;
@@ -884,14 +889,14 @@
     display: inline-block;
   }
   .feedback-actions .btn-primary {
-    background: var(--chi-blue-deep);
+    background: var(--accent-deep);
     color: #fff;
     border: none;
   }
   .feedback-actions .btn-primary:hover { background: #094377; }
   .feedback-actions .btn-secondary {
     background: var(--paper);
-    color: var(--chi-blue-deep);
+    color: var(--accent-deep);
     border: 1px solid var(--line-strong);
   }
   .feedback-actions .btn-secondary:hover { background: #EEF4F7; }
@@ -922,11 +927,13 @@
 
   /* ---- selected-boundary highlight: SVG drop-shadow filter so the matched
      region reads as physically lifted above the faded rest of the layer ---- */
+  /* ==== ENGINE:END styles-footer ==== */
   .chi-region-highlight {
     filter: drop-shadow(0 5px 7px rgba(20, 24, 28, 0.5)) drop-shadow(0 1px 2px rgba(20, 24, 28, 0.35));
     transition: filter 120ms ease-out;
   }
   .chi-poi-pin { background: none; border: none; }
+  /* ==== ENGINE:BEGIN styles-hover-responsive ==== */
 
   /* ---- hover explorer: a live popup that follows the cursor and names the
      district under it (largest active layer). pointer-events:none is load-
@@ -970,16 +977,16 @@
     font-size: 12px;
     padding: 4px 10px;
     background: #fff;
-    color: var(--chi-blue-deep, #08406e);
+    color: var(--accent-deep, #08406e);
     border: 1px solid rgba(11, 83, 148, 0.4);
     border-radius: 4px;
     cursor: pointer;
   }
   .pin-parent-btn:hover { background: #EEF4F7; }
   .pin-parent-btn.is-pinned {
-    background: var(--chi-blue-deep, #08406e);
+    background: var(--accent-deep, #08406e);
     color: #fff;
-    border-color: var(--chi-blue-deep, #08406e);
+    border-color: var(--accent-deep, #08406e);
   }
 
   /* the relationship legend — sits at the top of the bottom-left stack, just
@@ -1012,6 +1019,7 @@
     cursor: pointer;
   }
   .rel-unpin-btn:hover { background: #FBECEE; }
+  /* ==== ENGINE:END styles-hover-responsive ==== */
 </style>
 
 <script data-goatcounter="https://chidistricts.goatcounter.com/count"
@@ -1026,7 +1034,7 @@
     <h1 class="title">
       <span class="title-row">
         <svg class="masthead-star" viewBox="0 0 100 100" aria-hidden="true">
-          <path fill="var(--chi-red)" id="star-path-header"></path>
+          <path fill="var(--accent-warm)" id="star-path-header"></path>
         </svg>
         <span class="title-text">Chicago District Explorer</span>
       </span>
@@ -1079,7 +1087,7 @@
     <div id="main-content" tabindex="-1"></div>
     <div id="empty-state" class="empty-state">
       <svg class="star-outline" viewBox="0 0 100 100" aria-hidden="true">
-        <path fill="none" stroke="var(--chi-blue-deep)" stroke-width="4" id="star-path-empty"></path>
+        <path fill="none" stroke="var(--accent-deep)" stroke-width="4" id="star-path-empty"></path>
       </svg>
       <h2>No point selected</h2>
       <p>Search an address or click anywhere on the map to build a civic profile for that location.</p>
@@ -5527,9 +5535,13 @@
   })();
   /* ==== ENGINE:END metro-links ==== */
 
+  /* ==== ENGINE:BEGIN exports ==== */
   // expose a couple of things for later module threads / debugging, without
-  // polluting global scope beyond one namespace
-  window.ChiExplorer = {
+  // polluting global scope beyond one namespace. The object is built here so
+  // the member list stays engine; the window property it lands on is fork-
+  // branded, so the assignment below stays outside the fence (twinned with
+  // each fork's smoke_test.mjs).
+  var EXPLORER_EXPORTS = {
     state: state,
     map: map, // debug/programmatic map control (lets tests drive panning, e.g. the metro-portal easter egg)
     registerLayer: registerLayer,
@@ -5540,6 +5552,8 @@
     probeGeometryColumn: probeGeometryColumn,
     renderFieldList: renderFieldList
   };
+  /* ==== ENGINE:END exports ==== */
+  window.ChiExplorer = EXPLORER_EXPORTS;
 })();
 </script>
 <script>

@@ -82,23 +82,33 @@ Multiply that by every engine change and the forks stop being the same app.
   the **Chicago repo only** (one tracking issue, in the canonical repo,
   instead of N mirrored ones); other forks carry the same workflow file with
   `workflow_dispatch` only, for on-demand checks. It compares the repo's
-  `index.html` against each sibling's **deployed** site, so it also catches
-  "merged but the sibling never shipped." Expect a transient WARN while a
-  port is merged-but-undeployed on one side.
+  `index.html` and `sw.js` against each sibling's **deployed** site, so it
+  also catches "merged but the sibling never shipped." Expect a transient
+  WARN while a port is merged-but-undeployed on one side.
 
-## Current ENGINE block inventory (23)
+## Current ENGINE block inventory (28 in index.html + 2 in sw.js)
 
-`app-token`, `arcgis-loader`, `arcgis-paged-loader`, `cached-loaders`,
-`feedback`, `fetch-retry`, `find-prop-ci`, `geolocation`, `haversine`,
-`metro-links`, `metro-links-html`, `metro-portal`, `permalink`,
-`point-in-polygon`, `polygon-containment`, `probe-geometry-column`,
-`render-helper`, `sanitize`, `scope-mask`, `selection-controls`,
-`socrata-loader`, `socrata-point-loader`, `state`.
+index.html: `app-token`, `arcgis-loader`, `arcgis-paged-loader`,
+`cached-loaders`, `exports`, `feedback`, `fetch-retry`, `find-prop-ci`,
+`geolocation`, `haversine`, `metro-links`, `metro-links-html`, `metro-portal`,
+`permalink`, `point-in-polygon`, `polygon-containment`,
+`probe-geometry-column`, `render-helper`, `sanitize`, `scope-mask`,
+`selection-controls`, `socrata-loader`, `socrata-point-loader`, `state`,
+`styles-app`, `styles-core`, `styles-footer`, `styles-hover-responsive`.
+
+sw.js: `sw-header`, `sw-handlers` — the config between them (cache name +
+URL lists) is the service worker's METRO section.
+
+(The four `styles-*` blocks fence the shared layout CSS on the neutral
+`--accent`/`--accent-deep`/`--accent-warm`/`--accent-warm-deep` custom
+properties; each fork's `:root` palette *values* stay fork code, as do the
+fork-only style islands between the fences — see backlog item 6's leftovers.)
 
 (`metro-portal` — the sibling-metro portal easter egg — reads per-metro
-`bbox`/`emoji` fields on `METRO_EXPLORERS` entries and expects fork CSS to
-define the `#metro-portal`/`.metro-portal-*`/`.sibling-result*` classes in
-that fork's palette; it sits between the `feedback` fence and the geocoder.
+`bbox`/`emoji` fields on `METRO_EXPLORERS` entries; its card CSS is engine
+too (inside `styles-app`), while the `.sibling-result*` classes stay fork
+CSS because they ride with the fork's geocoder (backlog item 1). It sits
+between the `feedback` fence and the geocoder.
 Entries without a bbox opt out of the portal; overlapping bboxes resolve to
 the nearest bbox center; per-metro dismissals re-arm on leaving that bbox —
 all so the block survives N metros unchanged. Each fork's
@@ -150,18 +160,32 @@ features, not overwriting:
 4. **`LAYER_AREA_RANK`/`LAYER_ORDER` + `GROUPS`** — city data, but the
    *consuming* machinery (reorder/highlight sweeps) should be fenced once (2)
    is reconciled.
-5. **Exports namespace** — `window.ChiExplorer` vs `window.NycExplorer`
-   (twinned with each `smoke_test.mjs`). Either standardize the name or build
-   the object in a fenced block and assign the window property in METRO code.
-6. **CSS palette namespace** — `--chi-*` vs `--nyc-*` variables block CSS
-   fencing (e.g. the footer-metros styles differ only by
-   `var(--chi-blue)`/`var(--nyc-blue)`). Rename both to neutral `--accent-*`
-   names, then fence the shared layout CSS.
-7. **`sw.js`** — handler logic is already byte-identical; only comments and
-   the per-city URL lists differ. Neutralize comments, fence the logic.
-8. **`validate_index.py`** — NYC added `check_sw_lists()` (every `data/app/`
-   file in exactly one sw.js list); Chicago should adopt it. `smoke_test.mjs`:
-   NYC added a `cardText()` helper worth backporting.
+5. ~~Exports namespace~~ — **resolved July 2026**: the member list is built
+   in the fenced `exports` block (`var EXPLORER_EXPORTS = {…}`); only the
+   fork-branded window assignment (`window.ChiExplorer` /
+   `window.NycExplorer`, twinned with each fork's `smoke_test.mjs`) stays
+   fork code. The `.chi-*`/`.nyc-*` CSS class prefixes on the marker /
+   region-highlight styles are the same flavor of namespace drift and remain
+   open — see (6)'s leftovers.
+6. ~~CSS palette namespace~~ — **resolved July 2026**: both palettes renamed
+   to neutral `--accent`/`--accent-deep`/`--accent-warm`/`--accent-warm-deep`
+   (values stay per-fork in `:root`) and the shared layout CSS fenced as
+   `styles-core`/`styles-app`/`styles-footer`/`styles-hover-responsive`.
+   Still deliberately fork CSS: the `:root` palette values, `.sibling-result*`
+   (rides with the geocoder, item 1), Chicago's School Location styles, NYC's
+   borough-seal marker styles, and the marker-art/region-highlight region
+   whose `.chi-*`/`.nyc-*` class names are still fork-named (JS and each
+   smoke test reference them — rename both to neutral names to fence it).
+7. ~~`sw.js`~~ — **resolved July 2026**: comments neutralized, handler logic
+   fenced (`sw-header`/`sw-handlers`, METRO config between them),
+   `validate_index.py` lints the fences, and `engine-parity.yml` compares
+   `sw.js` alongside `index.html` in every fork.
+8. ~~`validate_index.py` / `smoke_test.mjs`~~ — **resolved July 2026**, both
+   directions: Chicago adopted NYC's `check_sw_lists()` and `cardText()`;
+   NYC adopted Chicago's `check_metro_explorers()` (with
+   `_split_object_literals`). The rest of both files is legitimately
+   fork-specific config (layer rosters, ground-truth points, data floors) —
+   port *checks*, not bytes, when reconciling them.
 9. ~~Duplicated playbook copies~~ — **resolved July 2026**: the master
    `METRO_EXPANSION_PLAYBOOK.md` lives in the Chicago repo under `docs/`
    (sibling forks carry a root pointer stub only), and the raw NYC
