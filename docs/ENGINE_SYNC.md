@@ -86,19 +86,31 @@ Multiply that by every engine change and the forks stop being the same app.
   also catches "merged but the sibling never shipped." Expect a transient
   WARN while a port is merged-but-undeployed on one side.
 
-## Current ENGINE block inventory (41 in index.html + 2 in sw.js)
+## Current ENGINE block inventory (45 in index.html + 2 in sw.js)
 
 index.html: `app-token`, `arcgis-loader`, `arcgis-paged-loader`,
 `cached-loaders`, `chamber-factory`, `cps-network-factory`, `exports`,
 `extract-district-number`, `feedback`, `fetch-retry`, `find-prop-ci`,
-`geolocation`, `groups`, `haversine`, `hover-explorer`, `int-field`,
-`layer-registry`, `metro-links`, `metro-links-html`, `metro-portal`,
-`nearest-point-factory`, `office-helpers`, `overlay-cards`, `permalink`,
+`geocoder-search`, `geocoder-shell`, `geolocation`, `groups`, `haversine`,
+`hover-explorer`, `int-field`, `layer-registry`, `metro-links`,
+`metro-links-html`, `metro-portal`, `nearest-point-factory`,
+`office-helpers`, `overlay-cards`, `permalink`, `poi-geocode`,
 `point-in-polygon`, `polygon-containment`, `polygon-factory`,
 `probe-geometry-column`, `relationship-pinning`, `render-helper`,
 `sanitize`, `school-zone-factory`, `scope-mask`, `selection-controls`,
 `socrata-loader`, `socrata-point-loader`, `state`, `styles-app`,
-`styles-core`, `styles-footer`, `styles-hover-responsive`.
+`styles-core`, `styles-footer`, `styles-hover-responsive`,
+`styles-sibling-result`.
+
+(`geocoder-shell`/`geocoder-search`/`poi-geocode` fence the geocoder UI —
+search-shell expander, result rendering, submit/debounce wiring, the
+sibling-metro search fallback, and the serial >=1s POI queue. They call
+three fork-defined providers, declared with each fork's unfenced GEOCODER
+section: `geocodeAddress()` (city-scoped type-ahead), `geocodeUnbounded()`
+(whole-coverage, feeds the sibling lookup), and `poiGeocodeRequest()`
+(office-address pin lookup). Provider code stays unfenced even where the
+forks' implementations currently coincide — the provider choice is
+per-metro by design.)
 
 (`layer-registry`/`overlay-cards` fence the registry, styling/highlight
 machinery, and card framework; `HIGHLIGHT_CLASS`/`POI_PIN_CLASS` are METRO
@@ -119,22 +131,23 @@ fork-only style islands between the fences — see backlog item 6's leftovers.)
 
 (`metro-portal` — the sibling-metro portal easter egg — reads per-metro
 `bbox`/`emoji` fields on `METRO_EXPLORERS` entries; its card CSS is engine
-too (inside `styles-app`), while the `.sibling-result*` classes stay fork
-CSS because they ride with the fork's geocoder (backlog item 1). It sits
-between the `feedback` fence and the geocoder.
+too (inside `styles-app`), as are the `.sibling-result*` styles
+(`styles-sibling-result`). It sits between the `feedback` fence and the
+geocoder.
 Entries without a bbox opt out of the portal; overlapping bboxes resolve to
 the nearest bbox center; per-metro dismissals re-arm on leaving that bbox —
 all so the block survives N metros unchanged. Each fork's
 `validate_index.py` lints the list (see that script). The *search* trigger —
 one unbounded retry of a zero-result query, hits classified into sibling
-bboxes via `siblingMetroAt` — is geocoder-provider code, so it lives with
-the fork's geocoder, not in the fence; see backlog item 1.)
+bboxes via `siblingMetroAt`, matches rendered as hand-off rows — is fenced
+in `geocoder-search`, with the whole-coverage lookup behind the fork's
+`geocodeUnbounded()` provider.)
 
 (`scope-mask` shows the seam pattern for engine code that needs a per-metro
 *function*, not a config constant: `drawOutOfScopeMask(loadCoverageGeometry)`
 takes the fork's coverage-geometry loader as a parameter at its unfenced BOOT
-call site, so the block body stays byte-identical. The geocoder reconciliation
-below should use the same shape.)
+call site, so the block body stays byte-identical. The geocoder blocks use
+the same shape via their three fork-defined provider functions.)
 
 Growing this inventory is encouraged: when you touch shared-looking code that
 isn't fenced yet, reconcile it across forks and fence it as part of the
@@ -142,23 +155,25 @@ change.
 
 ## Reconciliation backlog (known structural drift, July 2026)
 
-These engine-quality areas have already forked between Chicago and NYC and
-are **deliberately not fenced yet**. Each is a future "reconcile, then fence"
-task — drift here runs in *both* directions, so reconciling means merging
-features, not overwriting:
+These engine-quality areas had forked between Chicago and NYC before the
+fences existed. **All of them are now reconciled and fenced** — the struck
+entries below record what moved where. When new shared-looking drift
+appears, start a fresh numbered entry here: drift can run in *both*
+directions, so reconciling means merging features, not overwriting:
 
-1. **Geocoder (search box + POI geocode)** — Chicago: Photon/Nominatim; NYC:
-   NYC Planning GeoSearch (Pelias). Needs a provider seam behind
-   `geocodeAddress()`/`geocodePoiAddress()` so the engine part (debounce,
-   queue, rate-limit, render) can be fenced while the provider stays per-metro.
-   July 2026 addition to reconcile alongside: Chicago's
-   `maybeRenderSiblingMatches()`/`buildSiblingResultRow()` — the search-side
-   trigger for the fenced `metro-portal` easter egg (a zero-result query is
-   retried ONCE unbounded, hits classified into sibling metros via
-   `siblingMetroAt`, matches rendered as hand-off rows — one extra request
-   per miss regardless of metro count). NYC's GeoSearch only covers NYC, so
-   its port needs a whole-OSM provider (e.g. the same Photon call) for the
-   sibling lookup.
+1. ~~Geocoder (search box + POI geocode)~~ — **resolved July 2026**: the
+   engine UI (search-shell expander, result rendering, submit/debounce
+   wiring, the sibling-metro search fallback, and the serial >=1s POI
+   queue + address cleaner) is fenced as `geocoder-shell` /
+   `geocoder-search` / `poi-geocode`. Each fork defines three providers
+   with its unfenced GEOCODER section: `geocodeAddress()` (type-ahead,
+   city-scoped), `geocodeUnbounded()` (whole-coverage, for the sibling
+   lookup), and `poiGeocodeRequest()` (office-address pin lookup) —
+   Chicago: Photon / Photon / Nominatim; NYC: GeoSearch / Photon /
+   GeoSearch. The sibling-search fallback thereby reached NYC (with the
+   `styles-sibling-result` CSS and a Photon/OSM credit in its footer);
+   provider code stays unfenced even where the forks currently coincide,
+   because the provider choice is per-metro by design.
 2. ~~Result-card / overlay styling framework + factories~~ — **resolved July
    2026**: NYC adopted Chicago's `styleForFeature` threading (a dormant seam
    there until a layer defines it), the factories were reconciled to byte
