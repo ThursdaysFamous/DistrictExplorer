@@ -1,5 +1,7 @@
 # Metro Expansion Playbook — porting District Explorer to a new city
 
+**Master copy.** This file — `docs/METRO_EXPANSION_PLAYBOOK.md` in the Chicago repo (`DistrictExplorer-CHI`) — is the single source of truth for the playbook. Sibling forks carry a pointer stub at their repo root, never a full copy (the CHI and NYC copies drifted once already; reconciled July 2026). Lessons from a port are folded back **here**. The raw NYC research/build notes this playbook absorbed are archived at `docs/archive/METRO_EXPANSION_NYC.md`.
+
 The reference-of-truth for recreating this app for another large metro. **Chicago is the reference implementation; each metro is its own fork** — a separate repo and site cloned from this one, evolving independently **in its metro-specific code only**: the fenced `ENGINE` blocks in `index.html` stay byte-identical across every fork — see `docs/ENGINE_SYNC.md` for the sync protocol (port the diff, not the prompt) and `scripts/check_engine_parity.py` for the check. Nothing in this document changes the Chicago app.
 
 Part I is the generic recipe (what any city swaps, in what order). Part II is the NYC worked example, researched and source-verified July 10, 2026 — every endpoint labeled **VERIFIED** below was actually fetched that day with real records observed; **UNVERIFIED** means the source was found but not confirmed. Reverify before relying: dataset IDs, field names, and WAF postures drift.

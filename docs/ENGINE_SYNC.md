@@ -122,7 +122,8 @@ features, not overwriting:
 8. **`validate_index.py`** — NYC added `check_sw_lists()` (every `data/app/`
    file in exactly one sw.js list); Chicago should adopt it. `smoke_test.mjs`:
    NYC added a `cardText()` helper worth backporting.
-9. **Duplicated playbook copies** — the Chicago repo carries
-   `METRO_EXPANSION_NYC.md` both at the root and under `docs/`, and they have
-   drifted from each other; the NYC repo carries its own root copy of
-   `METRO_EXPANSION_PLAYBOOK.md`. Pick one home per doc.
+9. ~~Duplicated playbook copies~~ — **resolved July 2026**: the master
+   `METRO_EXPANSION_PLAYBOOK.md` lives in the Chicago repo under `docs/`
+   (sibling forks carry a root pointer stub only), and the raw NYC
+   research notes are archived at `docs/archive/METRO_EXPANSION_NYC.md`
+   in the Chicago repo.
