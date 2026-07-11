@@ -20,6 +20,11 @@ Checks (all must pass; exits non-zero on the first failure):
   3. index.html embeds no dataset inline (no `JSON.parse('...')` blobs remain)
      and references each data/app/* file it fetches.
   4. Every expected data/app/*.json exists, parses, and has the right shape.
+  5. METRO_EXPLORERS entries are well formed (id/label/https url; bbox, when
+     present, is a sane min<max box that does NOT contain this metro's own
+     center — a bbox covering home would make the sibling-metro portal easter
+     egg fire on every pan). Guards the copy-verbatim config diff every fork
+     applies when a new metro launches.
 
 Usage:
     python3 scripts/validate_index.py [path/to/index.html]
@@ -98,6 +103,79 @@ def check_engine_markers(html):
     return len(names)
 
 
+def _split_object_literals(block):
+    """Split the body of a JS array literal into its top-level {...} entries
+    (depth-tracked, so nested objects like bbox stay inside their entry)."""
+    entries, depth, start = [], 0, None
+    for i, ch in enumerate(block):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                entries.append(block[start:i + 1])
+                start = None
+    return entries
+
+
+def check_metro_explorers(html):
+    """Lint the METRO_EXPLORERS config list (the copy-verbatim cross-fork
+    diff applied whenever a new metro launches — the likeliest place for a
+    future typo to land). bbox drives the sibling-metro portal easter egg."""
+    m = re.search(r'var THIS_METRO = "([a-z0-9-]+)"', html)
+    if not m:
+        fail("could not find THIS_METRO in the METRO config block")
+    this_metro = m.group(1)
+    m = re.search(r"var METRO_CENTER = \[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]", html)
+    if not m:
+        fail("could not find METRO_CENTER in the METRO config block")
+    center_lat, center_lng = float(m.group(1)), float(m.group(2))
+    m = re.search(r"var METRO_EXPLORERS = \[(.*?)\n\s*\];", html, re.DOTALL)
+    if not m:
+        fail("could not find the METRO_EXPLORERS list in the METRO config block")
+    entries = _split_object_literals(m.group(1))
+    if not entries:
+        fail("METRO_EXPLORERS is empty")
+
+    ids = []
+    for entry in entries:
+        eid = re.search(r'\bid:\s*"([^"]*)"', entry)
+        label = re.search(r'\blabel:\s*"([^"]*)"', entry)
+        url = re.search(r'\burl:\s*"([^"]*)"', entry)
+        if not (eid and eid.group(1)):
+            fail("METRO_EXPLORERS entry missing id: %s" % entry.strip()[:80])
+        if not (label and label.group(1)):
+            fail("METRO_EXPLORERS[%s] missing label" % eid.group(1))
+        if not (url and url.group(1).startswith("https://")):
+            fail("METRO_EXPLORERS[%s] url missing or not https" % eid.group(1))
+        ids.append(eid.group(1))
+
+        bm = re.search(r"\bbbox:\s*\{([^}]*)\}", entry)
+        if not bm:
+            continue  # no bbox = the metro opts out of the portal; allowed
+        vals = dict(re.findall(r"(minLng|minLat|maxLng|maxLat):\s*(-?[\d.]+)", bm.group(1)))
+        if sorted(vals) != ["maxLat", "maxLng", "minLat", "minLng"]:
+            fail("METRO_EXPLORERS[%s] bbox is missing fields (need minLng/minLat/maxLng/maxLat)" % eid.group(1))
+        b = {k: float(v) for k, v in vals.items()}
+        if not (b["minLat"] < b["maxLat"] and b["minLng"] < b["maxLng"]):
+            fail("METRO_EXPLORERS[%s] bbox is inverted (min must be < max on both axes)" % eid.group(1))
+        if eid.group(1) != this_metro and (
+            b["minLat"] <= center_lat <= b["maxLat"] and b["minLng"] <= center_lng <= b["maxLng"]
+        ):
+            fail(
+                "METRO_EXPLORERS[%s] bbox contains this metro's own center (%s, %s) — "
+                "the metro-portal easter egg would fire on every pan at home" % (eid.group(1), center_lat, center_lng)
+            )
+
+    if len(set(ids)) != len(ids):
+        fail("METRO_EXPLORERS has duplicate ids: %s" % ids)
+    if this_metro not in ids:
+        fail('METRO_EXPLORERS has no entry for THIS_METRO ("%s")' % this_metro)
+    return len(ids)
+
+
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "index.html"
     if not os.path.exists(path):
@@ -108,6 +186,9 @@ def main():
 
     # 0. ENGINE fences are structurally sound (docs/ENGINE_SYNC.md)
     check_engine_markers(html)
+
+    # 0b. METRO_EXPLORERS config list is sane (metro-portal easter egg)
+    n_metros = check_metro_explorers(html)
 
     # 1. main inline script parses
     scripts = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
@@ -167,7 +248,8 @@ def main():
 
     print(
         "validate_index: OK — inline script parses, %d registerLayer( calls, "
-        "no inline datasets, all data/app files present and well formed" % n
+        "no inline datasets, %d well-formed METRO_EXPLORERS entries, "
+        "all data/app files present and well formed" % (n, n_metros)
     )
 
 

@@ -86,14 +86,26 @@ Multiply that by every engine change and the forks stop being the same app.
   "merged but the sibling never shipped." Expect a transient WARN while a
   port is merged-but-undeployed on one side.
 
-## Current ENGINE block inventory (22)
+## Current ENGINE block inventory (23)
 
 `app-token`, `arcgis-loader`, `arcgis-paged-loader`, `cached-loaders`,
 `feedback`, `fetch-retry`, `find-prop-ci`, `geolocation`, `haversine`,
-`metro-links`, `metro-links-html`, `permalink`, `point-in-polygon`,
-`polygon-containment`, `probe-geometry-column`, `render-helper`, `sanitize`,
-`scope-mask`, `selection-controls`, `socrata-loader`, `socrata-point-loader`,
-`state`.
+`metro-links`, `metro-links-html`, `metro-portal`, `permalink`,
+`point-in-polygon`, `polygon-containment`, `probe-geometry-column`,
+`render-helper`, `sanitize`, `scope-mask`, `selection-controls`,
+`socrata-loader`, `socrata-point-loader`, `state`.
+
+(`metro-portal` — the sibling-metro portal easter egg — reads per-metro
+`bbox`/`emoji` fields on `METRO_EXPLORERS` entries and expects fork CSS to
+define the `#metro-portal`/`.metro-portal-*`/`.sibling-result*` classes in
+that fork's palette; it sits between the `feedback` fence and the geocoder.
+Entries without a bbox opt out of the portal; overlapping bboxes resolve to
+the nearest bbox center; per-metro dismissals re-arm on leaving that bbox —
+all so the block survives N metros unchanged. Each fork's
+`validate_index.py` lints the list (see that script). The *search* trigger —
+one unbounded retry of a zero-result query, hits classified into sibling
+bboxes via `siblingMetroAt` — is geocoder-provider code, so it lives with
+the fork's geocoder, not in the fence; see backlog item 1.)
 
 (`scope-mask` shows the seam pattern for engine code that needs a per-metro
 *function*, not a config constant: `drawOutOfScopeMask(loadCoverageGeometry)`
@@ -116,6 +128,14 @@ features, not overwriting:
    NYC Planning GeoSearch (Pelias). Needs a provider seam behind
    `geocodeAddress()`/`geocodePoiAddress()` so the engine part (debounce,
    queue, rate-limit, render) can be fenced while the provider stays per-metro.
+   July 2026 addition to reconcile alongside: Chicago's
+   `maybeRenderSiblingMatches()`/`buildSiblingResultRow()` — the search-side
+   trigger for the fenced `metro-portal` easter egg (a zero-result query is
+   retried ONCE unbounded, hits classified into sibling metros via
+   `siblingMetroAt`, matches rendered as hand-off rows — one extra request
+   per miss regardless of metro count). NYC's GeoSearch only covers NYC, so
+   its port needs a whole-OSM provider (e.g. the same Photon call) for the
+   sibling lookup.
 2. **Result-card / overlay styling framework + factories** — Chicago added
    `styleForFeature`/`restyleOverlayFeatures`/`hoverDotColor` (per-feature
    color-coding, School Location); NYC added `primaryField`/`hoverName` to the

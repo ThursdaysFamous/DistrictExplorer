@@ -279,6 +279,93 @@
   }
   .geo-status.err { color: var(--err); }
 
+  /* ---------- sibling-metro portal (easter egg — see ENGINE metro-portal) ---------- */
+  #geocode-results li.sibling-result { border-top: 2px solid var(--chi-blue); }
+  #geocode-results li.sibling-result button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .sibling-result-hint {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--chi-blue-deep);
+  }
+
+  #metro-portal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(11, 25, 36, 0.55);
+  }
+  #metro-portal[hidden] { display: none; }
+  .metro-portal-card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    border-top: 4px solid var(--chi-red);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    max-width: 430px;
+    width: 100%;
+    padding: 26px 24px 22px;
+    text-align: center;
+    animation: metro-portal-pop 0.25s ease-out;
+  }
+  @keyframes metro-portal-pop {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .metro-portal-emoji { font-size: 52px; line-height: 1; }
+  .metro-portal-card h2 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    letter-spacing: 0.5px;
+    color: var(--ink);
+    margin: 10px 0 6px;
+  }
+  .metro-portal-card p {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--slate);
+  }
+  .metro-portal-count {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--chi-blue-deep);
+    min-height: 16px;
+  }
+  .metro-portal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .metro-portal-actions button {
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+  }
+  .metro-portal-go {
+    background: var(--chi-blue-deep);
+    border: 1px solid var(--chi-blue-deep);
+    color: #fff;
+  }
+  .metro-portal-go:hover { background: #08406e; }
+  .metro-portal-stay {
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+  }
+  .metro-portal-stay:hover { background: #EEF4F7; }
+
   .locate-btn {
     width: 100%;
     background: var(--paper);
@@ -1085,10 +1172,16 @@
   /* Sibling District Explorer deployments — one canonical list shared by every
    * metro fork. When a new metro launches, add its entry here (and in each
    * sibling fork). THIS_METRO drops the fork's own entry so the list can be
-   * copied verbatim between forks. */
+   * copied verbatim between forks. `bbox` (greater metro area, mirroring that
+   * fork's PERMALINK_GATE) and `emoji` feed the sibling-metro portal easter
+   * egg (ENGINE metro-portal): wander the map into a sibling's bbox — or
+   * search/geolocate a point inside one — and the app offers to hand you off
+   * to that fork's explorer. */
   var METRO_EXPLORERS = [
-    { id: "chicago", label: "Chicago", url: "https://chidistricts.com/" },
-    { id: "nyc", label: "New York City", url: "https://nyc.chidistricts.com/" }
+    { id: "chicago", label: "Chicago", url: "https://chidistricts.com/", emoji: "🌭",
+      bbox: { minLng: -88.6, minLat: 41.0, maxLng: -87.0, maxLat: 42.6 } },
+    { id: "nyc", label: "New York City", url: "https://nyc.chidistricts.com/", emoji: "🗽",
+      bbox: { minLng: -74.3, minLat: 40.45, maxLng: -73.6, maxLat: 41.0 } }
   ];
   /* ==== METRO:END config ==== */
 
@@ -1753,6 +1846,22 @@
         locateBtn.disabled = false;
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
         if (lat < METRO_BBOX.minLat || lat > METRO_BBOX.maxLat || lng < METRO_BBOX.minLng || lng > METRO_BBOX.maxLng) {
+          // easter egg: standing inside a sibling metro? offer its explorer,
+          // deep-linking the located point (the URL fragment stays client-side,
+          // same exposure as the sibling's own geolocate → permalink flow)
+          var siblingHere = siblingMetroAt(lat, lng);
+          if (siblingHere) {
+            geoStatusEl.textContent = "You're outside " + METRO_NAME + " — but " + siblingHere.label + " has its own District Explorer.";
+            geoStatusEl.className = "geo-status";
+            offerMetroPortal(siblingHere, {
+              point: { lat: lat, lng: lng },
+              source: "geolocate",
+              title: "You're in " + siblingHere.label + "!",
+              note: "This is the " + METRO_NAME + " District Explorer — but " + siblingHere.label +
+                " has one of its own, and it can look up the spot you're standing on."
+            });
+            return;
+          }
           geoStatusEl.textContent = "Your current location looks like it's outside the " + METRO_NAME + " area this app covers.";
           geoStatusEl.className = "geo-status err";
           return;
@@ -1867,6 +1976,184 @@
   })();
 
   /* ==== ENGINE:END feedback ==== */
+  /* ==== ENGINE:BEGIN metro-portal ==== */
+  /* =========================================================================
+   * SIBLING-METRO PORTAL (easter egg) — every fork knows where its siblings
+   * live (METRO_EXPLORERS[].bbox). Pan the map until its center lands inside
+   * a sibling's metro and a portal card offers to hand you off to that
+   * fork's explorer, with a short countdown. Fork-specific surfaces (the
+   * geocoder's out-of-city search fallback, geolocation) reuse the same card
+   * via offerMetroPortal()/siblingMetroAt(), optionally deep-linking the
+   * resolved point through the sibling's #point= permalink. Dismissing
+   * re-arms only after the map center leaves that sibling's bbox, so panning
+   * around inside it never nags twice.
+   * ======================================================================= */
+
+  /* A metro without a (well-formed) bbox simply opts out of the portal —
+   * it still gets its footer link, so new METRO_EXPLORERS entries can land
+   * before their bbox is decided. */
+  function validMetroBbox(b) {
+    return !!b && isFinite(b.minLat) && isFinite(b.maxLat) &&
+      isFinite(b.minLng) && isFinite(b.maxLng) &&
+      b.minLat < b.maxLat && b.minLng < b.maxLng;
+  }
+
+  function pointInMetroBbox(lat, lng, b) {
+    return lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng;
+  }
+
+  function siblingMetroAt(lat, lng) {
+    // greater-metro bboxes may overlap once enough metros exist (two nearby
+    // cities) — the nearest bbox center wins, not list order. Squared-degree
+    // distance is plenty for a tie-break between neighbors.
+    var best = null, bestDist = Infinity;
+    for (var i = 0; i < METRO_EXPLORERS.length; i++) {
+      var m = METRO_EXPLORERS[i];
+      if (m.id === THIS_METRO || !validMetroBbox(m.bbox)) continue;
+      if (!pointInMetroBbox(lat, lng, m.bbox)) continue;
+      var dLat = lat - (m.bbox.minLat + m.bbox.maxLat) / 2;
+      var dLng = lng - (m.bbox.minLng + m.bbox.maxLng) / 2;
+      var dist = dLat * dLat + dLng * dLng;
+      if (dist < bestDist) { best = m; bestDist = dist; }
+    }
+    return best;
+  }
+
+  function metroPortalUrl(metro, point) {
+    if (!point) return metro.url;
+    return metro.url + "#point=" + point.lat.toFixed(5) + "," + point.lng.toFixed(5);
+  }
+
+  var metroPortal = null;           // lazily built {root, emoji, title, note, count, go, stay}
+  var metroPortalTimer = null;      // countdown interval handle
+  var metroPortalDismissed = {};    // id -> true, dismissed via "Stay"; each re-arms on leaving THAT bbox
+  var metroPortalRestoreFocus = null;
+
+  function ensureMetroPortal() {
+    if (metroPortal) return metroPortal;
+    var root = document.createElement("div");
+    root.id = "metro-portal";
+    root.setAttribute("role", "alertdialog");
+    root.setAttribute("aria-modal", "true");
+    root.setAttribute("aria-labelledby", "metro-portal-title");
+    root.setAttribute("aria-describedby", "metro-portal-note");
+    root.hidden = true;
+    var card = document.createElement("div");
+    card.className = "metro-portal-card";
+    var emoji = document.createElement("div");
+    emoji.className = "metro-portal-emoji";
+    emoji.setAttribute("aria-hidden", "true");
+    var title = document.createElement("h2");
+    title.id = "metro-portal-title";
+    var note = document.createElement("p");
+    note.id = "metro-portal-note";
+    var count = document.createElement("p");
+    count.className = "metro-portal-count";
+    count.setAttribute("aria-live", "polite");
+    var actions = document.createElement("div");
+    actions.className = "metro-portal-actions";
+    var go = document.createElement("button");
+    go.type = "button";
+    go.className = "metro-portal-go";
+    var stay = document.createElement("button");
+    stay.type = "button";
+    stay.className = "metro-portal-stay";
+    actions.appendChild(go);
+    actions.appendChild(stay);
+    card.appendChild(emoji);
+    card.appendChild(title);
+    card.appendChild(note);
+    card.appendChild(count);
+    card.appendChild(actions);
+    root.appendChild(card);
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { stay.click(); return; }
+      // minimal focus trap — the dialog only ever holds these two buttons
+      if (e.key === "Tab") {
+        e.preventDefault();
+        (document.activeElement === go ? stay : go).focus();
+      }
+    });
+    root.addEventListener("click", function (e) {
+      if (e.target === root) stay.click(); // clicking the backdrop = "Stay"
+    });
+    document.body.appendChild(root);
+    metroPortal = { root: root, emoji: emoji, title: title, note: note, count: count, go: go, stay: stay };
+    return metroPortal;
+  }
+
+  function hideMetroPortal() {
+    if (metroPortalTimer) { clearInterval(metroPortalTimer); metroPortalTimer = null; }
+    if (metroPortal) metroPortal.root.hidden = true;
+    if (metroPortalRestoreFocus && document.contains(metroPortalRestoreFocus)) {
+      metroPortalRestoreFocus.focus();
+    }
+    metroPortalRestoreFocus = null;
+  }
+
+  /* Show the portal card for a sibling metro. opts: {point, source, title,
+   * note} — point deep-links via #point=, source labels the trackEvent,
+   * title/note override the default "you wandered here" copy. */
+  function offerMetroPortal(metro, opts) {
+    opts = opts || {};
+    var p = ensureMetroPortal();
+    if (!p.root.hidden) return; // one portal at a time
+    var url = metroPortalUrl(metro, opts.point || null);
+    var explorerName = metro.label + " District Explorer";
+    p.emoji.textContent = metro.emoji || "🧭";
+    p.title.textContent = opts.title || "Whoa — this is " + metro.label + "!";
+    p.note.textContent = opts.note || "You've wandered a long way from " + METRO_NAME +
+      ". Good news: " + metro.label + " has a District Explorer of its own.";
+    p.go.textContent = "Take me there now";
+    p.stay.textContent = "Stay in " + METRO_NAME;
+
+    var secondsLeft = 5;
+    function renderCountdown() {
+      p.count.textContent = "Opening the " + explorerName + " in " + secondsLeft + "…";
+    }
+    function depart() {
+      if (metroPortalTimer) { clearInterval(metroPortalTimer); metroPortalTimer = null; }
+      trackEvent("metro-portal-go/" + metro.id, opts.source || "wander");
+      window.location.href = url;
+    }
+    p.go.onclick = depart;
+    p.stay.onclick = function () {
+      metroPortalDismissed[metro.id] = true;
+      hideMetroPortal();
+    };
+    renderCountdown();
+    if (metroPortalTimer) clearInterval(metroPortalTimer);
+    metroPortalTimer = setInterval(function () {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) { depart(); return; }
+      renderCountdown();
+    }, 1000);
+
+    trackEvent("metro-portal/" + metro.id, opts.source || "wander");
+    metroPortalRestoreFocus = document.activeElement;
+    p.root.hidden = false;
+    p.stay.focus(); // safe default: Enter/Escape keeps you here, the countdown does the magic
+  }
+
+  map.on("moveend", function () {
+    var c = map.getCenter();
+    // per-metro re-arm: a dismissal lasts exactly until the center leaves that
+    // sibling's own bbox — with several (possibly adjacent) metros, dismissing
+    // one never mutes another and never un-mutes early
+    for (var i = 0; i < METRO_EXPLORERS.length; i++) {
+      var m = METRO_EXPLORERS[i];
+      if (metroPortalDismissed[m.id] &&
+          !(validMetroBbox(m.bbox) && pointInMetroBbox(c.lat, c.lng, m.bbox))) {
+        delete metroPortalDismissed[m.id];
+      }
+    }
+    var metro = siblingMetroAt(c.lat, c.lng);
+    if (!metro) return;
+    if (metroPortalDismissed[metro.id]) return;           // dismissed; quiet until they leave
+    if (metroPortal && !metroPortal.root.hidden) return;  // already showing
+    offerMetroPortal(metro, { source: "wander" });
+  });
+  /* ==== ENGINE:END metro-portal ==== */
   /* =========================================================================
    * GEOCODER — Nominatim, debounced, bounded to Chicago, attributed.
    * Swappable: everything lives behind geocodeAddress().
@@ -1984,6 +2271,84 @@
     });
   }
 
+  /* ---------- sibling-metro search fallback (easter egg) ----------
+   * When a query matches nothing inside Chicago, quietly retry it against
+   * each sibling District Explorer's metro bbox (METRO_EXPLORERS — see the
+   * ENGINE metro-portal block). A hit renders as a special result row that
+   * hands off to that fork with the address pre-selected via its #point=
+   * permalink. Only runs after a zero-result Chicago search, so the extra
+   * Photon request never fires for normal in-city typing. */
+  function buildSiblingResultRow(metro, r) {
+    var li = document.createElement("li");
+    li.className = "sibling-result";
+    var btn = document.createElement("button");
+    btn.type = "button";
+    var addr = document.createElement("span");
+    addr.className = "sibling-result-addr";
+    // textContent — never innerHTML — for untrusted geocoder output
+    addr.textContent = (metro.emoji ? metro.emoji + " " : "") + r.display_name;
+    var hint = document.createElement("span");
+    hint.className = "sibling-result-hint";
+    hint.textContent = "Open in the " + metro.label + " District Explorer →";
+    btn.appendChild(addr);
+    btn.appendChild(hint);
+    btn.addEventListener("click", function () {
+      clearTimeout(debounceTimer);
+      if (inFlightController) inFlightController.abort();
+      trackEvent("metro-portal-go/" + metro.id, "search");
+      window.location.href = metroPortalUrl(metro, { lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+    });
+    li.appendChild(btn);
+    return li;
+  }
+
+  var SIBLING_ROWS_PER_METRO = 2; // keeps a many-metro future from flooding the result list
+  function maybeRenderSiblingMatches(query) {
+    var anySibling = METRO_EXPLORERS.some(function (m) { return m.id !== THIS_METRO && m.bbox; });
+    if (!anySibling) return;
+    // share the geocoder's abort slot so a new keystroke/search cancels this
+    // lookup exactly like it cancels a Chicago one
+    inFlightController = new AbortController();
+    var signal = inFlightController.signal;
+    // one UNBOUNDED query, classified into metros locally (siblingMetroAt) —
+    // exactly one extra Photon request per Chicago miss no matter how many
+    // sibling metros exist; hits outside every sibling metro are dropped
+    var url = "https://photon.komoot.io/api/?q=" + encodeURIComponent(query) + "&lang=en&limit=8";
+    return fetch(url, { signal: signal, headers: { "Accept": "application/json" } })
+      .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+      .then(normalizePhoton)
+      .then(function (results) {
+        if (signal.aborted) return;
+        var perMetro = {}; // id -> rows rendered
+        var labels = [];
+        results.forEach(function (r) {
+          var metro = siblingMetroAt(parseFloat(r.lat), parseFloat(r.lon));
+          if (!metro) return; // not inside any sibling metro
+          perMetro[metro.id] = (perMetro[metro.id] || 0) + 1;
+          if (perMetro[metro.id] > SIBLING_ROWS_PER_METRO) return;
+          if (labels.indexOf(metro.label) === -1) labels.push(metro.label);
+          geoResultsList.appendChild(buildSiblingResultRow(metro, r));
+        });
+        if (!labels.length) return; // leave the standard "no matches" status as-is
+        geoStatus.textContent = "Nothing in " + METRO_NAME + " matched — but it looks like you're searching " +
+          labels.join(" and ") + ".";
+        geoStatus.className = "geo-status";
+      })
+      .catch(function (err) {
+        if (err.name === "AbortError") throw err; // the callers' handlers ignore aborts
+        // otherwise swallow: the Chicago search itself succeeded, so the honest
+        // state is the standard "no matches" message already on screen — a
+        // failed easter-egg lookup must never surface as a search error
+      });
+  }
+
+  function runGeocodeSearch(q) {
+    return geocodeAddress(q).then(function (results) {
+      renderGeocodeResults(results);
+      if (!results || results.length === 0) return maybeRenderSiblingMatches(q);
+    });
+  }
+
   document.getElementById("geocode-form").addEventListener("submit", function (e) {
     e.preventDefault();
     var q = document.getElementById("geocode-input").value.trim();
@@ -1994,8 +2359,7 @@
     clearTimeout(debounceTimer);
     geoStatus.textContent = "Searching…";
     geoStatus.className = "geo-status";
-    geocodeAddress(q)
-      .then(renderGeocodeResults)
+    runGeocodeSearch(q)
       .catch(function (err) {
         if (err.name === "AbortError") return;
         geoStatus.textContent = "Search failed — the geocoder may be busy. Try again in a moment.";
@@ -2016,7 +2380,7 @@
     }
     debounceTimer = setTimeout(function () {
       geoStatus.textContent = "Searching…";
-      geocodeAddress(q).then(renderGeocodeResults).catch(function (err) {
+      runGeocodeSearch(q).catch(function (err) {
         if (err.name === "AbortError") return;
         geoStatus.textContent = "Search failed — the geocoder may be busy. Try again in a moment.";
         geoStatus.className = "geo-status err";
@@ -5167,6 +5531,7 @@
   // polluting global scope beyond one namespace
   window.ChiExplorer = {
     state: state,
+    map: map, // debug/programmatic map control (lets tests drive panning, e.g. the metro-portal easter egg)
     registerLayer: registerLayer,
     setSelectedPoint: setSelectedPoint, // debug/programmatic point selection (also used by the smoke test)
     sanitize: sanitize,
