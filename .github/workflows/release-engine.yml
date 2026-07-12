@@ -12,9 +12,12 @@ name: Publish engine release
 #      so a release the lockfile doesn't pin would fail the very next deploy,
 #   3. self-check: round-trip (apply the freshly built bundle into scratch
 #      copies -> byte-identical), then the merge gate + behaviour gate,
-#   4. `gh release create` with the bundle, manifest, and the consume-side
-#      scripts (apply_engine.py + its parser check_engine_parity.py) as
-#      assets — the release is the distribution channel for shared scripts.
+#   4. `gh release create` with the bundle, manifest, and the shared scripts
+#      as assets — the release is the distribution channel for shared
+#      scripts: the consume side (apply_engine.py + its parser
+#      check_engine_parity.py) and the Conversion 2 toolchain
+#      (generate_metro_files.py + the metro-worksheet schema, which forks
+#      place at schema/metro-worksheet.schema.json).
 #      OWNER SETUP: enable immutable releases on this repo (Settings ->
 #      General -> Releases) so a published engine can never be re-pointed,
 #   5. fan out repository_dispatch (event_type: engine-release) to every
@@ -117,6 +120,7 @@ jobs:
             gh release create "$GITHUB_REF_NAME" \
               dist/engine.bundle.js dist/engine.manifest.json \
               scripts/apply_engine.py scripts/check_engine_parity.py \
+              scripts/generate_metro_files.py schema/metro-worksheet.schema.json \
               --title "Engine ${GITHUB_REF_NAME#engine-}" \
               --notes-file "$notes" \
               --verify-tag
