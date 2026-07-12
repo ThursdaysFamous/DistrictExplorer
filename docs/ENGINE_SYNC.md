@@ -3,6 +3,24 @@
 *This file is itself part of the shared engine: the SAME copy ships in every
 metro fork. Never edit it in one fork only.*
 
+> **SUPERSEDED IN PART — 2026-07-13.** The manual porting loop below (struck
+> through) is retired by `docs/MECHANIZATION_PLAYBOOK.md` Conversion 1 in the
+> Chicago repo: the engine is now distributed as a **published, hash-verified
+> release artifact**. Each fork pins a version + sha256 in `engine.lock.json`;
+> deploy-time assembly downloads the pinned release, verifies the hash,
+> splices the ENGINE blocks between the fences, and asserts the result
+> (`apply_engine.py`, then `check_engine_parity.py --against-bundle … --strict`);
+> new releases fan out as gated `engine-bump.yml` PRs that also refresh the
+> shared scripts. Parity is true by construction — nobody hand-ports engine
+> diffs between forks anymore. The demotion condition (first automated bump
+> PR merged green in NYC) fired with DistrictExplorer-NYC#23.
+>
+> What survives unchanged: the fences (now assembly markers), the METRO
+> config seam, the block inventory, and the principle **"port the diff, not
+> the prompt"** — the release artifact IS the diff, distributed mechanically.
+> The "model" section below still describes how engine code is written;
+> only the human porting loop is gone.
+
 ## The problem this solves
 
 Each District Explorer metro is its own fork — separate repo, separate site,
@@ -51,40 +69,57 @@ Multiply that by every engine change and the forks stop being the same app.
   shipped the "Explore another metro" row on opposite sides of the bug-report
   row before this rule was written down).
 
-## The porting workflow
+## The porting workflow (superseded 2026-07-13 — see banner above)
 
-1. **Make the change in the Chicago repo**, inside the relevant ENGINE
+The release workflow that replaces this loop: an engine change lands in
+Chicago inside the fences → a reviewed PR bumps `engine.lock.json` → the
+`engine-v*` tag publishes an immutable release (`release-engine.yml`
+self-checks round-trip + gates before publishing) → the fan-out opens a
+gated bump PR in every sibling → each fork's deploy assembles and asserts
+the pinned bytes. Fork-born engine improvements still land in Chicago first,
+as reviewed PRs, then ship in the next release.
+
+1. ~~**Make the change in the Chicago repo**, inside the relevant ENGINE
    block(s) (or add a new block). Run the gates; commit with a message that
-   names the blocks touched, e.g. `engine(metro-links): …`.
-2. **Port to each sibling by handing its session the actual diff** —
+   names the blocks touched, e.g. `engine(metro-links): …`.~~
+2. ~~**Port to each sibling by handing its session the actual diff** —
    `git show <sha>` output, or the PR's `.diff` URL — with the standing
    instruction: *"Apply this engine diff verbatim. Text inside ENGINE blocks
    must be byte-identical after the port; only METRO config values may
    differ. Then run `python3 scripts/check_engine_parity.py index.html
    --against <chicago file or https://chidistricts.com/> --strict` and the
-   repo's normal gates."*
-3. **Verify before pushing**: the parity check must report the ported blocks
+   repo's normal gates."*~~
+3. ~~**Verify before pushing**: the parity check must report the ported blocks
    identical. If a hunk doesn't apply because the fork genuinely diverges
    there, that code wasn't engine — either reconcile it first or move it out
-   of the fence; never "adapt" a hunk inside a fence.
-4. New-metro forks inherit the fences by construction (they start as a clone
-   of Chicago), so this protocol applies from their first commit.
+   of the fence; never "adapt" a hunk inside a fence.~~
+4. ~~New-metro forks inherit the fences by construction (they start as a clone
+   of Chicago), so this protocol applies from their first commit.~~ New-metro
+   forks now start from a clone of Chicago **plus** its `engine.lock.json`,
+   `apply_engine.py`, `engine-bump.yml`, and deploy assembly steps — the
+   artifact model applies from their first commit.
 
 ## The tooling
 
+- `scripts/build_engine_artifact.py` (Chicago only) — builds the
+  byte-deterministic `engine.bundle.js` + `engine.manifest.json` a release
+  publishes; `scripts/apply_engine.py` (every fork) — downloads, hash-verifies
+  against `engine.lock.json`, and splices the pinned release between the
+  fences, failing hard with nothing written on any mismatch. Both ship as
+  release assets — the release is the shared scripts' distribution channel,
+  and bump PRs refresh them automatically.
 - `scripts/check_engine_parity.py` — extract, lint, and compare ENGINE
   blocks. Lint mode (`… index.html`) runs in every fork's
-  `validate_index.py`-adjacent workflow; compare mode
-  (`--against <path-or-URL>`) diffs this fork's blocks against a sibling's
-  working tree or deployed site. Drift is a WARN to be ported by a human,
-  matching the repo-wide "surface for a human, don't auto-apply" convention.
-- `.github/workflows/engine-parity.yml` — the scheduled watcher. It runs in
-  the **Chicago repo only** (one tracking issue, in the canonical repo,
-  instead of N mirrored ones); other forks carry the same workflow file with
-  `workflow_dispatch` only, for on-demand checks. It compares the repo's
-  `index.html` and `sw.js` against each sibling's **deployed** site, so it
-  also catches "merged but the sibling never shipped." Expect a transient
-  WARN while a port is merged-but-undeployed on one side.
+  `validate_index.py`-adjacent workflow. **Demoted from drift detector to
+  post-assembly assertion**: `--against-bundle engine.manifest.json --strict`
+  runs inside every deploy's assemble job, right after `apply_engine.py`,
+  asserting the spliced blocks equal the downloaded bundle. The cross-fork
+  compare mode (`--against <path-or-URL>`) remains for ad-hoc checks.
+- `.github/workflows/engine-parity.yml` — the old scheduled cross-fork
+  watcher, superseded by construction. NYC deleted its copy (work order 1.6)
+  after its first clean assembled deploy; Chicago's weekly run is retained
+  one more cycle as belt-and-suspenders, then deleted (playbook migration
+  step 4).
 
 ## Current ENGINE block inventory (45 in index.html + 2 in sw.js)
 

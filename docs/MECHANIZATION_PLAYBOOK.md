@@ -183,6 +183,17 @@ automated bump PR opens in NYC and passes validate_index + smoke.
   assertion + gated bump-PR CI.
 - **Prose demoted when:** the first automated engine-bump PR merges in NYC. From that date,
   ENGINE_SYNC.md's manual porting steps are struck through and marked superseded by this section.
+- **CONVERSION 1 DONE — demotion fired 2026-07-13.** Drill evidence (metro-#3 gate input): the
+  corruption drill failed CI at `sha256sum --check` in NYC —
+  <https://github.com/ThursdaysFamous/DistrictExplorer-NYC/actions/runs/29209945390> (recorded
+  with an invalid first attempt in NYC's `docs/NYC_CONFORMANCE.md`); unplanned second red, same
+  gate family: the release workflow refused a mis-pointed `engine-v1.0.1` tag whose commit's
+  lockfile still pinned v1.0.0 —
+  <https://github.com/ThursdaysFamous/DistrictExplorer-CHI/actions/runs/29212754659>. The first
+  automated bump PR (DistrictExplorer-NYC#23, from the engine-v1.0.1 fan-out) merged green the
+  same day; ENGINE_SYNC.md's porting steps are struck through as of this date. Remaining
+  Conversion 1 tail: delete Chicago's `engine-parity.yml` after one more weekly cycle
+  (migration step 4).
 
 ---
 
