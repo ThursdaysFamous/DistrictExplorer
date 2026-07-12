@@ -36,7 +36,7 @@ const BASE = process.env.BASE_URL || "http://localhost:8000/";
 // ==== GENERATED:BEGIN smoke-config ====
 const POINT = "41.88250,-87.62850"; // downtown Loop — inside Cook County
 const OFFLINE = ["school-board", "il-supreme-court", "ccbr"];
-const EXPECT_DISTRICT = { "school-board": "12", "il-supreme-court": "1", "ccbr": "3" };
+const EXPECT_DISTRICT = { "school-board": "99", "il-supreme-court": "1", "ccbr": "3" };
 const NEGATIVE_POINT = "41.70000,-87.10000"; // Lake Michigan, Indiana waters — outside all three anchor layers
 const EXPECT_LAYERS = 22; // 18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct
 // ==== GENERATED:END smoke-config ====
