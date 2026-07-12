@@ -46,12 +46,16 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Two jobs (the standard Pages layout): `assemble` carries no environment, so
+# it runs on ANY ref — which is what lets a corruption drill (and any future
+# branch verification) actually exercise the hash gate; the github-pages
+# environment's branch protection rejects non-main jobs before a single step
+# runs, so a one-job layout can never fail at sha256sum on a branch. `deploy`
+# keeps the environment gate and only runs for main. (Ported from the NYC
+# fork, which hit exactly this in its Phase 1.5 drill.)
 jobs:
-  deploy:
+  assemble:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -135,5 +139,16 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    # Only main deploys; a branch dispatch stops after `assemble` (that run's
+    # verdict IS the verification) instead of dying on the github-pages
+    # environment's branch protection.
+    if: github.ref == 'refs/heads/main'
+    needs: assemble
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
