@@ -27,6 +27,15 @@ Modes:
       python3 scripts/check_engine_parity.py index.html \
           --against https://nyc.chidistricts.com/ [--label nyc]
 
+  Post-assembly assertion — compare this file's blocks against a downloaded
+  engine release (docs/MECHANIZATION_PLAYBOOK.md, Conversion 1). Reads the
+  manifest, takes the blocks it assigns to this file's basename, and compares
+  them byte-wise against the bundle. Run with --strict inside the deploy job,
+  right after apply_engine.py, so a splice that doesn't reproduce the pinned
+  engine fails the deploy:
+      python3 scripts/check_engine_parity.py index.html \
+          --against-bundle engine.manifest.json --strict
+
 Exit codes: 0 = ok (or drift found without --strict; drift is a WARN that a
 human ports, matching validate_sources.py's "surface, don't block" pattern),
 1 = hard FAIL (malformed markers, unreadable input), 2 = drift with --strict.
@@ -36,6 +45,8 @@ human ports, matching validate_sources.py's "surface, don't block" pattern),
 import argparse
 import difflib
 import hashlib
+import json
+import os
 import re
 import sys
 import urllib.request
@@ -98,6 +109,36 @@ def digest(body):
     return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12]
 
 
+def blocks_from_bundle(manifest_path, target_file):
+    """Return ({name: body}, label) for the blocks an engine-release manifest
+    assigns to target_file's basename, read out of the bundle it describes.
+    The bundle re-wraps every block in the same fence markers, so the one
+    shared parser reads it back. Raises ValueError on a manifest whose block
+    list and bundle contents disagree — that is a corrupt artifact, never a
+    porting WARN."""
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    bundle_path = os.path.join(os.path.dirname(manifest_path) or ".", manifest["bundle"])
+    with open(bundle_path, encoding="utf-8") as f:
+        bundle_blocks = extract_blocks(f.read(), bundle_path)
+    wanted = {}
+    base = os.path.basename(target_file)
+    for entry in manifest["blocks"]:
+        if entry["file"] != base:
+            continue
+        if entry["name"] not in bundle_blocks:
+            raise ValueError(
+                "%s: manifest lists block %r for %s but the bundle does not contain it"
+                % (manifest_path, entry["name"], base)
+            )
+        wanted[entry["name"]] = bundle_blocks[entry["name"]]
+    if not wanted:
+        raise ValueError(
+            "%s: manifest assigns no blocks to %r — wrong target file?" % (manifest_path, base)
+        )
+    return wanted, "bundle %s (%s)" % (manifest.get("engine_version", "?"), manifest_path)
+
+
 def short_diff(name, ours, theirs, ours_label, theirs_label, max_lines=24):
     lines = list(
         difflib.unified_diff(
@@ -116,6 +157,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("file", nargs="?", default="index.html", help="this fork's index.html")
     ap.add_argument("--against", help="sibling index.html: local path or deployed URL")
+    ap.add_argument("--against-bundle", metavar="MANIFEST",
+                    help="engine.manifest.json of a downloaded release: compare this file's "
+                         "blocks against the bundle (post-assembly assertion; use with --strict)")
     ap.add_argument("--label", default=None, help="short name for the sibling in the report")
     ap.add_argument("--report", help="write a markdown report to this path")
     ap.add_argument("--status-file", help="write ok|warn|fail to this path")
@@ -139,7 +183,11 @@ def main():
             open(args.status_file, "w").write("fail")
         sys.exit(1)
 
-    if not args.against:
+    if args.against and args.against_bundle:
+        print("engine-parity: FAIL — --against and --against-bundle are mutually exclusive", file=sys.stderr)
+        sys.exit(1)
+
+    if not args.against and not args.against_bundle:
         print("engine-parity: OK — %d ENGINE blocks, markers well formed:" % len(ours))
         for name in sorted(ours):
             print("  %-28s %s  (%d lines)" % (name, digest(ours[name]), ours[name].count("\n") + 1))
@@ -147,16 +195,30 @@ def main():
             open(args.status_file, "w").write("ok")
         return
 
-    sibling_label = args.label or args.against
-    try:
-        theirs = extract_blocks(read_source(args.against), sibling_label)
-    except (ValueError, OSError) as e:
-        # A sibling that hasn't shipped markers yet (or is unreachable) is a
-        # WARN, not a FAIL: surface it, let a human decide.
-        print("engine-parity: WARN — could not extract sibling blocks: %s" % e, file=sys.stderr)
-        report.append("## Sibling `%s`\n\n**Could not extract ENGINE blocks:** %s\n" % (sibling_label, e))
-        status = "warn"
-        theirs = {}
+    if args.against_bundle:
+        # Post-assembly assertion: a release artifact that is unreadable or
+        # self-inconsistent is a hard FAIL, never a porting WARN — the deploy
+        # must stop, not open an issue.
+        try:
+            theirs, sibling_label = blocks_from_bundle(args.against_bundle, args.file)
+        except (ValueError, OSError, KeyError) as e:
+            print("engine-parity: FAIL — %s" % e, file=sys.stderr)
+            if args.status_file:
+                open(args.status_file, "w").write("fail")
+            sys.exit(1)
+        if args.label:
+            sibling_label = args.label
+    else:
+        sibling_label = args.label or args.against
+        try:
+            theirs = extract_blocks(read_source(args.against), sibling_label)
+        except (ValueError, OSError) as e:
+            # A sibling that hasn't shipped markers yet (or is unreachable) is a
+            # WARN, not a FAIL: surface it, let a human decide.
+            print("engine-parity: WARN — could not extract sibling blocks: %s" % e, file=sys.stderr)
+            report.append("## Sibling `%s`\n\n**Could not extract ENGINE blocks:** %s\n" % (sibling_label, e))
+            status = "warn"
+            theirs = {}
 
     if args.against and not theirs and status == "ok":
         # Readable, well-formed source with zero fences: the sibling hasn't

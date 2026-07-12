@@ -46,57 +46,45 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Two jobs (the standard Pages layout): `assemble` carries no environment, so
+# it runs on ANY ref — which is what lets a corruption drill (and any future
+# branch verification) actually exercise the hash gate; the github-pages
+# environment's branch protection rejects non-main jobs before a single step
+# runs, so a one-job layout can never fail at sha256sum on a branch. `deploy`
+# keeps the environment gate and only runs for main. (Ported from the NYC
+# fork, which hit exactly this in its Phase 1.5 drill.)
 jobs:
-  deploy:
+  assemble:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
-      # TODO(bootstrap): delete the HTTP-404 skip branch below (and the
-      # `present` output plumbing) once the engine-v1.0.0 release is
-      # published. It exists only so deploys keep working in the window
-      # between merging this workflow and pushing the first engine-v* tag;
-      # after that window, a missing pinned release must FAIL the deploy,
-      # not skip assembly.
+      # Any failure here — including a missing release — FAILS the deploy:
+      # the site never ships without hash-verified engine assembly. (The
+      # bootstrap-window skip guard that used to live here was deleted after
+      # engine-v1.0.0 published, per its TODO.)
       - name: Fetch pinned engine release
-        id: engine
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ver="$(jq -r .engine_version engine.lock.json)"
-          # The releases/tags endpoint lists PUBLISHED releases only (drafts
-          # 404). Skip assembly ONLY on an explicit 404 — the release truly
-          # doesn't exist yet (bootstrap window). Any other failure (rate
-          # limit, 5xx, auth, network) fails the deploy: a transient API
-          # error must never silently skip hash verification and ship
-          # unverified bytes on a green job.
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ver" --silent 2>"$RUNNER_TEMP/gh-release-err.txt"; then
-            gh release download "$ver" --repo "$GITHUB_REPOSITORY" \
-              --pattern 'engine.bundle.js' --pattern 'engine.manifest.json' --clobber
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          elif grep -q "HTTP 404" "$RUNNER_TEMP/gh-release-err.txt"; then
-            echo "::warning title=Engine release not published — assembly SKIPPED::engine.lock.json pins $ver but no such release is published yet. Deploying the committed tree WITHOUT hash-verified engine assembly (bootstrap window only — see docs/MECHANIZATION_PLAYBOOK.md, Conversion 1). Publish the $ver release to close this gap."
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          else
-            cat "$RUNNER_TEMP/gh-release-err.txt"
-            echo "::error::could not determine whether engine release $ver is published — refusing to deploy without hash-verified engine assembly (re-run the workflow)"
-            exit 1
-          fi
+          gh release download "$(jq -r .engine_version engine.lock.json)" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'engine.bundle.js' --pattern 'engine.manifest.json' --clobber
 
       # The TWO spaces between hash and filename are load-bearing — a single
-      # space (or CRLF) breaks `sha256sum --check` parsing.
+      # space (or CRLF) breaks `sha256sum --check` parsing. The two
+      # --against-bundle lines are the parity checker's demotion (playbook
+      # migration step 4): no longer a cross-fork drift detector, it asserts
+      # post-assembly that the spliced blocks equal the downloaded bundle.
       - name: Verify engine hash, apply, re-run static merge gate
-        if: steps.engine.outputs.present == 'true'
         run: |
           echo "$(jq -r .sha256 engine.lock.json)  engine.bundle.js" | sha256sum --check -
           python3 scripts/apply_engine.py
           python3 scripts/validate_index.py index.html
+          python3 scripts/check_engine_parity.py index.html --against-bundle engine.manifest.json --strict
+          python3 scripts/check_engine_parity.py sw.js --against-bundle engine.manifest.json --strict
 
       - uses: actions/setup-node@v4
-        if: steps.engine.outputs.present == 'true'
         with:
           node-version: "20"
 
@@ -104,13 +92,11 @@ jobs:
       # here because the assembled tree (committed files + spliced engine) is
       # what actually ships — smoke-test.yml only covered the committed tree.
       - name: Install Playwright + Chromium
-        if: steps.engine.outputs.present == 'true'
         run: |
           npm install playwright@1.56.1
           npx playwright install --with-deps chromium
 
       - name: Behaviour gate on the assembled tree (serve + smoke test)
-        if: steps.engine.outputs.present == 'true'
         env:
           BASE_URL: http://localhost:8000/
         run: |
@@ -153,5 +139,16 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    # Only main deploys; a branch dispatch stops after `assemble` (that run's
+    # verdict IS the verification) instead of dying on the github-pages
+    # environment's branch protection.
+    if: github.ref == 'refs/heads/main'
+    needs: assemble
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
