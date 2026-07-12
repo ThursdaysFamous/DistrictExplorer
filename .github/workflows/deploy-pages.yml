@@ -55,48 +55,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # TODO(bootstrap): delete the HTTP-404 skip branch below (and the
-      # `present` output plumbing) once the engine-v1.0.0 release is
-      # published. It exists only so deploys keep working in the window
-      # between merging this workflow and pushing the first engine-v* tag;
-      # after that window, a missing pinned release must FAIL the deploy,
-      # not skip assembly.
+      # Any failure here — including a missing release — FAILS the deploy:
+      # the site never ships without hash-verified engine assembly. (The
+      # bootstrap-window skip guard that used to live here was deleted after
+      # engine-v1.0.0 published, per its TODO.)
       - name: Fetch pinned engine release
-        id: engine
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ver="$(jq -r .engine_version engine.lock.json)"
-          # The releases/tags endpoint lists PUBLISHED releases only (drafts
-          # 404). Skip assembly ONLY on an explicit 404 — the release truly
-          # doesn't exist yet (bootstrap window). Any other failure (rate
-          # limit, 5xx, auth, network) fails the deploy: a transient API
-          # error must never silently skip hash verification and ship
-          # unverified bytes on a green job.
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ver" --silent 2>"$RUNNER_TEMP/gh-release-err.txt"; then
-            gh release download "$ver" --repo "$GITHUB_REPOSITORY" \
-              --pattern 'engine.bundle.js' --pattern 'engine.manifest.json' --clobber
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          elif grep -q "HTTP 404" "$RUNNER_TEMP/gh-release-err.txt"; then
-            echo "::warning title=Engine release not published — assembly SKIPPED::engine.lock.json pins $ver but no such release is published yet. Deploying the committed tree WITHOUT hash-verified engine assembly (bootstrap window only — see docs/MECHANIZATION_PLAYBOOK.md, Conversion 1). Publish the $ver release to close this gap."
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          else
-            cat "$RUNNER_TEMP/gh-release-err.txt"
-            echo "::error::could not determine whether engine release $ver is published — refusing to deploy without hash-verified engine assembly (re-run the workflow)"
-            exit 1
-          fi
+          gh release download "$(jq -r .engine_version engine.lock.json)" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'engine.bundle.js' --pattern 'engine.manifest.json' --clobber
 
       # The TWO spaces between hash and filename are load-bearing — a single
       # space (or CRLF) breaks `sha256sum --check` parsing.
       - name: Verify engine hash, apply, re-run static merge gate
-        if: steps.engine.outputs.present == 'true'
         run: |
           echo "$(jq -r .sha256 engine.lock.json)  engine.bundle.js" | sha256sum --check -
           python3 scripts/apply_engine.py
           python3 scripts/validate_index.py index.html
 
       - uses: actions/setup-node@v4
-        if: steps.engine.outputs.present == 'true'
         with:
           node-version: "20"
 
@@ -104,13 +83,11 @@ jobs:
       # here because the assembled tree (committed files + spliced engine) is
       # what actually ships — smoke-test.yml only covered the committed tree.
       - name: Install Playwright + Chromium
-        if: steps.engine.outputs.present == 'true'
         run: |
           npm install playwright@1.56.1
           npx playwright install --with-deps chromium
 
       - name: Behaviour gate on the assembled tree (serve + smoke test)
-        if: steps.engine.outputs.present == 'true'
         env:
           BASE_URL: http://localhost:8000/
         run: |
