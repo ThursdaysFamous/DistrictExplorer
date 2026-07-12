@@ -3445,8 +3445,19 @@
         var feats = (gj && gj.features) || [];
         acc = acc.concat(feats);
         var more = gj && (gj.exceededTransferLimit || (gj.properties && gj.properties.exceededTransferLimit));
-        if (more && feats.length === PAGE) return page(offset + feats.length, acc);
-        return { type: "FeatureCollection", features: acc };
+        // Continue while the server flags more AND this page returned rows.
+        // Guarding on feats.length > 0 (not === PAGE) keeps this correct when a
+        // service caps below PAGE: such a service still sets exceededTransferLimit
+        // on a short page, so an === PAGE test would stop after one page and
+        // silently ship a truncated FeatureCollection. resultOffset advances by
+        // feats.length, so a zero-row page always terminates the loop.
+        if (more && feats.length > 0) return page(offset + feats.length, acc);
+        var out = { type: "FeatureCollection", features: acc };
+        // Same "200 but useless" guard the unpaged loaders apply: an Esri error
+        // envelope 200s carrying no usable geometry; without this makeCached
+        // would retain that empty response as a permanent success.
+        if (!hasUsableGeometry(out)) throw new Error("paged ArcGIS layer returned no usable geometry: " + layerUrl);
+        return out;
       });
     }
     return page(0, []);
@@ -4905,7 +4916,13 @@
           var capitolHtml = officeFieldHtml(member.capitolOffice || member.springfieldOffice);
           if (capitolHtml) fields.push({ label: opts.capitolLabel || "Capitol Office", html: capitolHtml });
         }
-        var profileUrl = member && member.url ? member.url : (opts.directoryUrl || opts.ilgaUrl);
+        // member.url is this factory's one external-URL sink; scheme-check it
+        // through safeHttpUrl like every other href before it becomes an href,
+        // falling back to the trusted (hardcoded) directory URL when the roster
+        // supplies no usable http(s) link. This also fixes the empty-string url
+        // case, which previously emitted href="" (a self-link).
+        var memberUrl = member && member.url ? safeHttpUrl(member.url) : null;
+        var profileUrl = memberUrl || opts.directoryUrl || opts.ilgaUrl;
         fields.push({
           label: member ? (opts.profileLabel || "Member profile") : (opts.directoryLabel || "Member directory"),
           html: '<a href="' + sanitize(profileUrl) + '" target="_blank" rel="noopener">' + sanitize(profileUrl) + '</a>'

@@ -7,11 +7,12 @@ sibling boundary layers received.
 Why this exists: the boundary layers with no CORS-enabled endpoint are shipped
 as same-origin static files under data/app/, fetched lazily by index.html on
 first toggle (they used to be embedded inline in index.html; the P0 change moved
-them out). The school-board conversion is full-precision (24,904 vertices at
-14-15 decimals) and needs simplifying before it ships; this script makes that
-simplification reproducible instead of a one-off manual step, so the app-data
-copy can be regenerated whenever the source boundary changes and never silently
-drifts from data/.
+them out). The full-precision conversions in data/ (e.g. school-board's 24,904
+vertices at 14-15 decimals) need simplifying before they ship; this script makes
+that simplification reproducible instead of a one-off manual step, so each
+app-data copy can be regenerated whenever its source boundary changes and never
+silently drifts from data/. All three Chicago anchors (school-board,
+il-supreme-court, ccbr) are registered in LAYERS below.
 
 Simplification uses mapshaper (the same tool the sibling layers used), which
 builds a topology and simplifies shared arcs once, so adjacent districts keep
@@ -55,6 +56,28 @@ LAYERS = {
         "simplify": "15%",
         "precision": "0.000001",
         "key_prop": "district",
+    },
+    # The two 2021-redistricting anchors. Both were originally converted by
+    # one-off runs of this same protocol before it was generalized; registering
+    # them here means a source change (or a reproducibility check) never has to
+    # regress to a manual mapshaper run. Retain percentages are the ones the
+    # shipped copies were built with (BUILD_PLAYBOOK_1: "12% / 15%", 6-decimal),
+    # both of which agreed 100% with full precision on the 2,000-point protocol.
+    # key_prop is the uppercase attribute-table field (ID/DISTRICT/DISTRICTN);
+    # the app itself keys case-insensitively on districtn/district.
+    "il-supreme-court": {
+        "source": "data/il-supreme-court-districts.geojson",
+        "out": "il-supreme-court-districts.json",
+        "simplify": "12%",
+        "precision": "0.000001",
+        "key_prop": "DISTRICT",
+    },
+    "ccbr": {
+        "source": "data/ccbr-districts.geojson",
+        "out": "ccbr-districts.json",
+        "simplify": "15%",
+        "precision": "0.000001",
+        "key_prop": "DISTRICT",
     },
 }
 

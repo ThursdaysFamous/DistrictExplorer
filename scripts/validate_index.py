@@ -16,16 +16,23 @@ embeds any dataset inline, and every app-data file is present and well formed.
 
 Checks (all must pass; exits non-zero on the first failure):
   1. The main inline <script> still parses (`node --check`).
-  2. registerLayer( appears at least as many times as expected.
+  2. registerLayer( appears at least as many times as expected, AND every layer
+     id in EXPECT_LAYER_IDS is registered. Most layers register through the
+     factories, so a lost factory-registered module would not move the raw
+     registerLayer( count — the per-id check catches that (ported from the NYC
+     fork per docs/ENGINE_SYNC.md backlog item 8, "port checks, not bytes").
   3. index.html embeds no dataset inline (no `JSON.parse('...')` blobs remain)
      and references each data/app/* file it fetches.
   4. Every expected data/app/*.json exists, parses, and has the right shape.
-  5. METRO_EXPLORERS entries are well formed (id/label/https url; bbox, when
+  5. LAYER_AREA_RANK lists every registered layer id exactly once and nothing
+     else — the z-order honesty rule made executable so a layer can never be
+     registered but forgotten in the stack (or vice versa).
+  6. METRO_EXPLORERS entries are well formed (id/label/https url; bbox, when
      present, is a sane min<max box that does NOT contain this metro's own
      center — a bbox covering home would make the sibling-metro portal easter
      egg fire on every pan). Guards the copy-verbatim config diff every fork
      applies when a new metro launches.
-  6. sw.js exactly-one-list invariant: every data/app/*.json on disk is
+  7. sw.js exactly-one-list invariant: every data/app/*.json on disk is
      cached in exactly one of the service worker's GEOMETRY_URLS / ROSTER_URLS,
      so no data file is ever un-cached or double-listed.
 
@@ -47,6 +54,20 @@ import tempfile
 # when police-station/fire-station moved from direct registerLayer blocks onto
 # the back-ported registerNearestPointLayer factory: -2 direct calls, +1 body.)
 MIN_REGISTER_LAYER = 15
+
+# Every layer id that must be registered in index.html. Because most modules
+# register through the factories (registerPolygonLayer / registerSchoolZone /
+# registerCpsNetwork / registerIlgaChamber / registerNearestPointLayer),
+# deleting a factory-registered layer would NOT lower the raw registerLayer(
+# count above — this per-id list is the direct module-loss guard. Kept in sync
+# with LAYER_AREA_RANK by check 5 below (the two must name the same set).
+EXPECT_LAYER_IDS = [
+    "ward", "ward-precinct", "commissioner", "congress", "il-senate", "il-house",
+    "il-supreme-court", "ccbr", "school-board", "ccpsa-district-council",
+    "police-district", "police-beat", "police-station", "fire-station",
+    "school-site", "cps-elementary", "cps-middle", "cps-high", "cps-network",
+    "cps-hs-network", "community-area", "zip-code",
+]
 
 # file -> (min features, max features) for the boundary layers fetched by the app.
 GEOMETRY_FILES = {
@@ -215,10 +236,34 @@ def main():
     if proc.returncode != 0:
         fail("inline script failed `node --check`:\n" + (proc.stderr or proc.stdout))
 
-    # 2. no modules lost
+    # 2. no modules lost — engine floor plus every expected layer id present
     n = len(re.findall(r"registerLayer\(", html))
     if n < MIN_REGISTER_LAYER:
         fail("registerLayer( count %d < expected floor %d — a module was likely deleted" % (n, MIN_REGISTER_LAYER))
+    for lid in EXPECT_LAYER_IDS:
+        if ('id: "%s"' % lid) not in html:
+            fail('layer id "%s" is not registered in index.html' % lid)
+
+    # 2b. LAYER_AREA_RANK covers every registered id exactly once, and nothing
+    # else (no "stub", no dropped layer). This is the z-order pass made
+    # executable: reorderActiveLayers() walks this list, so a registered layer
+    # missing here never gets restacked, and a stale id here is a silent no-op
+    # that hides a rename.
+    m = re.search(r"var LAYER_AREA_RANK = \[(.*?)\];", html, re.DOTALL)
+    if not m:
+        fail("LAYER_AREA_RANK array not found in index.html")
+    rank = re.findall(r'"([a-z0-9-]+)"', m.group(1))
+    dupes = sorted(set(x for x in rank if rank.count(x) > 1))
+    if dupes:
+        fail("LAYER_AREA_RANK lists these ids more than once: %s" % ", ".join(dupes))
+    expected = set(EXPECT_LAYER_IDS)
+    got = set(rank)
+    missing = sorted(expected - got)
+    extra = sorted(got - expected)
+    if missing:
+        fail("LAYER_AREA_RANK is missing registered layer id(s): %s" % ", ".join(missing))
+    if extra:
+        fail("LAYER_AREA_RANK has id(s) not in the registered set: %s" % ", ".join(extra))
 
     # 3. nothing embedded inline anymore, and every data file is referenced
     blobs = re.findall(r"var (\w+) = JSON\.parse\('", html)
@@ -265,8 +310,9 @@ def main():
 
     print(
         "validate_index: OK — inline script parses, %d registerLayer( calls, "
-        "no inline datasets, %d well-formed METRO_EXPLORERS entries, "
-        "all data/app files present and cached in exactly one sw.js list" % (n, n_metros)
+        "LAYER_AREA_RANK covers all %d ids, no inline datasets, %d well-formed "
+        "METRO_EXPLORERS entries, all data/app files present and cached in "
+        "exactly one sw.js list" % (n, len(EXPECT_LAYER_IDS), n_metros)
     )
 
 
