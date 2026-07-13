@@ -270,6 +270,17 @@ and push. CI's `--check` step MUST fail. Record the failing run.
 - **Prose demoted when:** NYC's CLAUDE.md is regenerated from its worksheet, the old stale copy
   is deleted at HEAD, and NYC's duplicated playbooks are pointer stubs. From that commit,
   hand-editing generated regions is a CI failure, not a review nit.
+- **CONVERSION 2 DONE — demotion fired 2026-07-13.** CHI implemented the worksheet + generator +
+  `--check` gate (#94, shipped to forks in the engine-v1.0.2 release assets); NYC adopted in
+  DistrictExplorer-NYC#27 — its CLAUDE.md at HEAD is generator output (the stale Chicago copy,
+  which still opened "Chicago District Explorer", is gone), the sw.js placeholder-comment lie is
+  fixed, and the pointer stubs landed earlier in its Phase 0. Drill evidence (metro-#3 gate
+  inputs), both reds at the `--check` CI step with everything downstream skipped:
+  CHI <https://github.com/ThursdaysFamous/DistrictExplorer-CHI/actions/runs/29214106506>
+  (ground truth hand-flipped in a GENERATED region, #94); NYC
+  <https://github.com/ThursdaysFamous/DistrictExplorer-NYC/actions/runs/29216548888>
+  (the prescribed borough→"Brooklyn" flip, #27, recorded in NYC's work-order evidence table).
+  With both forks' `--check` gates green at HEAD, Conversion 3's precondition is met.
 
 ---
 
