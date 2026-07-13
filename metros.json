@@ -1,0 +1,11 @@
+{
+  "$comment": "The fleet manifest (docs/MECHANIZATION_PLAYBOOK.md, Conversion 3) — the single source of the metro fleet, served at https://chidistricts.com/metros.json by the Pages deploy. Runtime behavior is deliberately unchanged: the app never fetches this file. It is consumed at GENERATION time — `generate_metro_files.py --sync-fleet` projects these entries (minus `repo`) into each fork's worksheet metro_explorers, and the weekly fleet-status workflow reads `repo` to aggregate across forks. Launching metro N+1 means: add its entry here, then run --sync-fleet + regenerate in each fork (a regeneration PR, never a hand edit).",
+  "metros": [
+    { "id": "chicago", "label": "Chicago", "url": "https://chidistricts.com/", "emoji": "🌭",
+      "repo": "ThursdaysFamous/DistrictExplorer-CHI",
+      "bbox": { "minLng": -88.6, "minLat": 41.0, "maxLng": -87.0, "maxLat": 42.6 } },
+    { "id": "nyc", "label": "New York City", "url": "https://nyc.chidistricts.com/", "emoji": "🗽",
+      "repo": "ThursdaysFamous/DistrictExplorer-NYC",
+      "bbox": { "minLng": -74.3, "minLat": 40.45, "maxLng": -73.6, "maxLat": 41.0 } }
+  ]
+}

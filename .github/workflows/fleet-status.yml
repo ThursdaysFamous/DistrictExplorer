@@ -1,0 +1,54 @@
+name: Fleet status
+
+# docs/MECHANIZATION_PLAYBOOK.md, Conversion 3 — the weekly reverse-parity
+# watcher. Runs in the Chicago repo only (one report, in the canonical repo).
+# scripts/fleet_status.py reads metros.json and aggregates, per fork: engine
+# pin vs latest release, validator CAPABILITIES diff (a capability present in
+# a fork but absent in CHI is a reverse-parity WARN — back-port debt), scraper
+# last-green + coverage one-liners, and open bot PRs.
+#
+# It never edits anything. The report lands on ONE auto-updated tracking
+# issue and the job stays green — the issue is the signal, the same
+# convention as validate-sources.yml. All fork repos are public, so the
+# built-in token suffices for every read.
+
+on:
+  schedule:
+    - cron: "0 15 * * 1" # Mondays 15:00 UTC (after the Monday-morning scrapers)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  fleet-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aggregate fleet status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/fleet_status.py --report fleet-status.md --status-file status.txt
+          echo "status=$(cat status.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Update the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Fleet status"
+          {
+            echo "_Auto-updated weekly by \`.github/workflows/fleet-status.yml\` ($(date -u +%Y-%m-%d)). Nothing was changed anywhere — this issue IS the fleet dashboard. Reverse-parity WARNs mean a fork's validator has a capability CHI lacks: back-port it within one release cycle (docs/ENGINE_SYNC.md definition of done). Keep this issue open; it refreshes in place._"
+            echo
+            cat fleet-status.md
+          } > issue-body.md
+          existing="$(gh issue list --state open --search "in:title $title" --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file issue-body.md
+            echo "Updated issue #$existing."
+          else
+            gh issue create --title "$title" --body-file issue-body.md
+            echo "Opened the tracking issue."
+          fi

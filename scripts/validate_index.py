@@ -47,6 +47,27 @@ import subprocess
 import sys
 import tempfile
 
+# Machine-readable capability declaration (docs/MECHANIZATION_PLAYBOOK.md,
+# Conversion 3). The fleet-status workflow in the CHI repo parses this list
+# from every fork's validator and diffs it against CHI's: a capability present
+# in a fork but absent here is a reverse-parity WARN — the mechanical form of
+# "fork-born validator improvements must land in CHI within one release
+# cycle". Shape contract (CHI is the master): a module-level list literal
+# named CAPABILITIES of kebab-case strings, one per distinct check this
+# validator actually performs. Add an entry when you add a check; never
+# declare a capability the code doesn't have.
+CAPABILITIES = [
+    "engine-fence-lint",        # 0/0c: ENGINE markers well formed, index.html + sw.js
+    "metro-explorers-lint",     # 0b: portal list shape/bbox sanity
+    "inline-script-parses",     # 1: node --check on the main inline script
+    "register-layer-floor",     # 2: raw registerLayer( count floor
+    "expect-layer-ids",         # 2: every expected layer id registered
+    "layer-area-rank-lint",     # 2b: rank array covers the id set exactly
+    "no-inline-datasets",       # 3: no JSON.parse blobs; data files referenced
+    "data-file-shapes",         # 4: every data/app file exists with sane counts
+    "sw-exactly-one-list",      # 5: each data file cached in exactly one sw list
+]
+
 # The constants below are GENERATED from metro-worksheet.json (Conversion 2 —
 # edit the worksheet, run scripts/generate_metro_files.py). Fork history worth
 # keeping by hand: this fork's registerLayer floor arithmetic is 1 function

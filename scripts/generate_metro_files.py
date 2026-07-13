@@ -26,6 +26,14 @@ Modes:
     python3 scripts/generate_metro_files.py           # splice regions in place
     python3 scripts/generate_metro_files.py --check   # regenerate + diff; exit 1
                                                       # on any drift (the CI gate)
+    python3 scripts/generate_metro_files.py --sync-fleet [SRC]
+        # Conversion 3: refresh the worksheet's metro_explorers from the fleet
+        # manifest (SRC = a metros.json path or URL; default: the repo-root
+        # metros.json if present, else https://chidistricts.com/metros.json),
+        # then regenerate. Only the metro_explorers value is rewritten — the
+        # rest of the worksheet is untouched. Plain runs and --check never
+        # touch the network, so the CI gate stays hermetic; launching a new
+        # metro is a --sync-fleet regeneration PR in each fork.
 
 Hand-editing a GENERATED region is a CI failure, not a review nit: edit the
 worksheet and regenerate. Hand-written content outside the fences is never
@@ -309,6 +317,65 @@ TARGETS = [
 
 # ---------------------------------------------------------------- splicing
 
+FLEET_URL = "https://chidistricts.com/metros.json"
+
+
+def render_explorers_json(entries):
+    """Render a metro_explorers array in the worksheet's two-lines-per-entry
+    house style, so a fleet sync rewrites only those lines."""
+    L = ["["]
+    for i, e in enumerate(entries):
+        tail = "," if i != len(entries) - 1 else ""
+        L.append('    { "id": %s, "label": %s, "url": %s, "emoji": %s,' % (
+            json.dumps(e["id"]), json.dumps(e["label"], ensure_ascii=False),
+            json.dumps(e["url"]), json.dumps(e["emoji"], ensure_ascii=False)))
+        b = e["bbox"]
+        L.append('      "bbox": { "minLng": %s, "minLat": %s, "maxLng": %s, "maxLat": %s } }%s' % (
+            json.dumps(b["minLng"]), json.dumps(b["minLat"]),
+            json.dumps(b["maxLng"]), json.dumps(b["maxLat"]), tail))
+    L.append("  ]")
+    return "\n".join(L)
+
+
+def sync_fleet(ws_path, src):
+    """Rewrite ONLY the worksheet's "metro_explorers" value from the fleet
+    manifest (metros.json), projecting away fleet-only fields like `repo`.
+    Returns True if the worksheet changed."""
+    if src.startswith("http://") or src.startswith("https://"):
+        import urllib.request
+        req = urllib.request.Request(src, headers={"User-Agent": "district-explorer-fleet-sync"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            manifest = json.loads(resp.read().decode("utf-8"))
+    else:
+        with open(src, encoding="utf-8") as f:
+            manifest = json.load(f)
+    entries = [
+        {"id": m["id"], "label": m["label"], "url": m["url"], "emoji": m["emoji"], "bbox": m["bbox"]}
+        for m in manifest["metros"]
+    ]
+    text = open(ws_path, encoding="utf-8", newline="").read()
+    key = '"metro_explorers": ['
+    i = text.index(key)
+    depth = 0
+    j = i + len(key) - 1
+    for j in range(i + len(key) - 1, len(text)):
+        if text[j] == "[":
+            depth += 1
+        elif text[j] == "]":
+            depth -= 1
+            if depth == 0:
+                break
+    else:
+        fail("could not find the end of metro_explorers in %s" % ws_path)
+    new_text = text[:i] + '"metro_explorers": ' + render_explorers_json(entries) + text[j + 1:]
+    if new_text != text:
+        open(ws_path, "w", encoding="utf-8", newline="").write(new_text)
+        print("generate-metro-files: %s — metro_explorers synced from %s" % (ws_path, src))
+        return True
+    print("generate-metro-files: %s — metro_explorers already match %s" % (ws_path, src))
+    return False
+
+
 def split_regions(text, path):
     """Return (lines, {name: (begin_idx, end_idx)}) — marker line indices."""
     lines = text.split("\n")
@@ -343,9 +410,23 @@ def main():
     ap.add_argument("--schema", default="schema/metro-worksheet.schema.json")
     ap.add_argument("--check", action="store_true",
                     help="verify committed regions match the worksheet; exit 1 on drift")
+    ap.add_argument("--sync-fleet", nargs="?", const="", metavar="SRC",
+                    help="refresh metro_explorers from the fleet manifest before generating "
+                         "(SRC path/URL; default: repo-root metros.json, else %s)" % FLEET_URL)
     args = ap.parse_args()
 
     ws_path = os.path.join(args.root, args.worksheet)
+    if args.sync_fleet is not None:
+        if args.check:
+            fail("--sync-fleet and --check are mutually exclusive (the CI gate stays hermetic)")
+        src = args.sync_fleet
+        if not src:
+            local = os.path.join(args.root, "metros.json")
+            src = local if os.path.exists(local) else FLEET_URL
+        try:
+            sync_fleet(ws_path, src)
+        except (OSError, ValueError, KeyError) as e:
+            fail("fleet sync from %s failed: %s" % (src, e))
     schema_path = os.path.join(args.root, args.schema)
     try:
         with open(ws_path, encoding="utf-8") as f:

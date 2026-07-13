@@ -121,6 +121,20 @@ as reviewed PRs, then ship in the next release.
   one more cycle as belt-and-suspenders, then deleted (playbook migration
   step 4).
 
+## Definition of done for fork-born engine improvements (Conversion 3)
+
+An engine-quality improvement born in a fork (a new validator check, a
+hardened loader, a factory fix) is **not done when the fork's PR merges — it
+is done when the CHI release containing the back-port is tagged.** Every
+fork's `validate_index.py` declares a module-level `CAPABILITIES` list
+(kebab-case strings, one per check the code actually performs; CHI's copy
+defines the shape). The weekly fleet-status workflow in the CHI repo diffs
+each fork's list against CHI's: a capability present in a fork but absent in
+CHI is a **reverse-parity WARN** on the fleet-status tracking issue, and it
+stays there until the CHI release ships. The fork PR description must link
+that tracking issue. Discretionary back-porting is dead; the WARN is the
+debt collector.
+
 ## Current ENGINE block inventory (45 in index.html + 2 in sw.js)
 
 index.html: `app-token`, `arcgis-loader`, `arcgis-paged-loader`,
