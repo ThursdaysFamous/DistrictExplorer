@@ -66,6 +66,22 @@
   ]
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": "https://chidistricts.com/#faq",
+  "isPartOf": { "@id": "https://chidistricts.com/#website" },
+  "mainEntity": [
+    { "@type": "Question", "name": "How do I find out what ward I'm in?", "acceptedAnswer": { "@type": "Answer", "text": "Search your address or click your location on the map above. The tool shows your Chicago ward and who represents it, along with every other civic district that covers that exact point." } },
+    { "@type": "Question", "name": "How many wards does Chicago have?", "acceptedAnswer": { "@type": "Answer", "text": "Chicago has 50 wards, each represented by an alderperson on the City Council." } },
+    { "@type": "Question", "name": "What are my Chicago police district and beat?", "acceptedAnswer": { "@type": "Answer", "text": "Chicago is divided into 22 police districts, each split into smaller beats. Select any address above to see the police district and beat that cover it, plus the nearest police station." } },
+    { "@type": "Question", "name": "What is a Chicago community area?", "acceptedAnswer": { "@type": "Answer", "text": "Chicago has 77 official community areas — long-established neighborhood boundaries used for planning and statistics. The tool shows which community area contains any point you pick." } },
+    { "@type": "Question", "name": "Who represents me in Congress and in Springfield?", "acceptedAnswer": { "@type": "Answer", "text": "Pick a location to see your U.S. House district, Illinois State Senate district, and Illinois State House district, along with the people currently holding those seats." } },
+    { "@type": "Question", "name": "Is this an official government tool?", "acceptedAnswer": { "@type": "Answer", "text": "No. It draws on public data sources that disclaim legal precision, so always confirm district assignments and officeholders with the relevant government office before relying on them for anything official." } }
+  ]
+}
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0b3d91">
 
@@ -1000,6 +1016,18 @@
      the district vocabulary a first-time (or crawling) visitor reads before a
      point is picked. Styled a step down from the primary prompt above it. */
   .empty-state .empty-state-lede { font-size: 12.5px; margin-top: 12px; max-width: 40ch; color: var(--slate-soft); }
+  /* Chicago-specific: evergreen FAQ below the tool — crawlable answers to the
+     district questions people search for, kept in collapsed <details> so they
+     stay indexable without cluttering the UI. */
+  .faq-section { max-width: 900px; margin: 0 auto; padding: 34px 20px 6px; }
+  .faq-section h2 { font-family: var(--font-display); text-transform: uppercase; font-size: 22px; color: var(--ink); margin: 0 0 14px; }
+  .faq-section details { border-top: 1px solid var(--line); }
+  .faq-section details:last-of-type { border-bottom: 1px solid var(--line); }
+  .faq-section summary { list-style: none; cursor: pointer; padding: 14px 0; font-weight: 600; font-size: 15px; color: var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  .faq-section summary::-webkit-details-marker { display: none; }
+  .faq-section summary::after { content: "+"; color: var(--accent-deep); font-size: 22px; font-weight: 400; line-height: 1; }
+  .faq-section details[open] summary::after { content: "\2013"; }
+  .faq-section details p { margin: 0 0 16px; color: var(--slate); font-size: 14px; line-height: 1.55; max-width: 70ch; }
   /* ==== ENGINE:BEGIN styles-hover-responsive ==== */
 
   /* ---- hover explorer: a live popup that follows the cursor and names the
@@ -1163,6 +1191,36 @@
     <div id="groups-root" hidden></div>
   </section>
 </main>
+
+<div class="flag-stripe" aria-hidden="true"></div>
+
+<section class="faq-section" aria-labelledby="faq-heading">
+  <h2 id="faq-heading">Common questions about Chicago districts</h2>
+  <details>
+    <summary>How do I find out what ward I'm in?</summary>
+    <p>Search your address or click your location on the map above. The tool shows your Chicago ward and who represents it, along with every other civic district that covers that exact point.</p>
+  </details>
+  <details>
+    <summary>How many wards does Chicago have?</summary>
+    <p>Chicago has 50 wards, each represented by an alderperson on the City Council.</p>
+  </details>
+  <details>
+    <summary>What are my Chicago police district and beat?</summary>
+    <p>Chicago is divided into 22 police districts, each split into smaller beats. Select any address above to see the police district and beat that cover it, plus the nearest police station.</p>
+  </details>
+  <details>
+    <summary>What is a Chicago community area?</summary>
+    <p>Chicago has 77 official community areas — long-established neighborhood boundaries used for planning and statistics. The tool shows which community area contains any point you pick.</p>
+  </details>
+  <details>
+    <summary>Who represents me in Congress and in Springfield?</summary>
+    <p>Pick a location to see your U.S. House district, Illinois State Senate district, and Illinois State House district, along with the people currently holding those seats.</p>
+  </details>
+  <details>
+    <summary>Is this an official government tool?</summary>
+    <p>No. It draws on public data sources that disclaim legal precision, so always confirm district assignments and officeholders with the relevant government office before relying on them for anything official.</p>
+  </details>
+</section>
 
 <div class="flag-stripe" aria-hidden="true"></div>
 <footer class="site-footer">
