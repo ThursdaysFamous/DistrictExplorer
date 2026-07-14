@@ -195,7 +195,16 @@ try {
   //     here" as a statement of fact, not an error and not a wrong district.
   {
     const context = await browser.newContext({ serviceWorkers: "block" });
-    const page = await booted(context, `${BASE}#point=${NEGATIVE_POINT}&layers=${OFFLINE.join(",")}`);
+    // chicagoCoverage's fallback leg consults the community-area dataset
+    // (Socrata) after an ERSB miss. On a black-holed network (the sandboxed
+    // dev env) that rejection is slow — through the loader's route retries —
+    // which stalls the hide verdict past this check's wait. Abort it so the
+    // fallback's own catch ("stand on the first tiling's verdict") runs
+    // deterministically fast in every environment; the verdict here is
+    // identical either way — the negative point is outside both tilings.
+    const page = await booted(context, `${BASE}#point=${NEGATIVE_POINT}&layers=${OFFLINE.join(",")}`, async (p) => {
+      await p.route("**data.cityofchicago.org**", (r) => r.abort());
+    });
     for (const id of OFFLINE) {
       if (NEGATIVE_HIDDEN.includes(id)) {
         const hidden = await page
@@ -206,10 +215,14 @@ try {
           }, id, { timeout: QUERY_TIMEOUT })
           .then(() => true, () => false);
         const hashKeepsLayer = await page.evaluate((cid) => location.hash.includes(cid), id);
+        // assert the invariant directly, not just its hash reflection: hide
+        // must never mutate state.layersOn (that's what keeps permalinks and
+        // reappear-on-return working)
+        const stillOn = await page.evaluate((cid) => window.ChiExplorer.state.layersOn[cid] === true, id);
         check(
           `${id} hides at the negative point (out of coverage, permalink intact)`,
-          hidden && hashKeepsLayer,
-          `hidden=${hidden} permalink=${hashKeepsLayer}`
+          hidden && hashKeepsLayer && stillOn,
+          `hidden=${hidden} permalink=${hashKeepsLayer} layersOn=${stillOn}`
         );
       } else {
         const info = await cardText(page, id);

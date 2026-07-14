@@ -2692,7 +2692,11 @@
    * small sparse point markers don't compound into fill-murk the way
    * overlapping polygons do. ---------- */
   function activeLayerCount() {
-    return layers.filter(function (l) { return state.layersOn[l.id]; }).length;
+    // relevance-hidden layers (mod.coverage) have no fill on the map, so they
+    // don't compound into murk — count only the visible actives
+    return layers.filter(function (l) {
+      return state.layersOn[l.id] && layerRuntime[l.id].relevant !== false;
+    }).length;
   }
 
   var OPACITY_SCALE_STEP = 0.12;
@@ -3399,8 +3403,10 @@
    * which is what keeps this capability additive across forks.
    *
    * Where the selected point falls outside a layer's coverage the layer
-   * HIDES: its toggle block, result card, map overlay, highlight, and POI
-   * pin are all suppressed and its query (and overlay fetch) is skipped.
+   * HIDES: its toggle block, result card, map overlay, highlight, POI pin,
+   * hover-snapshot row, and relationship outlines are all suppressed and its
+   * query — with any boundary fetch the query would trigger — is skipped
+   * (an overlay fetched by an earlier toggle-on is detached, not deleted).
    * state.layersOn is deliberately NOT mutated, so the layers= permalink
    * survives an out-of-coverage detour and the layer reappears the moment
    * a selected point re-enters its coverage. A coverage test that throws
@@ -3433,6 +3439,12 @@
     if (!rt || !rt.block) return;
     var hidden = rt.relevant === false;
     if (mod.subOf) hidden = hidden || !state.layersOn[mod.subOf];
+    // don't strand keyboard focus inside a subtree that's about to leave the
+    // accessibility tree — release it before hiding
+    if (hidden && !rt.block.hidden && rt.block.contains(document.activeElement) &&
+        document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     rt.block.hidden = hidden;
   }
 
@@ -3467,14 +3479,19 @@
         map.removeLayer(rt.overlayLayer);
         rt.overlayLayer = null; // release the Leaflet graph (P11); rt.geojson stays cached
       }
+      refreshActiveLayerOpacities(); // one fewer visible fill — the rest get more opaque
       refreshRelationshipOutlines();
-    } else if (state.layersOn[mod.id] && rt.geojson) {
-      // back in coverage with the layer still on — reattach from the cached
-      // geojson (addLayer is a no-op if it's already on the map); the dispatch,
-      // which shares this selection's memoized relevance, repopulates the card
-      if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
-      rt.overlayLayer.addTo(map);
-      reorderActiveLayers();
+    } else {
+      if (state.layersOn[mod.id] && rt.geojson) {
+        // back in coverage with the layer still on — reattach from the cached
+        // geojson (addLayer is a no-op if it's already on the map); the dispatch,
+        // which shares this selection's memoized relevance, repopulates the card
+        if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
+        rt.overlayLayer.addTo(map);
+        reorderActiveLayers();
+      }
+      refreshActiveLayerOpacities(); // a visible fill returned — rescale the stack
+      refreshRelationshipOutlines(); // an outline-eligible layer just came back
     }
   }
 
@@ -3498,6 +3515,11 @@
     if (!state.selectedPoint || !state.layersOn[mod.id]) return;
     var seq = state.sequence;
     if (!mod.coverage) { runLayerQueryAt(mod, seq); return; } // no coverage test: exactly the pre-relevance path
+    // Invalidate the card BEFORE awaiting the coverage test — a new selection
+    // must never leave the previous point's districts on display while a slow
+    // (or failing, ~28s retry schedule) coverage source settles. If the layer
+    // then resolves irrelevant, the loading card sits inside the hidden block.
+    setCardLoading(mod);
     layerRelevance(mod, seq).then(function (relevant) {
       if (seq !== state.sequence) return;  // stale — a newer point was selected while the test ran
       if (!state.layersOn[mod.id]) return; // toggled off while the test ran
@@ -3862,14 +3884,33 @@
    * County. Same-origin static files behind makeCached — the first
    * out-of-city selection costs at most one local fetch, and a fetch failure
    * fails OPEN in the engine (the layer behaves exactly as it does today). */
+  // Both tests OVER-approximate the area they gate: a false SHOW just yields
+  // an honest empty card, but a false HIDE would suppress a district the
+  // dataset genuinely resolves — an honesty bug. The ERSB tiling misses
+  // slivers the city datasets cover (downtown lakefill, harbors, O'Hare-edge
+  // ZIPs), so an ERSB miss falls back to the community-area tiling — already
+  // the app's own "inside the city" test (see maybeUseWaterTaxiMarker). The
+  // fallback leg swallows its own failure and stands on the first verdict
+  // (offline still hides confidently); a first-leg failure rejects through to
+  // the engine's fail-open.
   function chicagoCoverage(point) {
     return loadSchoolBoardDistricts().then(function (geojson) {
-      return !!findFeatureContaining(geojson, point);
+      if (findFeatureContaining(geojson, point)) return true;
+      return loadCommunityAreas().then(function (areas) {
+        return !!findFeatureContaining(areas, point);
+      }, function () { return false; });
     });
   }
+  // Cook County: CCBR tiling first; an edge miss falls back to IL Supreme
+  // Court District 1, which is by statute exactly Cook County (both are
+  // same-origin static files).
   function cookCountyCoverage(point) {
     return loadCcbrDistricts().then(function (geojson) {
-      return !!findFeatureContaining(geojson, point);
+      if (findFeatureContaining(geojson, point)) return true;
+      return loadSupremeCourtDistricts().then(function (sc) {
+        var f = findFeatureContaining(sc, point);
+        return !!(f && String(findPropCI(f.properties || {}, ["district"])) === "1");
+      }, function () { return false; });
     });
   }
 
@@ -5649,6 +5690,7 @@
       if (!state.layersOn[id]) continue;
       var rt = layerRuntime[id];
       if (!rt || !rt.geojson) continue;
+      if (rt.relevant === false) continue; // relevance-hidden at the selected point (mod.coverage) — hidden means hidden, on every surface
       var mod = getLayerById(id);
       if (!mod || !mod.overlay || !mod.overlay.style) continue;
       var feature = findFeatureContaining(rt.geojson, point);
@@ -5817,6 +5859,9 @@
     if (!pinnedParentId || !state.selectedPoint || !state.layersOn[pinnedParentId]) return null;
     var rt = layerRuntime[pinnedParentId];
     if (!rt || !rt.geojson) return null;
+    // a relevance-hidden parent (mod.coverage) contributes no outlines while
+    // out of coverage; pinnedParentId is kept so the pin resurrects with it
+    if (rt.relevant === false) return null;
     return findFeatureContaining(rt.geojson, state.selectedPoint);
   }
 
@@ -5835,6 +5880,7 @@
       if (!mod.overlay || !mod.overlay.style) continue; // polygon layers only
       var rt = layerRuntime[mod.id];
       if (!rt || !rt.geojson) continue;
+      if (rt.relevant === false) continue; // relevance-hidden here (mod.coverage) — draw nothing for it
       var color = darkenHexColor(moduleColor(mod), 0.15);
       var feats = rt.geojson.features || [];
       for (var j = 0; j < feats.length; j++) {
