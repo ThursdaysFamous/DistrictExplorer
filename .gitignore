@@ -13,6 +13,11 @@ package-lock.json
 # Third-party asset, never committed; production and CI load Leaflet from the CDN.
 scripts/vendor/
 
+# Transient — outputs of scripts/perf_profile.mjs (the performance harness behind
+# docs/PERFORMANCE_ANALYSIS_2026-07.md). Regenerated on demand; never committed.
+perf-results.json
+docs/perf-app-screenshot.png
+
 # Transient — engine artifact outputs (docs/MECHANIZATION_PLAYBOOK.md, Conversion 1):
 # `build_engine_artifact.py --out dist/` writes here, and `apply_engine.py`
 # downloads the pinned release assets to the repo root when they're absent.
