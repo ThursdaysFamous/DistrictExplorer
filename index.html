@@ -2615,9 +2615,12 @@
     "school-district-elementary", // IL elementary school district (371 statewide)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
+    "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
     "will-county-board", // Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "commissioner",      // Cook County Commissioner district
+    "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
+    "will-county-park",  // Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -2639,6 +2642,7 @@
     "zip-code",          // ZIP Code
     "cps-high",          // High School attendance zone
     "cps-middle",        // Middle School attendance zone
+    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -4063,19 +4067,21 @@
    * the intended per-county use of the relevance capability: a Chicago or
    * downstate click never sees a Will County toggle.
    *
-   * Coverage is a cheap bounding-box test (the county's exact extent, from
-   * its own board-district geometry). A bbox strictly CONTAINS the county, so
-   * it can only ever over-show (an honest empty card at a corner just outside
-   * the county line) — never false-hide, which is the only direction that
-   * would violate the honesty rules. It's synchronous, so deciding a toggle's
-   * visibility costs no remote fetch. (When more Will County layers land, a
-   * single same-origin county-outline file — the Chicago-tiling pattern —
-   * becomes the shared, exact upgrade.)
+   * Coverage is exact containment in a shared same-origin Will County outline
+   * (data/app/will-county-outline.json — one polygon, TIGER-sourced at the
+   * same precision the `county` layer fetches, so coverage is consistent with
+   * what that layer resolves). Same-origin + service-worker cached, so
+   * deciding a per-county toggle's visibility costs one tiny cached fetch —
+   * the Chicago-tiling pattern (chicago/cookCountyCoverage), now shared by
+   * every Will County layer below.
    * ======================================================================= */
-  var WILL_COUNTY_BBOX = { minLng: -88.27, minLat: 41.19, maxLng: -87.52, maxLat: 41.74 };
+  var loadWillCountyOutline = makeCached(function () {
+    return fetchJSONWithRetry("data/app/will-county-outline.json", {}, 2);
+  });
   function willCountyCoverage(point) {
-    return point.lng >= WILL_COUNTY_BBOX.minLng && point.lng <= WILL_COUNTY_BBOX.maxLng &&
-           point.lat >= WILL_COUNTY_BBOX.minLat && point.lat <= WILL_COUNTY_BBOX.maxLat;
+    return loadWillCountyOutline().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
   }
 
   // Will County Board districts — the current 11-district map "Board Approved
@@ -4083,15 +4089,23 @@
   // superseded). Live from the county's own maintained GIS (edited 2025-04),
   // board-member names joined from the same features — the Cook `commissioner`
   // live-officeholder pattern. Verified 2026-07: 11 features, Homer Glen -> D4.
-  var loadWillCountyBoard = makeCached(function () {
-    var url = "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/" +
-      "County_Board_Districts_2022/FeatureServer/0/query?where=1%3D1" +
-      "&outFields=CTY_BRD_NUMBER,REPRESENTATIVE1,REPRESENTATIVE2&outSR=4326&f=geojson&geometryPrecision=5";
+  // Every Will County layer loads from the county's own ArcGIS org the same
+  // way: a whole-county FeatureServer query at geometryPrecision=5, guarded by
+  // the shared no-usable-geometry check so an Esri 200-with-error-envelope is
+  // never pinned in the session cache (the loader pattern the TIGER/legislative
+  // layers already use).
+  var WILL_GIS = "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/";
+  function loadWillFeatureServer(service, layerIndex, outFields, label) {
+    var url = WILL_GIS + service + "/FeatureServer/" + layerIndex +
+      "/query?where=1%3D1&outFields=" + outFields + "&outSR=4326&f=geojson&geometryPrecision=5";
     return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
       .then(function (geojson) {
-        if (!hasUsableGeometry(geojson)) throw new Error("Will County Board service returned no usable geometry");
+        if (!hasUsableGeometry(geojson)) throw new Error("Will County " + label + " returned no usable geometry");
         return geojson;
       });
+  }
+  var loadWillCountyBoard = makeCached(function () {
+    return loadWillFeatureServer("County_Board_Districts_2022", 0, "CTY_BRD_NUMBER,REPRESENTATIVE1,REPRESENTATIVE2", "Board");
   });
 
   registerPolygonLayer({
@@ -4111,6 +4125,93 @@
       // board's official member directory, the planned scraper's source
       { label: "Official directory",
         html: '<a href="https://www.willcountyboard.com/board-members.html" target="_blank" rel="noopener">Will County Board members (official)</a>' }
+    ]
+  });
+
+  // Will County judicial subcircuits — the 5 subcircuits of the 12th Judicial
+  // Circuit (PA 102-0693). Identity only; judges aren't in the data, so the
+  // card links to the official court.
+  var loadWillJudicial = makeCached(function () {
+    return loadWillFeatureServer("Judicial_Districts_2022", 0, "SUBDISTRICT", "judicial subcircuits");
+  });
+  registerPolygonLayer({
+    id: "will-county-judicial",
+    group: "political",
+    label: "Judicial Subcircuit (12th Circuit)",
+    coverage: willCountyCoverage,
+    loader: loadWillJudicial,
+    style: { color: "#6B4FA0", weight: 2, fillColor: "#8A6FBF", fillOpacity: 0.05, dashArray: "6 3" },
+    fields: [
+      { name: "subcircuit", label: "Subcircuit", keys: ["subdistrict"], primary: true },
+      { label: "Court", value: "12th Judicial Circuit (Will County)" },
+      { label: "Judges",
+        html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
+    ]
+  });
+
+  // Will County fire protection districts — trustees live from county GIS
+  // (falsy trustee slots are dropped by the factory; a real "Office is vacant"
+  // string is shown as-is — an honest fact, not a guess).
+  var loadWillFire = makeCached(function () {
+    return loadWillFeatureServer("Fire_District", 0, "DISTRICTNAME,FULLNAME,Trustee,Trustee2,Trustee3,Trustee4,Trustee5", "fire districts");
+  });
+  registerPolygonLayer({
+    id: "will-county-fire",
+    group: "safety",
+    label: "Fire Protection District",
+    coverage: willCountyCoverage,
+    loader: loadWillFire,
+    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
+    fields: [
+      { name: "name", label: "Fire District", keys: ["districtname", "fullname"], primary: true },
+      { name: "t1", label: "Trustee", keys: ["trustee"] },
+      { name: "t2", label: "Trustee", keys: ["trustee2"] },
+      { name: "t3", label: "Trustee", keys: ["trustee3"] },
+      { name: "t4", label: "Trustee", keys: ["trustee4"] },
+      { name: "t5", label: "Trustee", keys: ["trustee5"] }
+    ]
+  });
+
+  // Will County park districts — partial coverage: park districts don't tile
+  // the whole county, so an in-coverage point with no park district honestly
+  // reports "No result for this point."
+  var loadWillParks = makeCached(function () {
+    return loadWillFeatureServer("Park_District", 0, "DISTRICTNAME,NAME,Commissioner,Commissioner2,Commissioner3,Commissioner4", "park districts");
+  });
+  registerPolygonLayer({
+    id: "will-county-park",
+    group: "geography",
+    label: "Park District",
+    coverage: willCountyCoverage,
+    loader: loadWillParks,
+    style: { color: "#2E7D46", weight: 1.5, fillColor: "#4FA06A", fillOpacity: 0.05, dashArray: "2 3" },
+    fields: [
+      { name: "name", label: "Park District", keys: ["districtname", "name"], primary: true },
+      { name: "c1", label: "Commissioner", keys: ["commissioner"] },
+      { name: "c2", label: "Commissioner", keys: ["commissioner2"] },
+      { name: "c3", label: "Commissioner", keys: ["commissioner3"] },
+      { name: "c4", label: "Commissioner", keys: ["commissioner4"] }
+    ]
+  });
+
+  // Will County voting precincts — the current 2022 map (310 precincts). The
+  // sub-precinct committeeperson isn't in this data, so the card links to the
+  // county clerk's registration/polling-place lookup.
+  var loadWillPrecincts = makeCached(function () {
+    return loadWillFeatureServer("Precincts_2022", 1, "NAME,TWP_NAME,PRECINCT_NO", "precincts");
+  });
+  registerPolygonLayer({
+    id: "will-county-precinct",
+    group: "political",
+    label: "Voting Precinct",
+    coverage: willCountyCoverage,
+    loader: loadWillPrecincts,
+    style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.04, dashArray: "1 3" },
+    fields: [
+      { name: "name", label: "Precinct", keys: ["name"], primary: true },
+      { name: "township", label: "Township", keys: ["twp_name"] },
+      { label: "Registration & polling place",
+        html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' }
     ]
   });
 

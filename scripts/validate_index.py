@@ -88,10 +88,11 @@ EXPECT_LAYER_IDS = [
     "il-supreme-court", "congress", "il-senate", "il-house", "county",
     "school-district-secondary", "school-district-unified",
     "school-district-elementary", "township", "municipality",
-    "will-county-board", "ccbr", "commissioner", "school-board",
-    "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat",
-    "police-district", "ccpsa-district-council", "community-area", "zip-code",
-    "cps-high", "cps-middle", "cps-elementary", "school-site",
+    "will-county-judicial", "will-county-board", "ccbr", "commissioner",
+    "will-county-fire", "will-county-park", "school-board", "cps-hs-network",
+    "cps-network", "ward-precinct", "ward", "police-beat", "police-district",
+    "ccpsa-district-council", "community-area", "zip-code", "cps-high",
+    "cps-middle", "will-county-precinct", "cps-elementary", "school-site",
     "police-station", "fire-station",
 ]
 
@@ -100,6 +101,7 @@ GEOMETRY_FILES = {
     "school-board-districts.json": (20, 20),
     "il-supreme-court-districts.json": (5, 5),
     "ccbr-districts.json": (3, 3),
+    "will-county-outline.json": (1, 1),
 }
 
 # file -> minimum key count (officeholder rosters).
