@@ -5,12 +5,13 @@ implementation). Cross-refs: `docs/MECHANIZATION_PLAYBOOK.md` (the metro-#3 gate
 in-place approach sidesteps it), `docs/METRO_EXPANSION_PLAYBOOK.md` (the per-fork recipe this
 borrows from), `docs/ENGINE_SYNC.md` (the artifact pipeline the one engine change rides).
 
-This document answers a recurring user request — *"can you do this for the whole state?"* — most
-recently and concretely from a **Will County township political-organization leader** who keeps a
-large paper township map to look up precincts, state-legislative, Congress, and county-board
-districts, falls back to a "clunky" county GIS explorer for judicial, park, municipal, and school
-districts, and needs *every* district a person sits in, in one place, to build candidate packets and
-volunteer walk lists — **across townships and counties**, not just one city.
+This document maps what it would take to extend the app from Chicago to **statewide Illinois** — the
+natural next ask for a single-city civic tool. The need is concrete: outside the city, finding which
+precinct, township, county-board, judicial, park, municipal, or school district an address falls in
+means chasing disparate, often-clunky county GIS tools, with nowhere that shows those local districts
+alongside the state-legislative and Congressional ones. Statewide coverage would report *every*
+district containing a point — and who represents you there — for any address in Illinois, **across
+townships and counties**, not just one city.
 
 It is written in the project's own spirit (`MECHANIZATION_PLAYBOOK.md` preamble): *"a playbook that
 is merely well-written has changed nothing."* So this is the honest map: what already works, the one
@@ -72,7 +73,7 @@ geocoder (grep `nominatim.openstreetmap.org`) are hard-bounded to `METRO_BBOX`; 
 `METRO_CENTER` (grep `setView(METRO_CENTER`); and incoming permalinks are clamped to `PERMALINK_GATE`.
 Widen those config values and the four layers above light up statewide with zero engine change.
 
-Everything else the requester listed — **precincts, county board, judicial *circuit* districts, park
+Everything else — **precincts, county board, judicial *circuit* districts, park
 districts, municipalities, non-CPS school districts, townships** — is absent or Chicago/Cook-only
 today. That is the real work, and §3–§4 size it.
 
@@ -243,9 +244,9 @@ Three options were weighed:
   the metro-#3 gate), duplicates deployment/CI/service-worker surface, and fragments the cross-county
   user experience for no benefit the in-place path lacks.
 - **(C) More per-metro city forks** — rejected: townships, county boards, and circuits are not city
-  concepts, and the requester is not in a city core.
+  concepts, and the statewide user is typically not in a city core.
 
-**Why in place wins.** The requester coordinates *across* townships and counties, so she needs **one
+**Why in place wins.** The target user coordinates *across* townships and counties, and needs **one
 map** that answers township / county-board / circuit / municipality / school-district *and* keeps
 state-leg / Congress, across many counties at once. Expanding the existing app delivers exactly that,
 reuses everything already built (deployment, CI, service worker, the four already-statewide layers),
@@ -254,8 +255,7 @@ and — because it is not a new metro — sidesteps the metro-#3 gate.
 **Rollout: all 102 counties on day one for the free layers; collar-counties-first for the deep ones.**
 The statewide TIGER identity layers cover the whole state immediately. The expensive per-county layers
 (precincts, county-board districts, park districts, subcircuits) are realized first across the
-collar-county region (Cook / DuPage / Lake / Will / Kane / McHenry / Kendall — the requester's
-operating area) and grow outward. Relevance-hiding is what makes deep-in-some-places coverage
+collar-county region (Cook / DuPage / Lake / Will / Kane / McHenry / Kendall) and grow outward. Relevance-hiding is what makes deep-in-some-places coverage
 **honest and legible**: a downstate user simply sees county / township / municipality /
 school-district / circuit + state-leg / Congress, with the not-yet-sourced deep layers *hidden* rather
 than shown as broken empty cards; a collar-county user sees the full stack.
@@ -281,7 +281,7 @@ identity and accept the mismatch. This is a product call, not a technical blocke
   FREE TIGER layers (county, township/MCD, municipality/place, school districts ×3) + the derived
   judicial circuit, likely under a new "Local Government" group alongside the existing groups (grep
   `GROUPS`). Official-body links only — **no invented township / mayor / board names.** This takes a
-  Will County resident from four cards to the bulk of the requester's list, with a clean UI that hides
+  Will County resident from four cards to the bulk of the local-district list, with a clean UI that hides
   the Chicago-only layers.
 - **Phase 2 — per-county / harder sources, collar-first.** Grow from the collar counties: county-board
   districts (per-county Hubs; Cook already live via grep `commissioner`), precincts (Cook `k7sw-w3b8`,
