@@ -1380,9 +1380,9 @@
   });
 
   /* ---------- water-taxi marker: the selection marker becomes the Chicago Water
-   * Taxi seal when a clicked/searched point lands on water (Lake Michigan or the
-   * river) instead of on land — see maybeUseWaterTaxiMarker(). The logo is a
-   * circular seal (icons/water-taxi.png, cropped from the supplied art — see
+   * Taxi seal when a clicked/searched point lands on Lake Michigan (open water),
+   * not on land — see selectPointMarker(). The logo is a circular seal
+   * (icons/water-taxi.png, cropped from the supplied art — see
    * icons/source/README.md), so it's presented as a round white badge sized to
    * read at map scale. It's preloaded here and only swapped in once it actually
    * loads, so a missing/broken asset cleanly falls back to the default star. ---------- */
@@ -1415,6 +1415,73 @@
     waterTaxiImg.addEventListener("load", function () { finish(true); });
     waterTaxiImg.addEventListener("error", function () { finish(false); });
   }
+
+  /* ---------- location-aware selection marker: beyond the Chicago flag star
+   * (inside the city) and the Water Taxi seal (on Lake Michigan), a point that
+   * lands in a county outside the city gets that county's seal — the Cook
+   * County seal (public-domain, icons/seals/cook-county.png) where we ship one,
+   * and a clean county-name badge for every other county until its seal is
+   * added. See selectPointMarker() for the containment hierarchy; the seals map
+   * grows over time without any code change. ---------- */
+  var COUNTY_SEAL_URLS = {
+    // keyed by the TIGER county NAME field ("<County> County"). Add an entry +
+    // drop a derived PNG in icons/seals/ (see icons/source/README.md) to light
+    // up another county; absent counties fall back to the name badge below.
+    "Cook County": "icons/seals/cook-county.png"
+  };
+
+  // Round white seal badge (mirrors the water-taxi badge) for a county we ship a
+  // seal image for.
+  function makeCountySealDivIcon(url, name) {
+    return L.divIcon({
+      className: "chi-county-seal-marker",
+      html: '<img src="' + url + '" width="42" height="42" ' +
+            'alt="Selected point (' + sanitize(name) + ')" ' +
+            'style="display:block;border-radius:50%;background:#ffffff;' +
+            'border:2px solid #ffffff;box-shadow:0 2px 4px rgba(0,0,0,0.45)">',
+      iconSize: [46, 46],
+      iconAnchor: [23, 23]
+    });
+  }
+
+  // Clean name badge for a county with no seal yet: a rounded pill in the app's
+  // civic blue with the county name, centred on the point like the star.
+  function makeCountyBadgeDivIcon(name) {
+    var label = sanitize(name);
+    var w = Math.max(52, name.length * 7 + 22);
+    return L.divIcon({
+      className: "chi-county-badge-marker",
+      html: '<div style="box-sizing:border-box;white-space:nowrap;overflow:hidden;' +
+            'text-overflow:ellipsis;width:' + w + 'px;padding:3px 9px;border-radius:11px;' +
+            'background:#0B5394;color:#ffffff;border:2px solid #ffffff;' +
+            "font:600 11px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+            'text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.45)">' + label + '</div>',
+      iconSize: [w, 22],
+      iconAnchor: [w / 2, 11]
+    });
+  }
+
+  // Preload + readiness tracking for seal images, keyed by URL — same pattern as
+  // the water-taxi preload, so a blocked/broken seal cleanly falls back to the
+  // name badge instead of a broken-image marker.
+  var sealImgCache = {};
+  function whenSealImgReady(url, cb) {
+    var e = sealImgCache[url];
+    if (!e) {
+      e = sealImgCache[url] = { state: "loading", img: new Image() };
+      e.img.addEventListener("load", function () { e.state = "ready"; });
+      e.img.addEventListener("error", function () { e.state = "failed"; });
+      e.img.src = url;
+    }
+    if (e.state === "ready") { cb(true); return; }
+    if (e.state === "failed") { cb(false); return; }
+    var done = false;
+    function finish(ok) { if (done) return; done = true; cb(ok); }
+    e.img.addEventListener("load", function () { finish(true); });
+    e.img.addEventListener("error", function () { finish(false); });
+  }
+  // Warm the seals we ship so the first out-of-city selection swaps instantly.
+  Object.keys(COUNTY_SEAL_URLS).forEach(function (k) { whenSealImgReady(COUNTY_SEAL_URLS[k], function () {}); });
 
   /* ==== ENGINE:BEGIN sanitize ==== */
   /* ---------- sanitize: escape any external string before it touches innerHTML ---------- */
@@ -1855,26 +1922,52 @@
   var selectedMarker = null;
   var pointChip = document.getElementById("point-chip");
 
-  /* ---------- swap the default star marker for the Chicago Water Taxi seal when
-   * the selected point lands on water. "Water" = outside every Chicago community
-   * area, i.e. Lake Michigan, the river, or beyond the city — the tool is
-   * Chicago-scoped, so an out-of-city point counting as "not on land" is fine.
-   * Reuses the Community Area layer's own cached boundary loader and the shared
-   * pointInGeometry test (via findFeatureContaining), so detection adds no extra
-   * fetch. Preserves both app invariants: the swap is stale-async guarded by
-   * `seq` (a newer selection bails), and it's fully isolated — a boundary-load
-   * failure or a missing/broken logo silently leaves the default marker. ---------- */
-  function maybeUseWaterTaxiMarker(point, seq, marker) {
-    loadCommunityAreas().then(function (geojson) {
-      if (seq !== state.sequence || marker !== selectedMarker) return;
-      if (findFeatureContaining(geojson, point)) return; // on land — keep the default marker
-      whenWaterTaxiImgReady(function (ok) {
-        // re-check after the (possibly async) image load: a newer point may have
-        // been selected, or the asset may have failed to load
-        if (!ok || seq !== state.sequence || marker !== selectedMarker) return;
-        marker.setIcon(waterTaxiDivIcon);
-      });
-    }).catch(function () { /* boundary load failed — keep the default marker */ });
+  /* ---------- pick the selection marker for a point by containment, most
+   * specific first: inside Chicago → the flag star (already set); on Lake
+   * Michigan → the Water Taxi seal; otherwise the containing county's seal (or
+   * name badge); anything else (outside Illinois) keeps the star. Reuses the
+   * app's own cached geometry — chicagoCoverage (the city test every
+   * Chicago-scoped layer uses), a tiny generalized Lake Michigan hydrography
+   * polygon, and a tiny generalized county set (all lazy + cached) — so it adds
+   * no heavy fetch. Testing the city first means a downtown river point reads as
+   * city (star), not water: the taxi is now Lake-Michigan-only, as intended.
+   * Preserves both app invariants: every hop is stale-async guarded by `seq` +
+   * marker identity (a newer selection bails), and it's fully isolated — any
+   * geometry-load failure or missing asset silently leaves the current marker. ---------- */
+  function selectPointMarker(point, seq, marker) {
+    function live() { return seq === state.sequence && marker === selectedMarker; }
+    // 1. Inside the City of Chicago → keep the flag star (the default already set).
+    chicagoCoverage(point).then(function (inCity) {
+      if (!live() || inCity) return;
+      // 2. On Lake Michigan → the Water Taxi seal.
+      loadLakeMichigan().then(function (lake) {
+        if (!live()) return;
+        if (findFeatureContaining(lake, point)) {
+          whenWaterTaxiImgReady(function (ok) {
+            // re-check after the (possibly async) image load
+            if (ok && live()) marker.setIcon(waterTaxiDivIcon);
+          });
+          return;
+        }
+        // 3. Inside a county → its seal, or a name badge if we ship no seal yet.
+        loadIlCountiesGeneralized().then(function (counties) {
+          if (!live()) return;
+          var f = findFeatureContaining(counties, point);
+          if (!f) return; // 4. outside Illinois — keep the star
+          var name = findPropCI(f.properties || {}, ["name"]);
+          if (!name) return;
+          var sealUrl = COUNTY_SEAL_URLS[name];
+          if (sealUrl) {
+            whenSealImgReady(sealUrl, function (ok) {
+              if (!live()) return;
+              marker.setIcon(ok ? makeCountySealDivIcon(sealUrl, name) : makeCountyBadgeDivIcon(name));
+            });
+          } else {
+            marker.setIcon(makeCountyBadgeDivIcon(name));
+          }
+        }).catch(function () { /* county load failed — keep the star */ });
+      }).catch(function () { /* lake load failed — keep the star */ });
+    }).catch(function () { /* coverage test failed — keep the star */ });
   }
 
   function setSelectedPoint(lat, lng, opts) {
@@ -1884,7 +1977,7 @@
 
     if (selectedMarker) map.removeLayer(selectedMarker);
     selectedMarker = L.marker([lat, lng], { icon: starDivIcon, alt: "Selected point" }).addTo(map);
-    maybeUseWaterTaxiMarker(state.selectedPoint, state.sequence, selectedMarker);
+    selectPointMarker(state.selectedPoint, state.sequence, selectedMarker);
     if (!opts.skipPan) map.setView([lat, lng], Math.max(map.getZoom(), 15));
 
     pointChip.hidden = false;
@@ -3899,8 +3992,9 @@
   // an honest empty card, but a false HIDE would suppress a district the
   // dataset genuinely resolves — an honesty bug. The ERSB tiling misses
   // slivers the city datasets cover (downtown lakefill, harbors, O'Hare-edge
-  // ZIPs), so an ERSB miss falls back to the community-area tiling — already
-  // the app's own "inside the city" test (see maybeUseWaterTaxiMarker). The
+  // ZIPs), so an ERSB miss falls back to the community-area tiling — the app's
+  // long-standing "inside the city" test (chicagoCoverage is also what
+  // selectPointMarker calls to keep the flag star inside Chicago). The
   // fallback leg swallows its own failure and stands on the first verdict
   // (offline still hides confidently); a first-leg failure rejects through to
   // the engine's fail-open.
@@ -3976,6 +4070,44 @@
   });
   var loadIlSchoolElementary = makeCached(function () {
     return loadTigerStatewide("School", 2, "GEOID,NAME,STATE", "elementary school districts");
+  });
+
+  /* ---------- geometry for the location-aware selection marker
+   * (selectPointMarker): a Lake Michigan hydrography polygon (so the Water Taxi
+   * icon fires on the lake and nowhere else) and a lightweight county set (so an
+   * out-of-city point gets its county's seal/badge). Both are server-generalized
+   * to a few KB because the marker only needs containment, not display-accurate
+   * boundaries — the county *layer* above keeps its full-precision loader. TIGER
+   * county polygons include their share of the lake, so the lake test must run
+   * first (selectPointMarker orders it that way). ---------- */
+  var loadLakeMichigan = makeCached(function () {
+    // TIGERweb Areal Hydrography, Lake Michigan pieces (BASENAME='Michigan'),
+    // clipped to a metro-lakefront envelope; ~13 polygons, a few KB generalized.
+    var env = { xmin: -88.2, ymin: 41.0, xmax: -86.9, ymax: 42.7 };
+    var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer/1/query" +
+      "?where=" + encodeURIComponent("BASENAME='Michigan'") +
+      "&geometry=" + encodeURIComponent(JSON.stringify(env)) +
+      "&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects" +
+      "&outFields=NAME&returnGeometry=true&outSR=4326&f=geojson" +
+      "&geometryPrecision=5&maxAllowableOffset=0.0005";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("TIGERweb Lake Michigan returned no usable geometry");
+        return geojson;
+      });
+  });
+  var loadIlCountiesGeneralized = makeCached(function () {
+    // same statewide county set as loadIlCounties, but generalized to ~0.2 km —
+    // ~75 KB for all 102 counties, enough to name the county under a point.
+    var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query" +
+      "?where=" + encodeURIComponent("STATE='17'") +
+      "&outFields=NAME&returnGeometry=true&outSR=4326&f=geojson" +
+      "&geometryPrecision=4&maxAllowableOffset=0.002";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("TIGERweb generalized counties returned no usable geometry");
+        return geojson;
+      });
   });
 
   registerPolygonLayer({

@@ -25,9 +25,11 @@
 /* ==== METRO:BEGIN sw-config ==== */
 // (-v3 dropped the duplicate "./index.html" shell entry; -v4 added the two
 // roster files missing from ROSTER_URLS; -v5 added the water-taxi marker
-// icon shown when a point lands on water.)
+// icon shown when a point lands on water; -v6/-v7 added the Will County
+// outline + board roster; -v8 added the Cook County seal marker icon shown
+// for a point in Cook County outside the City of Chicago.)
 /* ==== GENERATED:BEGIN sw-metro-config ==== */
-const CACHE_NAME = "district-explorer-shell-v7";
+const CACHE_NAME = "district-explorer-shell-v8";
 
 const SHELL_URLS = [
   "./",
@@ -35,6 +37,7 @@ const SHELL_URLS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/water-taxi.png",
+  "./icons/seals/cook-county.png",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js",
 ];

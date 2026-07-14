@@ -147,6 +147,8 @@ ENDPOINTS = [
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/School/MapServer?f=json"},
     {"layer": "Census TIGERweb ZCTAs (statewide ZIP Code layer)",
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer?f=json"},
+    {"layer": "Census TIGERweb areal hydrography (Lake Michigan marker test)",
+     "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer?f=json"},
     {"layer": "Will County Board districts 2022 (current 11-district map + reps)",
      "url": "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/County_Board_Districts_2022/FeatureServer/0?f=json"},
 ]
