@@ -2661,7 +2661,13 @@
       // when true the layer draws its outline only (fillOpacity forced to 0),
       // regardless of its own style — used when a sub-layer takes over the fill
       // (e.g. Police Beat filling a Police District that's dropped to outline).
-      outlineOnly: false
+      outlineOnly: false,
+      // location relevance (mod.coverage): whether this layer applies at the
+      // currently selected point. Layers that declare no coverage test stay
+      // true forever. relevanceSeq/relevancePromise memoize the async coverage
+      // test per selection so the block-visibility pass and the query dispatch
+      // share one evaluation (see layerRelevance in the overlay-cards block).
+      relevant: true, relevanceSeq: 0, relevancePromise: null
     };
   }
 
@@ -3174,6 +3180,10 @@
     return block;
   }
 
+  // group id -> its sidebar <section>, so location-relevance can hide a whole
+  // group whose layers all fall out of coverage (see refreshGroupVisibility).
+  var groupSections = {};
+
   function buildGroupsUI() {
     var root = document.getElementById("groups-root");
     GROUPS.forEach(function (group) {
@@ -3183,6 +3193,7 @@
       var section = document.createElement("section");
       section.className = "group-section group-" + group.id;
       section.setAttribute("aria-labelledby", "heading-" + group.id);
+      groupSections[group.id] = section;
 
       var heading = document.createElement("h2");
       heading.className = "group-heading";
@@ -3224,12 +3235,13 @@
 
   // Show a layer's sub-selection toggles only while the parent layer is on;
   // hide them (and let the parent's onToggle cascade them off) when it's off.
+  // Routed through refreshLayerBlockHidden so the parent-off rule and the
+  // location-relevance rule (mod.coverage) compose instead of clobbering each
+  // other's writes to block.hidden.
   function updateSubLayerVisibility(mod) {
-    var parentOn = !!state.layersOn[mod.id];
     layers.forEach(function (sub) {
       if (sub.subOf !== mod.id) return;
-      var subRt = layerRuntime[sub.id];
-      if (subRt.block) subRt.block.hidden = !parentOn;
+      refreshLayerBlockHidden(sub);
     });
   }
 
@@ -3288,7 +3300,9 @@
       // released on toggle-off (P11), so rebuild it synchronously from the cached
       // geojson (no refetch) unless a re-entrant path already rebuilt it.
       if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
-      rt.overlayLayer.addTo(map);
+      // out of coverage at the current point (mod.coverage): keep the graph but
+      // don't attach — setLayerRelevant reattaches when a point re-enters coverage
+      if (rt.relevant !== false) rt.overlayLayer.addTo(map);
       refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
       reorderActiveLayers();
     } else if (!rt.overlayLoaded) {
@@ -3299,8 +3313,9 @@
           rt.overlayLayer = buildOverlayLayer(mod, geojson);
           // add only if the layer is STILL on — the user may have toggled it
           // off while the geojson was downloading (the old unconditional
-          // .addTo(map) left orphaned boundaries on the map in that case)
-          if (state.layersOn[mod.id]) rt.overlayLayer.addTo(map);
+          // .addTo(map) left orphaned boundaries on the map in that case) —
+          // and still in coverage at the current point (mod.coverage)
+          if (state.layersOn[mod.id] && rt.relevant !== false) rt.overlayLayer.addTo(map);
           refreshActiveLayerOpacities(); // active count changed — rescale every active layer's fill
           reorderActiveLayers();
         })
@@ -3376,9 +3391,123 @@
     body.appendChild(resultEl);
   }
 
+  /* ---------- location relevance (mod.coverage) ----------
+   * A layer may declare an optional coverage test — mod.coverage(point) ->
+   * boolean | Promise<boolean> — true when the layer's data applies at the
+   * point (e.g. a city-scoped layer inside the city limits). Layers that
+   * declare nothing are untouched: every path below is a no-op for them,
+   * which is what keeps this capability additive across forks.
+   *
+   * Where the selected point falls outside a layer's coverage the layer
+   * HIDES: its toggle block, result card, map overlay, highlight, and POI
+   * pin are all suppressed and its query (and overlay fetch) is skipped.
+   * state.layersOn is deliberately NOT mutated, so the layers= permalink
+   * survives an out-of-coverage detour and the layer reappears the moment
+   * a selected point re-enters its coverage. A coverage test that throws
+   * fails OPEN (treated as relevant): a coverage-geometry outage degrades
+   * to today's behavior — the layer runs and its own per-card failure
+   * isolation applies. ---------- */
+
+  function layerRelevance(mod, seq) {
+    if (!mod.coverage || !state.selectedPoint) return Promise.resolve(true);
+    var rt = layerRuntime[mod.id];
+    // memoized per selection: the block-visibility pass and the query dispatch
+    // share one coverage evaluation instead of racing two
+    if (rt.relevanceSeq === seq && rt.relevancePromise) return rt.relevancePromise;
+    rt.relevanceSeq = seq;
+    rt.relevancePromise = Promise.resolve()
+      .then(function () { return mod.coverage(state.selectedPoint); })
+      .then(function (inside) { return !!inside; },
+            function (err) {
+              console.error("[" + mod.id + "] coverage test failed (failing open):", err);
+              return true;
+            });
+    return rt.relevancePromise;
+  }
+
+  // The one writer of block.hidden: composes the two reasons a toggle block can
+  // be hidden — out of coverage at the selected point, or (for a sub-selection)
+  // its parent layer being off — so neither rule clobbers the other.
+  function refreshLayerBlockHidden(mod) {
+    var rt = layerRuntime[mod.id];
+    if (!rt || !rt.block) return;
+    var hidden = rt.relevant === false;
+    if (mod.subOf) hidden = hidden || !state.layersOn[mod.subOf];
+    rt.block.hidden = hidden;
+  }
+
+  // Hide a group's whole sidebar section when every top-level layer in it is
+  // out of coverage (e.g. the schools group outside the city) — an empty
+  // heading over nothing reads as broken, not as "not applicable here".
+  function refreshGroupVisibility() {
+    GROUPS.forEach(function (group) {
+      var section = groupSections[group.id];
+      if (!section) return;
+      var allHidden = true;
+      for (var i = 0; i < layers.length; i++) {
+        if (layers[i].group !== group.id || layers[i].subOf) continue;
+        if (layerRuntime[layers[i].id].relevant !== false) { allHidden = false; break; }
+      }
+      section.hidden = allHidden;
+    });
+  }
+
+  function setLayerRelevant(mod, relevant) {
+    var rt = layerRuntime[mod.id];
+    if (rt.relevant === relevant) return;
+    rt.relevant = relevant;
+    refreshLayerBlockHidden(mod);
+    refreshGroupVisibility();
+    if (!relevant) {
+      // suppress every map artifact (the hidden block already covers the DOM):
+      // the same cleanup toggle-off performs, but state.layersOn is untouched
+      clearLayerHighlight(mod);
+      clearLayerPoi(mod);
+      if (rt.overlayLayer) {
+        map.removeLayer(rt.overlayLayer);
+        rt.overlayLayer = null; // release the Leaflet graph (P11); rt.geojson stays cached
+      }
+      refreshRelationshipOutlines();
+    } else if (state.layersOn[mod.id] && rt.geojson) {
+      // back in coverage with the layer still on — reattach from the cached
+      // geojson (addLayer is a no-op if it's already on the map); the dispatch,
+      // which shares this selection's memoized relevance, repopulates the card
+      if (!rt.overlayLayer) rt.overlayLayer = buildOverlayLayer(mod, rt.geojson);
+      rt.overlayLayer.addTo(map);
+      reorderActiveLayers();
+    }
+  }
+
+  // Refresh every coverage-declaring layer's relevance for the current
+  // selection — including layers that are toggled OFF, whose sidebar toggle
+  // should also hide where they don't apply. Runs once per selection from
+  // runAllActiveLayerQueries; the per-layer dispatch shares the same memoized
+  // promise, so nothing is evaluated twice.
+  function updateAllLayerRelevance() {
+    var seq = state.sequence;
+    layers.forEach(function (mod) {
+      if (!mod.coverage) return; // additive: undeclared layers are never touched
+      layerRelevance(mod, seq).then(function (relevant) {
+        if (seq !== state.sequence) return; // stale — a newer point owns the UI
+        setLayerRelevant(mod, relevant);
+      });
+    });
+  }
+
   function runLayerQuery(mod) {
     if (!state.selectedPoint || !state.layersOn[mod.id]) return;
     var seq = state.sequence;
+    if (!mod.coverage) { runLayerQueryAt(mod, seq); return; } // no coverage test: exactly the pre-relevance path
+    layerRelevance(mod, seq).then(function (relevant) {
+      if (seq !== state.sequence) return;  // stale — a newer point was selected while the test ran
+      if (!state.layersOn[mod.id]) return; // toggled off while the test ran
+      setLayerRelevant(mod, relevant);
+      if (relevant) runLayerQueryAt(mod, seq);
+      // out of coverage: block/card/overlay are hidden — no query, no fetch
+    });
+  }
+
+  function runLayerQueryAt(mod, seq) {
     setCardLoading(mod);
     Promise.resolve()
       .then(function () { return mod.query(state.selectedPoint, seq); })
@@ -3404,6 +3533,7 @@
   }
 
   function runAllActiveLayerQueries() {
+    updateAllLayerRelevance(); // refresh which layers even apply at this point (mod.coverage)
     layers.forEach(function (mod) {
       if (state.layersOn[mod.id]) runLayerQuery(mod);
     });
@@ -3717,10 +3847,31 @@
         });
         return renderFieldList(rows);
       },
-      pointOfInterest: opts.pointOfInterest
+      pointOfInterest: opts.pointOfInterest,
+      coverage: opts.coverage // optional location-relevance test (see overlay-cards)
     });
   }
   /* ==== ENGINE:END polygon-factory ==== */
+
+  /* ---------- location-relevance tests (fork-owned; see mod.coverage in the
+   * overlay-cards engine block). Chicago-scoped layers hide when the selected
+   * point leaves the city; the two Cook-County layers hide outside the county.
+   * Both tests reuse geometry the app already ships: the ERSB school-board
+   * districts tile the City of Chicago exactly (they also draw the
+   * out-of-scope wash), and the three Board of Review districts tile Cook
+   * County. Same-origin static files behind makeCached — the first
+   * out-of-city selection costs at most one local fetch, and a fetch failure
+   * fails OPEN in the engine (the layer behaves exactly as it does today). */
+  function chicagoCoverage(point) {
+    return loadSchoolBoardDistricts().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
+  function cookCountyCoverage(point) {
+    return loadCcbrDistricts().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
 
   /* ---------- Community Area ---------- */
   var loadCommunityAreas = makeCachedLoader("igwz-8jzy");
@@ -3729,6 +3880,7 @@
     id: "community-area",
     group: "geography",
     label: "Community Area",
+    coverage: chicagoCoverage,
     loader: loadCommunityAreas,
     // dashed outline (not just a color) so it's distinguishable from ZIP without relying on hue alone
     style: { color: "#3D6B49", weight: 1.5, fillColor: "#5C8F6B", fillOpacity: 0.06, dashArray: "5 3" },
@@ -3748,6 +3900,7 @@
     id: "zip-code",
     group: "geography",
     label: "ZIP Code",
+    coverage: chicagoCoverage,
     loader: loadZipCodes,
     // dotted outline (distinct pattern from Community Area's dashed one) + different hue
     style: { color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "1 4" },
@@ -3885,6 +4038,7 @@
     id: "police-district",
     group: "safety",
     label: "Police District",
+    coverage: chicagoCoverage,
     overlay: {
       load: loadPoliceDistricts,
       // dash pattern distinct from both Geography layers, Chicago-flag red for the Safety group
@@ -4004,6 +4158,7 @@
     group: "safety",
     subOf: "police-district",
     label: "Police Beat",
+    coverage: chicagoCoverage,
     // a beat feature also carries its parent district number (which the generic
     // hover extractor would pick up first), plus a truncated "BEAT" digit — so
     // name it explicitly, preferring the canonical 4-digit beat number.
@@ -4078,6 +4233,7 @@
     id: "ccpsa-district-council",
     group: "safety",
     label: "CCPSA District Council",
+    coverage: chicagoCoverage,
     overlay: {
       load: loadPoliceDistricts, // shares the CPD police-district geometry (cached loader — no double fetch)
       // teal + a distinct dash so it reads apart from the red Police District /
@@ -4203,7 +4359,8 @@
         });
         wrap.appendChild(ol);
         return wrap;
-      }
+      },
+      coverage: opts.coverage // optional location-relevance test (see overlay-cards)
     });
   }
   /* ==== ENGINE:END nearest-point-factory ==== */
@@ -4212,6 +4369,7 @@
     id: "police-station",
     group: "safety",
     label: "Police Station",
+    coverage: chicagoCoverage,
     // distinct from Fire Station's red circleMarker — blue, matching the flag-stripe hue
     color: "#0B5394",
     fill: "#41B6E6",
@@ -4236,6 +4394,7 @@
     id: "fire-station",
     group: "safety",
     label: "Fire Station",
+    coverage: chicagoCoverage,
     color: "#7A0B1E",
     fill: "#C8102E",
     loader: loadFireStations,
@@ -4294,6 +4453,7 @@
       id: opts.id,
       group: "schools",
       label: opts.label,
+      coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
       // hover popup: same identity the card headline shows — the zoned school's
       // name, or the honest "None" where requireId treats the feature as unzoned.
       hoverName: function (feature) {
@@ -4351,6 +4511,7 @@
    * samples) — one fork-side wrapper wires the keys + profile builder so the
    * shared registerSchoolZone factory stays city-agnostic. */
   function registerCpsZone(opts) {
+    opts.coverage = chicagoCoverage; // CPS zones apply inside the city only
     opts.nameKeys = ["short_name", "school_nam", "school_nm", "school_name", "schoolname", "sch_name", "name"];
     opts.idKeys = ["school_id", "sch_id", "schoolid", "school_ids"];
     opts.gradeKeys = ["boundarygr", "grade_range", "gradelevel"];
@@ -4398,6 +4559,7 @@
       id: opts.id,
       group: "schools",
       label: opts.label,
+      coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
       overlay: { load: loadNetworks, style: opts.style },
       query: function (point, seq) {
         return loadNetworks().then(function (geojson) {
@@ -4436,6 +4598,7 @@
   registerCpsNetwork({
     id: "cps-network",
     label: "CPS Network (K-8, admin office)",
+    coverage: chicagoCoverage,
     datasetId: "pnta-kuqa",
     style: { color: "#3D3D7A", weight: 1.5, fillColor: "#3D3D7A", fillOpacity: 0.04, dashArray: "8 4 2 4" }
   });
@@ -4443,6 +4606,7 @@
   registerCpsNetwork({
     id: "cps-hs-network",
     label: "CPS Network (High School, admin office)",
+    coverage: chicagoCoverage,
     datasetId: "aupu-jt2g",
     style: { color: "#7A2D3D", weight: 1.5, fillColor: "#7A2D3D", fillOpacity: 0.04, dashArray: "10 3" }
   });
@@ -4519,6 +4683,7 @@
   registerLayer({
     id: "school-site",
     group: "schools",
+    coverage: chicagoCoverage,
     // deliberately NO "CPS" prefix — this set spans public, charter and private schools
     label: "School Location (all, incl. private, nearest " + SCHOOL_SITE_COUNT + ")",
     overlay: {
@@ -4760,6 +4925,7 @@
     id: "ward",
     group: "political",
     label: "City Ward",
+    coverage: chicagoCoverage,
     overlay: {
       load: loadWards,
       style: { color: "#0B5394", weight: 2, fillColor: "#41B6E6", fillOpacity: 0.08, dashArray: "3 2 6 2" }
@@ -4848,6 +5014,7 @@
     group: "political",
     subOf: "ward",
     label: "Ward Precinct",
+    coverage: chicagoCoverage,
     overlay: {
       load: loadWardPrecincts,
       // solid thin outline + visible fill: with the ward dropped to
@@ -5154,6 +5321,7 @@
     id: "school-board",
     group: "political",
     label: "Elected School Board District",
+    coverage: chicagoCoverage,
     overlay: {
       load: loadSchoolBoardDistricts,
       style: { color: "#2E8C6A", weight: 2, fillColor: "#2E8C6A", fillOpacity: 0.05, dashArray: "2 2" }
@@ -5253,6 +5421,7 @@
     id: "ccbr",
     group: "political",
     label: "Cook County Board of Review District",
+    coverage: cookCountyCoverage,
     loader: loadCcbrDistricts,
     style: { color: "#1E7A8C", weight: 2, fillColor: "#1E7A8C", fillOpacity: 0.05, dashArray: "4 4" },
     fields: [
@@ -5340,6 +5509,7 @@
     id: "commissioner",
     group: "political",
     label: "Cook County Commissioner District",
+    coverage: cookCountyCoverage,
     // its district lives in district_int/district_txt, not the generic keys the
     // hover extractor knows — name it explicitly so the popup shows the number.
     hoverName: function (feature) {

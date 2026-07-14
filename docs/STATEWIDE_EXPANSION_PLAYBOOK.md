@@ -275,7 +275,20 @@ identity and accept the mismatch. This is a product call, not a technical blocke
   scope-mask loader (grep `drawOutOfScopeMask`) to a 102-county `STATE='17'` loader so the engine
   dissolve (grep `coverageOutlineRings`) washes only genuinely-outside-Illinois. Result: the four
   already-statewide layers resolve for any IL point. Ships as a preview immediately (no engine bytes).
-- **Phase 1 — relevance-hiding + statewide identity layers.** Land Track 1 (the `mod.coverage`
+- **Phase 1 — relevance-hiding + statewide identity layers.**
+  > **STATUS — Track 1 PROTOTYPED (July 2026, this branch).** The `mod.coverage` hide-only capability
+  > is implemented and verified: engine side in the `layer-registry`/`overlay-cards` fences (grep
+  > `layerRelevance`, `setLayerRelevant`, `refreshLayerBlockHidden`, `refreshGroupVisibility`,
+  > `runLayerQueryAt`) plus `coverage: opts.coverage` passthrough in the polygon / nearest-point /
+  > school-zone / cps-network factories; fork side via `chicagoCoverage` / `cookCountyCoverage` (grep
+  > either) declared on the 16 Chicago-only + 2 Cook-only layers. The smoke test's negative-point
+  > checks now assert hide + permalink stability for coverage-declaring anchors. **Ship path:** these
+  > engine-fence edits reach production only through an engine release — deploy splices the pinned
+  > `engine.lock.json` version over the fences, so merging without cutting a release (bump lock, tag
+  > `engine-v*`) silently reverts the engine half while the fork half degrades to a no-op (old engine
+  > ignores unknown fields). Cut the release, let the bump PR fan out to NYC (byte-identical there —
+  > NYC declares no coverage), then merge.
+  Land Track 1 (the `mod.coverage`
   hide-only capability) via the engine-release pipeline; declare `coverage` on the 16 Chicago-only + 2
   Cook-only layers (they hide outside their areas) and `emptyLabel` where a null is structural. Add the
   FREE TIGER layers (county, township/MCD, municipality/place, school districts ×3) + the derived
