@@ -112,6 +112,7 @@ ROSTER_FILES = {
     "congress-roster.json": 17,
     "cpd-district-info.json": 0,  # ships as an empty placeholder until its first scrape lands
     "ccpsa-district-councils.json": 20,  # 22 councils (13 & 21 retired); floor guards a partial scrape
+    "will-county-board-members.json": 11,  # 11 board districts (2 members each) scraped weekly from willcountyboard.com
 }
 # ==== GENERATED:END validator-config ====
 

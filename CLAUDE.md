@@ -16,7 +16,7 @@ Chicago District Explorer: a single-file, dependency-light web app. Click a poin
 - Geocoders: address Photon (Chicago-bounded type-ahead); unbounded Photon (whole-coverage, sibling-metro lookup); POI Nominatim (office-address pin lookup, serial >=1s queue)
 - Ground truth: 41.88250,-87.62850 (downtown Loop — inside Cook County) → school-board 12; il-supreme-court 1; ccbr 3. Negative point 41.70000,-87.10000 (Lake Michigan, Indiana waters — outside all three anchor layers).
 - Layers: 33 registered (political 12, safety 6, schools 9, geography 6); `registerLayer(` floor 15. Debug namespace `window.ChiExplorer`.
-- Scheduled workflows: `update-ilga-roster.yml` (Mon 13:00 UTC); `update-congress-roster.yml` (Mon 13:00 UTC); `update-cpd-roster.yml` (Tue 13:00 UTC); `update-ccpsa-roster.yml` (Wed 13:00 UTC); `validate-sources.yml` (1st of month 14:00 UTC).
+- Scheduled workflows: `update-ilga-roster.yml` (Mon 13:00 UTC); `update-congress-roster.yml` (Mon 13:00 UTC); `update-cpd-roster.yml` (Tue 13:00 UTC); `update-ccpsa-roster.yml` (Wed 13:00 UTC); `update-will-county-board-roster.yml` (Thu 13:00 UTC); `validate-sources.yml` (1st of month 14:00 UTC).
 - Source registry: `scripts/validate_sources.py` (machine-checked monthly)
 <!-- ==== GENERATED:END metro-facts ==== -->
 

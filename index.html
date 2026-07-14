@@ -4108,24 +4108,83 @@
     return loadWillFeatureServer("County_Board_Districts_2022", 0, "CTY_BRD_NUMBER,REPRESENTATIVE1,REPRESENTATIVE2", "Board");
   });
 
-  registerPolygonLayer({
+  // Board members (name, city, role, phone, email, committees) scraped weekly
+  // from willcountyboard.com into a same-origin roster, keyed by district and
+  // joined to the boundary GIS by district number — the school-board
+  // boundary+roster pattern. Emails come from decoding the source pages' own
+  // Cloudflare obfuscation (see scripts/will_county_board_scraper.py); they are
+  // the real published addresses, never guessed. If the roster is missing the
+  // card falls back to the two names carried on the boundary GIS itself.
+  var loadWillCountyBoardMembers = makeCached(function () {
+    return fetchJSONWithRetry("data/app/will-county-board-members.json", {}, 2);
+  });
+  registerLayer({
     id: "will-county-board",
     group: "political",
     label: "Will County Board District",
     coverage: willCountyCoverage,
-    loader: loadWillCountyBoard,
-    style: { color: "#1F6FB2", weight: 2, fillColor: "#3B8FD4", fillOpacity: 0.05, dashArray: "9 3 3 3" },
-    fields: [
-      { name: "district", label: "District", keys: ["cty_brd_number"], primary: true },
-      // two members per district; names live in the boundary features and are
-      // rendered via textContent by the factory, so external text is safe
-      { name: "member1", label: "Board Member", keys: ["representative1"] },
-      { name: "member2", label: "Board Member", keys: ["representative2"] },
-      // honest backstop + the richer roster's home (contact/committees): the
-      // board's official member directory, the planned scraper's source
-      { label: "Official directory",
-        html: '<a href="https://www.willcountyboard.com/board-members.html" target="_blank" rel="noopener">Will County Board members (official)</a>' }
-    ]
+    hoverName: function (feature) {
+      return findPropCI(feature.properties || {}, ["cty_brd_number"]) || null;
+    },
+    overlay: {
+      load: loadWillCountyBoard,
+      style: { color: "#1F6FB2", weight: 2, fillColor: "#3B8FD4", fillOpacity: 0.05, dashArray: "9 3 3 3" }
+    },
+    query: function (point, seq) {
+      return Promise.all([
+        loadWillCountyBoard(),
+        loadWillCountyBoardMembers().catch(function () { return {}; })
+      ]).then(function (results) {
+        var geojson = results[0], roster = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var district = findPropCI(props, ["cty_brd_number"]);
+        var entry = district != null ? roster[String(district)] : null;
+        return { seq: seq, district: district, entry: entry, props: props };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.district ? String(result.district) : "Unknown" }];
+      var members = result.entry && result.entry.members;
+      if (members && members.length) {
+        members.forEach(function (m) {
+          // one rich row per member; every external string sanitized before it
+          // becomes innerHTML (name, role, city, phone, email, committees)
+          var head = "<strong>" + sanitize(m.name) + "</strong>" +
+            (m.role ? " — " + sanitize(m.role) : "") + (m.city ? " (" + sanitize(m.city) + ")" : "");
+          var contact = [];
+          if (m.phone) contact.push(sanitize(m.phone));
+          if (m.email) contact.push('<a href="mailto:' + sanitize(m.email) + '">' + sanitize(m.email) + "</a>");
+          var lines = [head];
+          if (contact.length) lines.push(contact.join(" · "));
+          if (m.committees && m.committees.length) {
+            lines.push("Committees: " + m.committees.map(sanitize).join(", "));
+          }
+          fields.push({ label: "Board Member", html: lines.join("<br>") });
+        });
+      } else {
+        var r1 = findPropCI(result.props, ["representative1"]);
+        var r2 = findPropCI(result.props, ["representative2"]);
+        if (r1) fields.push({ label: "Board Member", value: String(r1) });
+        if (r2) fields.push({ label: "Board Member", value: String(r2) });
+      }
+      fields.push({
+        label: "Official directory",
+        html: '<a href="https://www.willcountyboard.com/board-members.html" target="_blank" rel="noopener">Will County Board members (official)</a>'
+      });
+      return renderFieldList(fields);
+    },
+    hoverOfficial: {
+      load: loadWillCountyBoardMembers,
+      name: function (feature, roster) {
+        if (!roster) return null;
+        var d = findPropCI(feature.properties || {}, ["cty_brd_number"]);
+        var e = d != null ? roster[String(d)] : null;
+        if (!e || !e.members || !e.members.length) return null;
+        return e.members.map(function (m) { return m.name; }).join(", ");
+      }
+    }
   });
 
   // Will County judicial subcircuits — the 5 subcircuits of the 12th Judicial

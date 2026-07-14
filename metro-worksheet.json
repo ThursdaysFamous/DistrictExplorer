@@ -120,11 +120,13 @@
       { "file": "cpd-district-info.json", "min_keys": 0,
         "note": "ships as an empty placeholder until its first scrape lands" },
       { "file": "ccpsa-district-councils.json", "min_keys": 20,
-        "note": "22 councils (13 & 21 retired); floor guards a partial scrape" }
+        "note": "22 councils (13 & 21 retired); floor guards a partial scrape" },
+      { "file": "will-county-board-members.json", "min_keys": 11,
+        "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com" }
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v6",
+    "cache_name": "district-explorer-shell-v7",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",
@@ -144,6 +146,7 @@
     { "file": "update-congress-roster.yml", "purpose": "U.S. House roster (unitedstates/congress-legislators)", "schedule": "Mon 13:00 UTC" },
     { "file": "update-cpd-roster.yml", "purpose": "CPD district info (Cloudflare-challenged scrape via Playwright)", "schedule": "Tue 13:00 UTC" },
     { "file": "update-ccpsa-roster.yml", "purpose": "CCPSA district council rosters", "schedule": "Wed 13:00 UTC" },
+    { "file": "update-will-county-board-roster.yml", "purpose": "Will County Board roster (willcountyboard.com scrape)", "schedule": "Thu 13:00 UTC" },
     { "file": "validate-sources.yml", "purpose": "source freshness + redistricting watch (opens/updates one tracking issue)", "schedule": "1st of month 14:00 UTC" }
   ],
   "geocoder": {
