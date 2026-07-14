@@ -80,7 +80,7 @@
     { "id": "community-area", "label": "Community Area", "group": "geography", "area_rank": 25,
       "rank_note": "Community Area (77)" },
     { "id": "zip-code", "label": "ZIP Code", "group": "geography", "area_rank": 26,
-      "rank_note": "ZIP Code" },
+      "rank_note": "ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)" },
     { "id": "cps-high", "label": "CPS High School Zone", "group": "schools", "area_rank": 27,
       "rank_note": "High School attendance zone" },
     { "id": "cps-middle", "label": "CPS Middle School Zone", "group": "schools", "area_rank": 28,
@@ -126,13 +126,14 @@
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v7",
+    "cache_name": "district-explorer-shell-v8",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",
       "./icons/icon-192.png",
       "./icons/icon-512.png",
       "./icons/water-taxi.png",
+      "./icons/seals/cook-county.png",
       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
     ]

@@ -83,8 +83,8 @@ SOCRATA = [
      "name_contains": "Boundaries - Ward Precincts"},
     {"id": "igwz-8jzy", "layer": "Community Area",
      "name_contains": "Boundaries - Community Areas"},
-    {"id": "unjd-c2ca", "layer": "ZIP Code",
-     "name_contains": "ZIP Codes"},
+    # ZIP Code moved off Socrata to the statewide Census ZCTA layer (no city
+    # boundary line) — the endpoint is tracked in ENDPOINTS below, not here.
     {"id": "28km-gtjn", "layer": "Fire Stations",
      "name_contains": "Fire Stations"},
     {"id": "x72b-38qv", "layer": "CPS Elementary School Zone",
@@ -145,6 +145,10 @@ ENDPOINTS = [
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer?f=json"},
     {"layer": "Census TIGERweb school districts (unified/secondary/elementary layers)",
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/School/MapServer?f=json"},
+    {"layer": "Census TIGERweb ZCTAs (statewide ZIP Code layer)",
+     "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer?f=json"},
+    {"layer": "Census TIGERweb areal hydrography (Lake Michigan marker test)",
+     "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer?f=json"},
     {"layer": "Will County Board districts 2022 (current 11-district map + reps)",
      "url": "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/County_Board_Districts_2022/FeatureServer/0?f=json"},
 ]
