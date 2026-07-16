@@ -3428,11 +3428,16 @@ function initChiExplorer() {
     "congress",          // U.S. House district
     "il-senate",         // IL State Senate district
     "il-house",          // IL State House district
-    "county",            // IL county (102 statewide; TIGERweb, live-verified 2026-07)
     "school-district-secondary", // IL secondary school district (105 statewide; only where elem/HS pairs exist)
     "school-district-unified", // IL unified school district (387 statewide incl. CPS as SD 299)
     "school-district-elementary", // IL elementary school district (371 statewide)
+    // Bottom of the County > Township > Precinct nest. Will County numbers precincts
+    // within the township, so Precinct sits just BELOW Township (which sits below
+    // County) and the township/county outlines frame the precinct fills — the
+    // same outline-on-top rule as Ward Precinct and Police Beat.
+    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
+    "county",            // IL county (102 statewide; TIGERweb, live-verified 2026-07)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
     "will-county-board", // Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)
@@ -3461,7 +3466,6 @@ function initChiExplorer() {
     "zip-code",          // ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)
     "cps-high",          // High School attendance zone
     "cps-middle",        // Middle School attendance zone
-    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -4014,6 +4018,25 @@ function initChiExplorer() {
     return block;
   }
 
+  // Recursively nest a layer's sub-selection blocks inside its block. Nesting
+  // recurses so a sub-layer that is itself a parent (County > Township >
+  // Precinct) renders as a multi-level tree; a layer with no subs terminates
+  // the recursion and a single-level nest (Ward > Ward Precinct, Police
+  // District > Beat) behaves exactly as before this was made recursive.
+  function appendSubLayerBlocks(parentBlock, parentMod) {
+    layers.forEach(function (sub) {
+      if (sub.subOf !== parentMod.id) return;
+      var subBlock = buildLayerBlock(sub);
+      subBlock.classList.add("layer-block-sub");
+      // a sub-selection is only offered once its parent is on; the parent
+      // starts off, so hide it until onLayerToggled reveals it (kept in sync
+      // by updateSubLayerVisibility whenever the parent toggles)
+      subBlock.hidden = !state.layersOn[parentMod.id];
+      appendSubLayerBlocks(subBlock, sub); // nest grandchildren under this sub
+      parentBlock.appendChild(subBlock);
+    });
+  }
+
   // group id -> its sidebar <section>, so location-relevance can hide a whole
   // group whose layers all fall out of coverage (see refreshGroupVisibility).
   var groupSections = {};
@@ -4042,23 +4065,14 @@ function initChiExplorer() {
       cardsWrap.className = "group-cards";
 
       // Top-level layers only; a sub-layer (mod.subOf) is rendered nested
-      // inside its parent's block below, not as a sibling in the group.
+      // inside its parent's block below (recursively, for multi-level nests
+      // like Police Beat under Police District, or Precinct under Township
+      // under County), not as a sibling in the group.
       var baseIndex = 0;
       groupLayers.forEach(function (mod) {
         if (mod.subOf) return;
         var block = buildLayerBlock(mod, baseIndex++);
-        // nest any sub-layers (e.g. Police Beat under Police District) so the
-        // sidebar reads them as a sub-selection of the parent
-        layers.forEach(function (sub) {
-          if (sub.subOf !== mod.id) return;
-          var subBlock = buildLayerBlock(sub);
-          subBlock.classList.add("layer-block-sub");
-          // a sub-selection is only offered once its parent is on; the parent
-          // starts off, so hide it until onLayerToggled reveals it (kept in sync
-          // by updateSubLayerVisibility whenever the parent toggles)
-          subBlock.hidden = !state.layersOn[mod.id];
-          block.appendChild(subBlock);
-        });
+        appendSubLayerBlocks(block, mod);
         cardsWrap.appendChild(block);
       });
 
@@ -4076,6 +4090,7 @@ function initChiExplorer() {
     layers.forEach(function (sub) {
       if (sub.subOf !== mod.id) return;
       refreshLayerBlockHidden(sub);
+      updateSubLayerVisibility(sub); // a grandchild's visibility also turns on this toggle
     });
   }
 
@@ -4268,7 +4283,14 @@ function initChiExplorer() {
     var rt = layerRuntime[mod.id];
     if (!rt || !rt.block) return;
     var hidden = rt.relevant === false;
-    if (mod.subOf) hidden = hidden || !state.layersOn[mod.subOf];
+    // a sub-selection hides when ANY ancestor in its subOf chain is off, so a
+    // multi-level nest (Precinct under Township under County) collapses fully
+    // when an upper level is toggled off, not only its direct parent.
+    for (var pid = mod.subOf; pid && !hidden; ) {
+      if (!state.layersOn[pid]) { hidden = true; break; }
+      var pm = getLayerById(pid);
+      pid = pm ? pm.subOf : null;
+    }
     // don't strand keyboard focus inside a subtree that's about to leave the
     // accessibility tree — release it before hiding
     if (hidden && !rt.block.hidden && rt.block.contains(document.activeElement) &&
@@ -4647,7 +4669,8 @@ function initChiExplorer() {
    * CCPSA, …) keep their explicit registerLayer blocks — their multi-source,
    * Promise.all query() doesn't fit this shape.
    *
-   * opts: { id, group, label, loader, style, pointOfInterest?, fields: [...] }
+   * opts: { id, group, label, loader, style, pointOfInterest?, coverage?,
+   *         subOf?, onToggle?, fields: [...] }
    * Each field is one of:
    *   { name, label, keys:[...], primary:true } — always shown; findPropCI(keys)
    *        with an "Unknown" fallback. Conventionally the first field (headline).
@@ -4700,7 +4723,9 @@ function initChiExplorer() {
         return renderFieldList(rows);
       },
       pointOfInterest: opts.pointOfInterest,
-      coverage: opts.coverage // optional location-relevance test (see overlay-cards)
+      coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
+      subOf: opts.subOf,       // optional sub-selection parent (nests under it)
+      onToggle: opts.onToggle  // optional toggle reaction (e.g. a sub-layer framing its parent)
     });
   }
   /* ==== ENGINE:END polygon-factory ==== */
@@ -4870,12 +4895,22 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "County", keys: ["name"], primary: true },
       { name: "geoid", label: "FIPS", keys: ["geoid"] }
-    ]
+    ],
+    // County is the top of the Township > Precinct nest. Turning it off can't
+    // leave a nested sub-selection stranded on the map, so cascade Township off
+    // (which in turn drops Precinct). No-op when Township isn't on.
+    onToggle: function (on) {
+      if (!on) {
+        var tbox = document.getElementById("toggle-township");
+        if (tbox && tbox.checked) tbox.click();
+      }
+    }
   });
 
   registerPolygonLayer({
     id: "township",
     group: "geography",
+    subOf: "county",
     label: "Township / County Subdivision",
     loader: loadIlTownships,
     // long-dash brown — reads apart from Community Area's short green dash
@@ -4887,7 +4922,27 @@ function initChiExplorer() {
       // which is why the layer label says "County Subdivision" too.
       { name: "name", label: "Subdivision", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
-    ]
+    ],
+    // Townships are the county's subdivisions, so this nests under County (as
+    // Precinct nests under Township below). Turning it on brings County on as
+    // the outline frame; turning it off un-frames County and, since Township is
+    // itself Precinct's parent, cascades Precinct off.
+    onToggle: function (on) {
+      var countyRt = layerRuntime["county"];
+      if (on) {
+        if (!state.layersOn["county"]) {
+          var cbox = document.getElementById("toggle-county");
+          if (cbox && !cbox.checked) cbox.click();
+        }
+        countyRt.outlineOnly = true;
+      } else {
+        countyRt.outlineOnly = false;
+        var pbox = document.getElementById("toggle-will-county-precinct");
+        if (pbox && pbox.checked) pbox.click();
+      }
+      var countyMod = getLayerById("county");
+      if (countyMod && countyRt.overlayLayer) updateLayerHighlight(countyMod);
+    }
   });
 
   registerPolygonLayer({
@@ -5142,25 +5197,90 @@ function initChiExplorer() {
     ]
   });
 
-  // Will County voting precincts — the current 2022 map (310 precincts). The
-  // sub-precinct committeeperson isn't in this data, so the card links to the
-  // county clerk's registration/polling-place lookup.
+  // Will County voting precincts — the current 2022 map (310 precincts).
+  // Precincts are numbered within their TOWNSHIP (the parent unit — "Homer 1",
+  // "Wheatland 15"), so this nests under Township exactly as Ward Precinct
+  // nests under Ward: subOf "township", framed by the township outline, itself
+  // framed by County. The Illinois Election Code also sites each precinct
+  // within a single County Board district (10 ILCS 5/11-2), but the precinct
+  // data carries no board-district field — so that identity is resolved by a
+  // spatial join against the Will County Board boundary the app already loads
+  // and reported as a card row, not a nest. The sub-precinct committeeperson
+  // isn't in this data, so the card links to the county clerk's
+  // registration/polling-place lookup.
   var loadWillPrecincts = makeCached(function () {
     return loadWillFeatureServer("Precincts_2022", 1, "NAME,TWP_NAME,PRECINCT_NO", "precincts");
   });
-  registerPolygonLayer({
+  registerLayer({
     id: "will-county-precinct",
-    group: "political",
+    group: "geography",
+    subOf: "township",
     label: "Voting Precinct",
     coverage: willCountyCoverage,
-    loader: loadWillPrecincts,
-    style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.04, dashArray: "1 3" },
-    fields: [
-      { name: "name", label: "Precinct", keys: ["name"], primary: true },
-      { name: "township", label: "Township", keys: ["twp_name"] },
-      { label: "Registration & polling place",
-        html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' }
-    ]
+    hoverName: function (feature) {
+      var v = findPropCI(feature.properties || {}, ["name"]);
+      return (v == null || v === "") ? null : String(v);
+    },
+    overlay: {
+      load: loadWillPrecincts,
+      // solid thin outline + visible fill: with the township dropped to
+      // outline-only, the precincts carry the interior fill. Same brown family
+      // as the township, a shade deeper so the two read as related.
+      style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null }
+    },
+    query: function (point, seq) {
+      // Join the containing County Board district — a spatial lookup, since the
+      // precinct feature carries no board-district field. Best-effort: a
+      // board-boundary failure drops just that row, never the precinct card.
+      return Promise.all([
+        loadWillPrecincts(),
+        loadWillCountyBoard().catch(function () { return null; })
+      ]).then(function (results) {
+        var geojson = results[0], boardGeo = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var boardDistrict = null;
+        if (boardGeo) {
+          var bf = findFeatureContaining(boardGeo, point);
+          if (bf) boardDistrict = findPropCI(bf.properties || {}, ["cty_brd_number"]);
+        }
+        return {
+          seq: seq,
+          name: findPropCI(props, ["name"]),
+          township: findPropCI(props, ["twp_name"]),
+          boardDistrict: boardDistrict
+        };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+      if (result.township) fields.push({ label: "Township", value: String(result.township) });
+      if (result.boardDistrict != null && result.boardDistrict !== "") {
+        fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+      }
+      fields.push({ label: "Registration & polling place",
+        html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' });
+      return renderFieldList(fields);
+    },
+    // Precinct sits at the bottom of the County > Township > Precinct nest:
+    // turning it on brings Township on (which itself brings County on), and
+    // drops Township to outline-only so the precinct fills read as its
+    // interior subdivision.
+    onToggle: function (on) {
+      var townshipRt = layerRuntime["township"];
+      if (on) {
+        if (!state.layersOn["township"]) {
+          var tbox = document.getElementById("toggle-township");
+          if (tbox && !tbox.checked) tbox.click();
+        }
+        townshipRt.outlineOnly = true;
+      } else {
+        townshipRt.outlineOnly = false;
+      }
+      var townshipMod = getLayerById("township");
+      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
+    }
   });
 
   /* ---------- Community Area ---------- */

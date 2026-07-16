@@ -85,15 +85,15 @@ MIN_REGISTER_LAYER = 15
 # count above — this per-id list is the direct module-loss guard. Emitted in
 # LAYER_AREA_RANK order; check 5 keeps the two naming the same set.
 EXPECT_LAYER_IDS = [
-    "il-supreme-court", "congress", "il-senate", "il-house", "county",
+    "il-supreme-court", "congress", "il-senate", "il-house",
     "school-district-secondary", "school-district-unified",
-    "school-district-elementary", "township", "municipality",
-    "will-county-judicial", "will-county-board", "ccbr", "commissioner",
-    "will-county-fire", "will-county-park", "school-board", "cps-hs-network",
-    "cps-network", "ward-precinct", "ward", "police-beat", "police-district",
-    "ccpsa-district-council", "community-area", "zip-code", "cps-high",
-    "cps-middle", "will-county-precinct", "cps-elementary", "school-site",
-    "police-station", "fire-station",
+    "school-district-elementary", "will-county-precinct", "township",
+    "county", "municipality", "will-county-judicial", "will-county-board",
+    "ccbr", "commissioner", "will-county-fire", "will-county-park",
+    "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward",
+    "police-beat", "police-district", "ccpsa-district-council",
+    "community-area", "zip-code", "cps-high", "cps-middle", "cps-elementary",
+    "school-site", "police-station", "fire-station",
 ]
 
 # file -> (min features, max features) for the boundary layers fetched by the app.
