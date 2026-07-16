@@ -277,14 +277,14 @@ BOOT_RUNS=15 node scripts/perf_profile.mjs   # more boot samples for a tighter m
 
 A production PageSpeed Insights **mobile** run after Round 2 deployed (chidistricts.com):
 
-| Metric | Pre-R2 baseline | Post-R2 (live) | Δ |
+| Metric | Pre-R2 baseline | Post-R2 | Post-self-host (final) |
 |---|---|---|---|
-| FCP | 3.3 s | **1.2 s** | −2.1 s ✅ |
-| Speed Index | 3.4 s | **1.6 s** | −1.8 s ✅ |
-| LCP | 5.0 s | 6.4 s | +1.4 s ⚠️ |
-| TBT | 0 ms | 70 ms | +70 ms |
-| CLS | 0 | 0.054 | +0.054 |
-| **Performance** | 75 | **76** | +1 |
+| FCP | 3.3 s | 1.2 s | **1.2 s** |
+| Speed Index | 3.4 s | 1.6 s | **1.3 s** ✅ |
+| LCP | 5.0 s | 6.4 s | **5.9 s** ✅ |
+| TBT | 0 ms | 70 ms | 70 ms |
+| CLS | 0 | 0.054 | 0.052 |
+| **Performance** | 75 | 76 | **78** |
 
 **R2-1 landed as designed** — render-blocking elimination cut FCP −2.1 s and Speed Index −1.8 s. The score barely moved (75→76) because LCP (25%) + CLS (25%) + TBT (30%) = 80% of the weight, and:
 
@@ -292,4 +292,10 @@ A production PageSpeed Insights **mobile** run after Round 2 deployed (chidistri
 - **CLS 0.054** is the **async font swap** (R2-1's `media=print` + `display=swap` → FOUT reflow of `main.layout`).
 - **TBT 70 ms is Google Tag Manager** (third-party analytics), not app code.
 
-**Fix shipped (the self-hosting §6 held for data):** fonts are now self-hosted (`scripts/build_fonts.py`, same-origin `@font-face`) — dropping the two font preconnects and giving those slots to the tile shards (a/b/c, the LCP lever), with a metric-matched `Inter Fallback` to cut the swap CLS. TBT is the owner's analytics choice; the map-tile LCP is partly intrinsic to a map app on Slow 4G, and tile preconnects are the lever within our control.
+**Fix shipped + re-measured (the self-hosting §6 held for data):** fonts self-hosted (`scripts/build_fonts.py`, same-origin `@font-face`), the two font preconnects reallocated to the tile shards (a/b/c), a metric-matched `Inter Fallback` added. The **post-self-host PSI** (third column) confirms it: **LCP 6.4→5.9 s** and **Speed Index 1.6→1.3 s**, score **76→78** — the tile-preconnect reallocation worked.
+
+Two honest results:
+- **CLS barely moved (0.054→0.052).** The `Inter Fallback` uses `src: local('Arial')`, and the Moto G Power PSI device (Android) has **no Arial**, so the metric-match never fires there — it helps Win/Mac users but can't move the Android number. CLS 0.052 stays in the "good" range.
+- **The map-tile LCP is near its Slow-4G floor.** It loads after Leaflet + map init (~220 ms delay) then downloads over throttled 4G; preconnects shave a little but PSI flags them "unused" (the tiles request too late to reuse the warmed connection). 5.9 s is close to the practical floor for a map app on Slow 4G.
+
+**Tradeoff frontier (2026-07-16, banked at 78).** Every remaining PSI lever now costs something real, so the campaign rests here: dropping `{r}`/@2x tiles buys LCP + 56 KB but blurs the basemap on retina (bad for reading street labels); `font-display: optional` zeroes the CLS but shows fallback fonts to first-time visitors; deferring **Google Tag Manager** clears TBT (70 ms) + 66 KB unused JS but it's the owner's analytics; minifying the inline JS/CSS (−47 KB) breaks the single-file no-build design. The one non-tradeoff experiment left is collapsing the 4 sharded tile hosts to one (HTTP/2 multiplexes anyway) — uncertain, needs a real-device capture. The remaining *app-side* lever is the canvas renderer (**OPTIMIZATION_PLAYBOOK §7**), which targets pan/zoom interaction, not the PSI load score.
