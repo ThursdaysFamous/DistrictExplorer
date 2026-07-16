@@ -270,3 +270,26 @@ BOOT_RUNS=15 node scripts/perf_profile.mjs   # more boot samples for a tighter m
 **§6 production PageSpeed Insights** — the authoritative numbers come from running PSI/Lighthouse against the **live site** (needs real egress this sandbox lacks): [pagespeed.web.dev](https://pagespeed.web.dev/) on `https://chidistricts.com/` (mobile), or `npx lighthouse https://chidistricts.com/ --form-factor=mobile`, or the PSI API with a key. The **in-sandbox proxy** (optimistic; see §6) reproduces as: `bash scripts/vendor_leaflet.sh`, serve `index.html` with the cdnjs Leaflet `<link>`/`<script>` rewritten same-origin and the fonts `<link>` removed so Chrome can boot it offline, then `npx lighthouse http://localhost:<port>/ --form-factor=mobile`. **§7** is a Firefox Profiler export, not reproducible from this repo — treat its numbers as the cited external capture.
 
 **Reading the results as this document does:** trust payload bytes, `ScriptDuration`, node/heap counts, CPU-sample shape, and every A/B ratio as-is; treat raw paint/pan wall-times as *relative* (headless software rendering inflates them); and label any claim about the live-API layers or real CDN/tile latency as inferred — this harness intentionally never touches them.
+
+---
+
+## Production verification (2026-07-16) — R2 shipped, then measured live
+
+A production PageSpeed Insights **mobile** run after Round 2 deployed (chidistricts.com):
+
+| Metric | Pre-R2 baseline | Post-R2 (live) | Δ |
+|---|---|---|---|
+| FCP | 3.3 s | **1.2 s** | −2.1 s ✅ |
+| Speed Index | 3.4 s | **1.6 s** | −1.8 s ✅ |
+| LCP | 5.0 s | 6.4 s | +1.4 s ⚠️ |
+| TBT | 0 ms | 70 ms | +70 ms |
+| CLS | 0 | 0.054 | +0.054 |
+| **Performance** | 75 | **76** | +1 |
+
+**R2-1 landed as designed** — render-blocking elimination cut FCP −2.1 s and Speed Index −1.8 s. The score barely moved (75→76) because LCP (25%) + CLS (25%) + TBT (30%) = 80% of the weight, and:
+
+- **LCP is now a basemap tile** (`*.basemaps.cartocdn.com/…@2x.png`). With FCP fast, the largest paint is the map tile, gated on tile delivery over Slow 4G. PSI's fix: **preconnect the tile shards** (a/b/c/d, ~160 ms each) — which means the **R2-7 preconnect trim (dropping `b.`) was the wrong direction**, the ambiguity §6 flagged, now resolved by data.
+- **CLS 0.054** is the **async font swap** (R2-1's `media=print` + `display=swap` → FOUT reflow of `main.layout`).
+- **TBT 70 ms is Google Tag Manager** (third-party analytics), not app code.
+
+**Fix shipped (the self-hosting §6 held for data):** fonts are now self-hosted (`scripts/build_fonts.py`, same-origin `@font-face`) — dropping the two font preconnects and giving those slots to the tile shards (a/b/c, the LCP lever), with a metric-matched `Inter Fallback` to cut the swap CLS. TBT is the owner's analytics choice; the map-tile LCP is partly intrinsic to a map app on Slow 4G, and tile preconnects are the lever within our control.
