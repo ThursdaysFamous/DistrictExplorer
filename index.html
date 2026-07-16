@@ -1955,10 +1955,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin=""></script>
+<!-- Leaflet loaded DEFERRED: non-render-blocking, so it downloads in parallel
+     with HTML parsing instead of blocking first paint (~1.3 s on mobile, PSI's
+     largest single render-blocking request). Deferred scripts execute in order
+     before DOMContentLoaded; the app boot below is gated on DOMContentLoaded, so
+     L is guaranteed defined before use. This is what the old §2.4 "leaflet.js
+     doesn't need defer" anti-finding said would break boot — it's correct that a
+     bare defer breaks the immediate IIFE, which is exactly why the boot is now
+     DOMContentLoaded-gated instead of immediate. (OPTIMIZATION_PLAYBOOK R2-1.) -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin=""></script>
 
 <script>
-(function () {
+// The app boot was a bare IIFE that ran at parse time and dereferenced L
+// synchronously. With Leaflet now deferred, boot is gated on DOMContentLoaded
+// (deferred scripts finish before it), so L is ready when initChiExplorer runs.
+function initChiExplorer() {
   "use strict";
 
   /* =========================================================================
@@ -7250,7 +7261,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   };
   /* ==== ENGINE:END exports ==== */
   window.ChiExplorer = EXPLORER_EXPORTS;
-})();
+}
+// Deferred Leaflet (above) executes before DOMContentLoaded, so L is ready by
+// the time this fires. Run immediately if the DOM is already parsed, else wait.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initChiExplorer);
+} else {
+  initChiExplorer();
+}
 </script>
 <script>
   if ("serviceWorker" in navigator) {
