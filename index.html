@@ -3443,16 +3443,11 @@ function initChiExplorer() {
     "congress",          // U.S. House district
     "il-senate",         // IL State Senate district
     "il-house",          // IL State House district
+    "county",            // IL county (102 statewide; TIGERweb, live-verified 2026-07)
     "school-district-secondary", // IL secondary school district (105 statewide; only where elem/HS pairs exist)
     "school-district-unified", // IL unified school district (387 statewide incl. CPS as SD 299)
     "school-district-elementary", // IL elementary school district (371 statewide)
-    // Bottom of the County > Township > Precinct nest. Will County numbers precincts
-    // within the township, so Precinct sits just BELOW Township (which sits below
-    // County) and the township/county outlines frame the precinct fills — the
-    // same outline-on-top rule as Ward Precinct and Police Beat.
-    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
-    "county",            // IL county (102 statewide; TIGERweb, live-verified 2026-07)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
     "will-county-board", // Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)
@@ -3463,16 +3458,14 @@ function initChiExplorer() {
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
-    // Same sub-layer rule as beats below: precincts sit just BELOW their parent
-    // ward so the ward's outline renders on top and frames the precinct fills.
-    "ward-precinct",     // Ward Precinct (sub-selection of City Ward)
     "ward",              // City Ward (50)
-    // Deliberately out of pure area order: beats (~277, smaller than a district)
-    // sit just BELOW their parent district so the district's outline renders on
-    // top and frames the beat fills — the "district outline + beats as filler"
-    // look the beat sub-selection is for.
-    "police-beat",       // Police Beat (~277)
+    // Smaller than its parent ward, so it renders on top (smallest-on-top); turning it
+    // on drops the ward to outline-only, framing the precinct fills from underneath.
+    "ward-precinct",     // Ward Precinct (sub-selection of City Ward)
     "police-district",   // Police District (22)
+    // Smaller than its parent district, so it renders on top (smallest-on-top);
+    // turning it on drops the district to outline-only, framing the beat fills from underneath.
+    "police-beat",       // Police Beat (~277)
     // CCPSA District Council shares the police-district geometry exactly (22,
     // one council per district); place it just after so its outline draws on
     // top when both are on and its distinct teal dash stays legible.
@@ -3481,6 +3474,10 @@ function initChiExplorer() {
     "zip-code",          // ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)
     "cps-high",          // High School attendance zone
     "cps-middle",        // Middle School attendance zone
+    // Smallest Will County layer, so it renders on top of Township and County
+    // (smallest-on-top); turning it on drops both to outline-only, framing the
+    // precinct fills from underneath.
+    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
