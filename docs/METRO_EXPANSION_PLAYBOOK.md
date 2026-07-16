@@ -69,7 +69,7 @@ What a new metro rewrites is the **layer modules**: everything between the `THRE
 | "Data last verified" date | `verifiedEl.textContent =` | hardcoded date string | Bump on every reverification. |
 | Debug namespace | `window.ChiExplorer =` — **twinned in `scripts/smoke_test.mjs`** (its boot-wait and `setSelectedPoint` calls) | `window.ChiExplorer` | Rename in both files or neither. |
 | Hover fallback key lists | `var HOVER_NUMBER_KEYS =` (and `HOVER_NAME_KEYS`, top of the `HOVER EXPLORER` block) | Chicago field vocabulary (`ward`, `beat_num`, `area_numbe`, `community`…) | Re-seed from the new city's *observed* field names (§6.1) — no other city's datasets use Chicago's keys, and stale lists fail silently (see the surgery notes). Keep encoded fields (a `boro_cd` `"410"`, an AD·1000+ED) **out** — they need per-layer decoding, which is why `hoverName` is the primary mechanism (§2) and these lists are only a net. |
-| Preconnect/dns-prefetch | `rel="dns-prefetch"` lines in `<head>` | Chicago portal, Nominatim, Photon | The fork's click-time data + geocoder hosts. Leave the Leaflet CDN / basemap / font warms alone. |
+| Preconnect/dns-prefetch | `rel="preconnect"` + `rel="dns-prefetch"` lines in `<head>` | cdnjs (Leaflet) + 3 basemap tile shards; dns-prefetch Chicago portal, Nominatim, Photon | `preconnect` the Leaflet CDN + your basemap tile shards (the LCP element is a tile), `dns-prefetch` the click-time data + geocoder hosts, and **cap at ≤4** (PSI warns beyond that). Fonts are self-hosted now (§13.2), so there are no font-CDN warms to keep — that freed the two slots the tile shards use. Full rationale + the render-blocking campaign: §13. |
 | Analytics | `data-goatcounter=` | `chidistricts.goatcounter.com/count` | The fork's own instance, or remove the script. |
 | Cross-metro footer list | `var METRO_EXPLORERS =` (METRO config block) | canonical list of every deployed explorer | **Shared, not swapped**: the list is identical in every fork (`THIS_METRO` makes the fenced `metro-links` block skip the fork's own entry). When a new metro launches, add its entry in **every** sibling fork — ported as the same small config diff per `docs/ENGINE_SYNC.md`, never re-typed. Each entry also carries `emoji` + `bbox` for the fenced `metro-portal` easter egg (wander/search/geolocate into a sibling metro → hand-off card): `bbox` is that fork's greater-metro box, mirroring its `PERMALINK_GATE`, so a deep-linked `#point=` always passes the target's permalink gate. Omitting `bbox` opts the metro out of the portal until one is decided; `validate_index.py` lints every entry and refuses a sibling bbox that contains the home metro's center (the portal would fire on every pan). Overlapping bboxes are fine — the nearest bbox center wins at runtime. |
 
@@ -290,6 +290,54 @@ Identical to `BUILD_PLAYBOOK_1.md` §5. Start of a thread: paste Part I §2 (con
 - `[module] DONE — exposes contract, tested against <point>`
 - `[module] STUB — <what's faked>`
 - `[module] SURPRISE — <any dataset quirk found>`
+
+## 13. Performance parity — what the fork inherits free vs. what it re-earns
+
+The reference forks ran a **measured** performance campaign — the CHI record is `docs/OPTIMIZATION_PLAYBOOK.md` (compute + payload, 2026-07-09) and `docs/PERFORMANCE_ANALYSIS_2026-07.md` (load delivery, **production PSI mobile 75 → 78**, 2026-07-16); NYC contributed two engine loaders. Those two docs are the reference city's build history (kept as engine documentation, not fork instructions — see the intro); this section is the **portable subset** every fork needs. Performance splits along the same **ENGINE vs. METRO** seam as everything else: engine-fenced wins ride along byte-identically (a fork seeded from the reference already has them — the re-core must not delete them), while metro-specific wins live in the fork's own `<head>`, METRO config, and data pipeline, so each fork **re-earns** them.
+
+### 13.1 Inherited free (engine-fenced or seed-copied — already in your fork; the re-core must not delete them)
+
+These ship with the seed. Confirm each with a grep, and — because the re-core *deletes layer modules* — make sure none becomes collateral damage:
+
+- **Point-in-polygon bbox pre-reject** in `findFeatureContaining` (grep `featureBBox(features[i])` → `continue` before the ray-cast) + the per-selection `__pointQueryCache` memo — `find-prop-ci` fence (P7/P7c/R2-6; a production Firefox capture measured `pointInRing` at **1.44 s** without the reject; answer-identical with it).
+- `featureBBox`/`bboxIntersect` (memoized), `whenIdle` (rIC + `setTimeout` fallback), `fetchJSONWithRetry` timeouts (`REMOTE_GEOJSON_TIMEOUT_MS = 30000`), `makeCached`/`tryRoutes`, `loadArcGISGeoJSON` (`geometryPrecision=6&outSR=4326`), `loadArcGISPaged`, `makeSocrataPointLoader`, geocoder debounce + serial POI queue, `withAppToken`.
+- Incremental highlight fast-path (P7), toggle-path rescale (P8), Leaflet-graph release on toggle-off (P11) — `layer-registry`/`overlay-cards` fences.
+- **Scope-mask boot-defer** — the boot call is wrapped `whenIdle(function () { drawOutOfScopeMask(<loader>); })` so the tiler geometry never blocks first paint (R2-3). Keep the `whenIdle` wrapper; only the loader you pass it is metro-specific.
+- **Drop-shadow pan-pause** — a `.<metro>-panning { … filter: none }` class toggled on `movestart`/`moveend` (R2-5; the two stacked `drop-shadow()`s are a measured 3.7× pan-frame tax when left live during motion).
+- The whole `sw.js` handler block: cache-first geometry / network-first roster+shell / navigate → network-first-fallback-to-`"./"` / independent-`cache.add` install (one bad URL can't abort precache).
+
+**Guard.** After the re-core, `python3 scripts/check_engine_parity.py index.html --against <reference> --strict` must be clean. Two anchors reveal at a glance whether an engine predates the Round-2 campaign: `featureBBox(features[i])` (R2-6) and `whenIdle(function () { drawOutOfScopeMask` (R2-3) — absent ⇒ pull the Round-2 diffs forward via `docs/ENGINE_SYNC.md` before shipping.
+
+**Provenance, and the flow to watch.** `loadArcGISPaged` + `makeSocrataPointLoader` were **born in the NYC port** and are already reconciled into the reference engine (present, unused by Chicago) — the sibling→reference channel works. The reverse flow is the leaky one: the reference's Round-2 *engine* wins **postdate** the first sibling ports, so a fork that hasn't synced since then lacks them. This is not hypothetical — checked 2026-07-16, `check_engine_parity … --against https://nyc.chidistricts.com/ --strict` reports **40 identical / 5 drifted**, and the drifted fences are exactly the perf carriers (`find-prop-ci` = bbox reject, `chamber-factory` = the pre-built-geometry `opts.loadDistricts` hook, `styles-core` = pan-pause, plus `overlay-cards`/`polygon-factory`). So NYC's *deployed* engine still predates the Round-2 wins. `engine-parity.yml` is the weekly watch and reconciling it is a **sibling-side chore** (port the diffs, don't re-describe) — a new fork seeded from the current reference starts clean.
+
+### 13.2 Re-earned per fork (metro-specific — NOT auto-inherited; the checklist)
+
+The seed does **not** give you these correctly — they're keyed to your hosts, fonts, state, and datasets. In rough thread order:
+
+1. **Kill `<head>` render-blocking — the single biggest score lever** *(Thread 0/6; CHI: ~2,110 ms of blocked first paint → mobile PSI 75→78, FCP 3.3→1.2 s)*. Three edits, all in the fork's own `<head>`/`<style>` (outside every fence — confirm before porting):
+   - **Inline `leaflet.css`** into the `<style>` block; drop its CDN `<link>` and its `SHELL_URLS` entry. Safe because every marker is an `L.divIcon`, so Leaflet's image `url()`s (`marker-icon.png`, `layers.png`) never match. **Version-couple** the inlined CSS to the CDN `leaflet.js` version — comment the re-inline command and keep them in lockstep.
+   - **Self-host + subset the fonts** (`scripts/build_fonts.py`): same-origin `@font-face`, `font-display: swap`, and a **metric-matched fallback** to cut swap-CLS; commit the `.woff2` under `fonts/` and add them to `SHELL_URLS`. Removes the render-blocking font-CDN CSS *and* the cross-origin font fetches, and frees two preconnect slots (feeds #2). The font *files/weights* are a per-fork branding asset; the script is the reusable mechanism.
+   - **Defer `leaflet.js` + gate boot on `DOMContentLoaded`** (a named `init<Metro>Explorer()`, not a parse-time IIFE). ⚠️ **The trap the reference paid for:** a *bare* `defer` on Leaflet breaks boot, because the IIFE dereferences `L` at parse time — defer **both**, so deferred scripts run in order and `L` is defined before `DOMContentLoaded` fires `init`. (This supersedes the old "`leaflet.js` must not be deferred" anti-finding.)
+
+2. **Preconnect discipline — cap ≤4, aimed at your LCP** *(Thread 0)*. The LCP element is a **basemap tile**, so `preconnect` the tile shards (a/b/c) + the Leaflet CDN and `dns-prefetch` your click-time data + geocoder hosts; PSI warns beyond 4 connections. Self-hosting the fonts (#1) frees the two font-CDN slots the tile shards take. *(This is the corrected §1 constants-row guidance — the pre-self-host "leave the font warms alone" rule is retired.)*
+
+3. **Pre-build decadal (redistricting-cadence) legislative geometry** *(Thread 5; the biggest interaction win)*. Don't fetch TIGERweb legislative live — the reference measured **5.69 s** time-to-answer. Add `scripts/build_legislative_boundaries.py` parameterized to your `STATE_FIPS` → `data/app/{congress,upper,lower}-districts.json` (mapshaper-simplified via the §6.7 protocol), served **cache-first**; the engine already carries the `opts.loadDistricts` fallback hook (a fork that skips this still works, just ~5 s slower per legislative card). Register the files in `metro-worksheet.json` (feature counts) + `sw.js` `GEOMETRY_URLS`, bump `CACHE_NAME`, and move the TIGERweb-legislative rows in `validate_sources.py` from live-ENDPOINT to PROVENANCE. Tie the rebuild to the redistricting runbook. *(SF: `STATE='06'` → CA U.S. House 52 / State Senate 40 / State Assembly 80.)*
+
+4. **Keep the boot payload lazy** *(Thread 6 re-verify)*. After the re-core, confirm the scope-mask wash (your tiler) and any conditional marker icons load behind `whenIdle`/first-use, never at boot — the tiler loader and marker set are fork-specific, so this regresses easily.
+
+5. **Per-layer precision + simplification budgets** *(already §6.7)*. Anchors and pre-built legislative geometry clear the 2,000-point gate; big live layers request a coarser `geometryPrecision`/`maxAllowableOffset` (CHI uses 4–5 for statewide/ZIP). Per-layer knobs, tuned to your datasets.
+
+6. **SW freshness split + shell audit** *(already §4)*. Geometry cache-first, rosters network-first; reflect the self-hosted fonts (and the removed `leaflet.css`) in `SHELL_URLS`; bump `CACHE_NAME` on any list change.
+
+7. **Actions-based Pages deploy exclude list** (`deploy-pages.yml`): ship only the runtime files.
+
+### 13.3 Measurement discipline (the meta-lesson that reordered Round 2)
+
+Sandbox / payload analysis is a **lower bound** — it stubs exactly the third parties that dominate delivery. The reference's in-sandbox Lighthouse scored **96** by stubbing Leaflet/fonts/tiles to boot offline; the real **production PSI mobile was 75**, and the entire 25-point gap was FCP + LCP — load delivery the sandbox could not see. So score each fork on **production PSI mobile after deploy** (or a real-egress Lighthouse), never a sandbox proxy. Expect an **LCP-bound tradeoff frontier**: the basemap-tile LCP is near its Slow-4G floor (~78), beyond which every point costs real UX (blurry @2x tiles), brand (first-visit fallback fonts), analytics (deferring the tag), or the single-file design (minify). The reference deliberately **banked at 78**; don't spend the port chasing the last points.
+
+### 13.4 Shared open item (not a back-port — unimplemented in every fork)
+
+The **canvas renderer** for many-polygon layers (`preferCanvas`/`L.canvas`) is deferred *everywhere*: Phase 0 is measured (projection, not paint, dominates — the go/no-go needs a real-hardware GPU paint profile, not a sandbox), and Phase 1 is a fenced `buildOverlayLayer` change + a per-fork `overlay.renderer` opt-in flag that ports byte-identically. A new fork should **not** implement it preemptively — inherit it when the reference ships it. (Full plan: `docs/OPTIMIZATION_PLAYBOOK.md` §7.)
 
 ---
 

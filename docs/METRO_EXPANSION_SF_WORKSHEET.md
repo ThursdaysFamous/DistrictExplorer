@@ -106,8 +106,23 @@ Established from authoritative sources — **not** yet the playbook's endpoint-l
 3. SFUSD school-profile deep-link pattern.
 4. BART director-district geometry + elected roster source (candidate add).
 
-## Operator decisions (🎛️) before the re-core thread
+## Performance parity for the SF port (see playbook §13)
 
-1. **Create `ThursdaysFamous/DistrictExplorer-SF`?** (public, seeded as a copy of the CHI tree so the engine/gates/CI come along — §3 step 1.)
-2. **Domain** `sf.chidistricts.com` — confirm & point the CNAME.
-3. **Brand** — International Orange direction, or another SF palette.
+The reference forks' measured perf campaign splits into what SF **already has** and what SF **must re-earn** — playbook §13 is the full guide; this is the SF-specific cut.
+
+**Already in the SF seed (engine-fenced — do NOT delete in the Thread-0 re-core):** bbox pre-reject in `findFeatureContaining` (R2-6), `whenIdle` scope-mask boot-defer (R2-3), drop-shadow pan-pause (R2-5), memoized/incremental click + toggle paths (P7/P8/P11), loader hardening (`geometryPrecision=6`, timeouts, `hasUsableGeometry`), `loadArcGISPaged` + `makeSocrataPointLoader`, geocoder debounce + serial POI queue, the whole `sw.js` handler block. SF's `index.html` is byte-identical to the current CHI reference (verified), so it carries all 45 engine fences at their latest state. **Guard after the re-core:** `check_engine_parity.py index.html --against https://chidistricts.com/ --strict` clean.
+
+**SF must re-earn (metro-specific — §13.2):**
+- *Thread 0 `<head>`:* inline `leaflet.css`; self-host + subset SF's fonts via `scripts/build_fonts.py` (International Orange brand faces, `font-display: swap`, metric-matched fallback) and precache them in `SHELL_URLS`; defer `leaflet.js` + gate boot on `DOMContentLoaded` as `initSFExplorer()` (defer **both** — the bare-defer trap).
+- *Thread 0 preconnects (≤4):* `preconnect` cdnjs + the CARTO basemap tile shards (the LCP is a tile); `dns-prefetch` `data.sfgov.org`, `photon.komoot.io`, `nominatim.openstreetmap.org`.
+- *Thread 5 pipeline:* `build_legislative_boundaries.py` with `STATE='06'` → same-origin cache-first `data/app/{congress,ca-senate,ca-assembly}-districts.json` (CA U.S. House 52 / State Senate 40 / State Assembly 80), simplified through the §6.7 gate — turns the ~5.7 s TIGERweb query into a ~200 ms fetch. The engine's `opts.loadDistricts` hook is already present.
+- *Thread 6:* measure on **production PSI mobile** after deploy (sandbox scores are a lower bound); expect an LCP-bound frontier (~78) — don't chase past it.
+- **Don't** implement the canvas renderer (§13.4) — inherit it when the reference ships it.
+
+## Operator decisions — RESOLVED (2026-07-16)
+
+1. ✅ **Repo created & seeded** — `ThursdaysFamous/DistrictExplorer-SF` (public), seeded byte-identical from the CHI tree (engine/gates/CI + this worksheet).
+2. ✅ **Domain** — `sf.chidistricts.com` (Thread 0 points the CNAME).
+3. ✅ **Brand** — International Orange (Golden Gate) direction confirmed.
+
+*Outstanding operator item (not blocking the SF port):* the Claude GitHub App lacks repository-**creation** permission (Administration: write) — granting it would enable hands-off creation of future metro forks.
