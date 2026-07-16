@@ -140,13 +140,8 @@
       "./icons/icon-512.png",
       "./icons/water-taxi.png",
       "./icons/seals/cook-county.png",
-      "./icons/seals/hamilton.png",
       "./icons/seals/kane.png",
       "./icons/seals/lake.png",
-      "./icons/seals/macon.png",
-      "./icons/seals/saline.png",
-      "./icons/seals/st-clair.png",
-      "./icons/seals/washington.png",
       "./icons/seals/will.png",
       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
     ]

@@ -42,10 +42,11 @@ Provenance (source file + author/attribution) for each is in `icons/source/READM
 ## 🟡 Free county **flag** available — no free seal (4 counties)
 
 For these, no freely-licensed *seal* exists, but a genuine, freely-licensed
-county **flag** is on Wikimedia Commons. You asked specifically for seals, so
-I did **not** auto-ship these — but each is a one-line add if you'd accept the
-flag as the pin marker. **Recommendation: approve — a real county flag beats
-the plain name-badge fallback.**
+county **flag** is on Wikimedia Commons. **Decision: not shipped — the marker set
+is seals only.** These are recorded here so the option stays on the table: if a
+flag is ever acceptable as a stand-in, each is a one-line add (drop the derived
+PNG in `icons/seals/`, add a `COUNTY_SEAL_URLS` entry). Until then these counties
+keep the plain name-badge fallback.
 
 | County | Free flag (Commons) | License |
 |---|---|---|
