@@ -11,6 +11,11 @@
 //      P7 incremental point-move, and cold vs warm layer toggles.
 //   3. Footprint: JS heap / DOM nodes / SVG paths baseline vs three layers on,
 //      and a pan-frame A/B that isolates the highlight drop-shadow cost (P9).
+//   4. Pan/zoom reproject (the Round-3 canvas gate, §7): with the most same-
+//      origin polygon paths reachable (anchors + pre-built legislative layers),
+//      CPU-profile a pan and a zoom and compare pan-frame time at many vs few
+//      paths — does SVG reproject dominate and scale with path count, or did
+//      R2-5/R2-6 already flatten it? Decides whether canvas is worth the port.
 //
 // Like smoke_test.mjs it depends only on the app shell + the three same-origin
 // no-API layers (school-board, il-supreme-court, ccbr) — never the live
@@ -168,7 +173,7 @@ const server = await startServer(REPO, PORT);
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 try {
   // ===== PHASE 1 — COLD BOOT (median of N) =====
-  console.log(`\n[1/4] Cold boot × ${BOOT_RUNS} …`);
+  console.log(`\n[1/5] Cold boot × ${BOOT_RUNS} …`);
   const B = { ttReady: [], domContentLoaded: [], loadEvent: [], firstPaint: [], firstContentfulPaint: [], domInteractive: [],
     scriptDurationMs: [], v8CompileMs: [], recalcStyleMs: [], layoutMs: [], jsHeapMB: [], domNodes: [], jsEventListeners: [],
     longtaskCount: [], longtaskTotalMs: [], longtaskMaxMs: [] };
@@ -208,7 +213,7 @@ try {
   results.bootResources = bootResources;
 
   // ===== PHASE 2 — INTERACTION (CPU profiled) =====
-  console.log(`\n[2/4] Click→classify + point-move (CPU profiled) …`);
+  console.log(`\n[2/5] Click→classify + point-move (CPU profiled) …`);
   {
     const ctx = await newCtx(browser); const page = await bootPage(ctx); const cdp = await ctx.newCDPSession(page);
     await page.goto(`${BASE}#layers=${OFFLINE.join(",")}`, { waitUntil: "domcontentloaded" });
@@ -245,7 +250,7 @@ try {
   }
 
   // ===== PHASE 3 — LAYER TOGGLE (cold vs warm) =====
-  console.log(`\n[3/4] Layer toggle latency …`);
+  console.log(`\n[3/5] Layer toggle latency …`);
   {
     const ctx = await newCtx(browser); const page = await bootPage(ctx); const cdp = await ctx.newCDPSession(page);
     await page.goto(`${BASE}#point=${POINT}`, { waitUntil: "domcontentloaded" });
@@ -269,7 +274,7 @@ try {
   }
 
   // ===== PHASE 4 — FOOTPRINT + pan A/B =====
-  console.log(`\n[4/4] Footprint + pan A/B …`);
+  console.log(`\n[4/5] Footprint + pan A/B …`);
   {
     const ctxA = await newCtx(browser); const pageA = await bootPage(ctxA); const cdpA = await ctxA.newCDPSession(pageA);
     await cdpA.send("Performance.enable");
@@ -318,6 +323,70 @@ try {
     console.log(`  pan frame filter-ON ${r2(median(panOn))}ms vs OFF ${r2(median(panOff))}ms`);
     await pageB.screenshot({ path: join(HERE, "..", "docs", "perf-app-screenshot.png") }).catch(() => {});
     await cdpB.detach(); await ctxB.close();
+  }
+
+  // ===== PHASE 5 — PAN/ZOOM REPROJECT (canvas gate, §7 R3 Phase 0) =====
+  // Does SVG path reproject/repaint dominate pan/zoom, and scale with rendered
+  // path count? Loads the SAME-ORIGIN polygon layers only (3 anchors + the 3
+  // pre-built legislative layers — the most paths reachable without live APIs),
+  // CPU-profiles a pan and a zoom, then compares pan-frame time at many vs few
+  // paths. Leaflet reproject topping the CPU + many >> few => canvas (§7 Phase 1)
+  // is justified; a flat profile => R2-5/R2-6 already handled it.
+  console.log(`\n[5/5] Pan/zoom reproject (canvas gate) …`);
+  {
+    const MANY = ["school-board", "il-supreme-court", "ccbr", "congress", "il-senate", "il-house"];
+    const LEGIS = ["congress", "il-senate", "il-house"];
+    const ctx = await newCtx(browser); const page = await bootPage(ctx); const cdp = await ctx.newCDPSession(page);
+    await page.goto(`${BASE}#point=${POINT}&layers=${MANY.join(",")}`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__readyTs !== null, null, { timeout: 45000 });
+    await page.evaluate((ids) => window.__waitCards(ids), MANY);
+    await page.waitForTimeout(800); // let every overlay paint its paths
+    const pathsMany = await page.evaluate(() => document.querySelectorAll("#map path").length);
+
+    // panBy shifts the pane transform + repaints; setZoom reprojects EVERY path
+    // (the canvas-sensitive worst case). Both CPU-sampled so the top frames show
+    // whether Leaflet reproject (_update / project / _updatePath / pointsToPath)
+    // leads the work — the signal that canvas would remove.
+    const panProf = await profileInteraction(page, cdp, async () => {
+      const map = window.ChiExplorer.map; const t0 = performance.now();
+      for (let i = 0; i < 40; i++) { map.panBy([8, 5], { animate: false }); await new Promise((r) => requestAnimationFrame(r)); }
+      return performance.now() - t0;
+    }, null);
+    const zoomProf = await profileInteraction(page, cdp, async () => {
+      const map = window.ChiExplorer.map; const z0 = map.getZoom(); const t0 = performance.now();
+      for (let i = 0; i < 6; i++) { map.setZoom(z0 + 1, { animate: false }); map.setZoom(z0, { animate: false }); await new Promise((r) => requestAnimationFrame(r)); }
+      return performance.now() - t0;
+    }, null);
+
+    const panFrames = () => page.evaluate(async () => {
+      const map = window.ChiExplorer.map; const frames = []; let last = performance.now();
+      return await new Promise((resolve) => { let n = 0;
+        function step() { const now = performance.now(); frames.push(now - last); last = now; map.panBy([6, 4], { animate: false }); if (++n < 50) requestAnimationFrame(step); else resolve(frames.slice(2)); }
+        requestAnimationFrame(() => { last = performance.now(); requestAnimationFrame(step); }); });
+    });
+    const panMany = await panFrames();
+    // drop the 3 legislative layers -> back to the ~28 anchor paths (the scaling A/B)
+    await page.evaluate((ids) => ids.forEach((id) => { const b = document.getElementById("toggle-" + id); if (b && b.checked) b.click(); }), LEGIS);
+    await page.waitForTimeout(500);
+    const pathsFew = await page.evaluate(() => document.querySelectorAll("#map path").length);
+    const panFew = await panFrames();
+
+    const p95 = (a) => { const s = [...a].sort((x, y) => x - y); return r2(s[Math.floor(s.length * 0.95)] || 0); };
+    const perPathUs = pathsMany > pathsFew ? r2((median(panMany) - median(panFew)) / (pathsMany - pathsFew) * 1000) : null; // marginal µs/path/frame
+    results.panZoomReproject = {
+      pathsMany, pathsFew,
+      pan_cpuActiveMs: panProf.cpuActiveMs, pan_wallMs: panProf.wallMs, pan_topFns: panProf.top,
+      zoom_cpuActiveMs: zoomProf.cpuActiveMs, zoom_wallMs: zoomProf.wallMs, zoom_topFns: zoomProf.top,
+      panFrame_manyPaths_ms: { median: r2(median(panMany)), p95: p95(panMany), max: r2(max(panMany)) },
+      panFrame_fewPaths_ms: { median: r2(median(panFew)), p95: p95(panFew), max: r2(max(panFew)) },
+      panFrame_marginal_us_per_path: perPathUs,
+      note: "Same-origin polygon layers only (no live APIs). Software GL inflates absolute frame ms — the many-vs-few ratio and the CPU top-fn shape are the environment-independent signals. Reproject leading pan/zoom CPU + many >> few => canvas (§7 Phase 1) justified; a flat profile => R2-5/R2-6 already handled it.",
+    };
+    console.log(`  paths ${pathsMany} (few ${pathsFew}); pan ${panProf.cpuActiveMs}ms-cpu, zoom ${zoomProf.cpuActiveMs}ms-cpu`);
+    console.log(`  pan-frame many ${r2(median(panMany))}ms vs few ${r2(median(panFew))}ms (median); marginal ${perPathUs}µs/path`);
+    console.log(`  pan top: ${panProf.top.slice(0, 3).map((t) => `${t.fn} ${t.ms}ms`).join(" | ")}`);
+    console.log(`  zoom top: ${zoomProf.top.slice(0, 3).map((t) => `${t.fn} ${t.ms}ms`).join(" | ")}`);
+    await cdp.detach(); await ctx.close();
   }
 
   const out = join(REPO, "perf-results.json");

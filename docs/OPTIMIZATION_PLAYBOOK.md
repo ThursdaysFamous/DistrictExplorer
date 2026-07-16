@@ -484,3 +484,100 @@ function findFeatureContaining(geojson, point) {
 ---
 
 **Coherent PR groupings (Round 2):** **PR-H** (R2-1 cheap half: inline `leaflet.css` + self-host fonts + R2-7 preconnect trim — one `<head>` pass, the biggest score move); **PR-I** (R2-3 + R2-4, boot-payload lazy-loading); **PR-J** (R2-5 + R2-6, the reopened render/PIP items — R2-6 carries the fork port); **PR-K** (R2-2, the legislative-geometry pre-build, standalone like P0/P2); **PR-L** (R2-1 stretch: async Leaflet boot restructure, only if PR-H's gain isn't enough). Land PR-H first — it's low-effort and it's what moves the mobile 75.
+
+> **Round 2 status (2026-07-16): R2-1…R2-7 all shipped on both forks** (CHI + NYC), engines re-synced at parity 45/45. R2-7 shipped the preconnect trim only; self-hosting fonts, dropping `{r}`/@2x tiles, and deferring per-layer JS were **held with reasons** (respectively: marginal once fonts are non-blocking + no font-render gate; a retina/mobile sharpness regression; and a violation of the single-file no-build architecture). The remaining lever is the render path itself — §7.
+
+---
+
+## 7. Round 3 — the render path (canvas), scoped + measured (2026-07-16)
+
+> Round 2 fixed load delivery (R2-1) and interaction *compute* (R2-5 pan
+> drop-shadow, R2-6 point-in-polygon). What's left is the render path: Leaflet
+> paints every district as an SVG `<path>` DOM node, and a production Firefox
+> capture put Leaflet "reproject/repaint" at **4.15 s / 70 % of page JS** over
+> an interaction session. The canonical fix is the canvas renderer. Phase 0
+> below **re-measures** that cost against the current tree (the 4.15 s predates
+> R2-5/R2-6) — and the number changes the recommendation.
+
+### R3-1 — Canvas renderer for the many-polygon layers *(reopens P10 / item 24)*
+
+**Why it's unusually low-risk *here*.** The generic objection — "canvas breaks
+click/hover, there's no per-feature DOM to hit-test" — does **not** apply to
+this app. Every hit-test is already done in JS against the cached geojson, not
+via Leaflet SVG events: click-select is `map.on("click")` → `findFeatureContaining`
+(point-in-polygon); the hover-explorer runs `findFeatureContaining` on
+mousemove; the selection highlight *matches* via `findFeatureContaining` and
+*styles* via `setStyle()` (renderer-agnostic). The **only** SVG-bound effect is
+the drop-shadow filter applied through `subLayer._path.classList`, and that path
+is already guarded (`if (subLayer._path)`), so under canvas it's a graceful
+no-op, not a crash. Switching polygon layers to canvas therefore touches exactly
+one thing: the drop-shadow "floating" look degrades to the darkened thick-stroke
+highlight (`highlightStyleFor`, already applied) on canvas'd layers.
+
+**Phase 0 re-measurement — DONE (`perf_profile.mjs` phase 5).** Loaded the 6
+same-origin polygon layers (3 anchors + the 3 pre-built legislative layers =
+**230 paths**) and CPU-profiled a pan and a zoom, vs the 3 anchors alone
+(**33 paths**). Headless software-GL, so absolute ms are inflated — but the CPU
+top-fn *shape* and the many-vs-few *ratio* are environment-independent:
+
+- **Zoom CPU is projection-dominated.** The top three frames are all
+  projection: `latLngToPoint` **101 ms**, `_projectLatlngs` 37 ms,
+  `latLngToLayerPoint` 16 ms (≈ 150 ms of ~263 ms). Projecting lat/lng → pixels
+  happens under **any** renderer — **canvas removes none of it.**
+- **Pan is SVG-shaped and cheap in JS.** `setAttribute` + `_clipPoints` lead;
+  pan frame-time scales ~2× for 7× the paths (44 → 89 ms median, ~224 µs/path
+  marginal) — the per-path DOM-write + SVG-paint cost canvas *does* remove.
+
+**Refined verdict: canvas is a real but *bounded* win, and the sandbox can't
+size it.** What canvas removes is the DOM-write (`setAttribute`/`pointsToPath`)
+and the browser's 230-node SVG *paint* (collapsed to one canvas). What it can't
+remove is projection (~150 ms of the zoom CPU here). Two consequences:
+
+1. The canvas-favourable half is the **browser SVG paint**, which a software-GL
+   headless run inflates but can't cleanly quantify — so the **go/no-go needs a
+   real-hardware (GPU/phone) paint profile**, not this sandbox. The sandbox's
+   job was to reveal the projection floor, and it did.
+2. **Pair canvas with vertex reduction.** The projection cost canvas can't touch
+   is linear in vertex count. The pre-built layers were simplified for *payload*
+   (R2-2); a tighter simplify (or the app's own display tolerance) cuts
+   projection directly — the complement to canvas, cheap to try.
+
+### Implementation plan (Phase 1), if the GPU profile confirms paint-bound
+
+All touch-points sit inside ENGINE fences, so the change lands in CHI and ports
+**byte-identically** to every sibling (`docs/ENGINE_SYNC.md`); the *per-layer
+opt-in* is metro config, so no city value enters a fence.
+
+1. **`buildOverlayLayer` (`overlay-cards` fence).** Add `renderer:
+   mod.overlay.renderer` to the `L.geoJSON` options; create one shared engine
+   `var overlayCanvas = L.canvas({ padding: … })`.
+2. **Per-fork opt-in (metro config).** Each fork sets `overlay.renderer =
+   overlayCanvas` on its high-path layers (CHI: the 3 school-zone + 2
+   CPS-network ≈ 500 paths; candidates wards / community-areas / il-house).
+   Low-count layers stay SVG and keep their drop-shadow.
+3. **Highlight (`layer-registry` fence).** No code change — the `if
+   (subLayer._path)` guard already degrades gracefully; add a comment that
+   canvas layers use the setStyle-only highlight.
+4. **(Optional) Phase 2 — preserve the drop-shadow** on canvas'd layers via a
+   dedicated SVG overlay pane that redraws only the single matched feature.
+   Only if the setStyle-only highlight reads as a downgrade.
+
+**Untouched:** `relationship-pinning` outlines (few, capped — stay SVG),
+`scope-mask` (own pane), every point-marker layer (police/fire/school-site).
+
+### Verification
+Re-run `perf_profile.mjs` phase 5 before/after (the paint-half delta is the
+number that justifies it) · smoke on both forks (classification is JS-side, so
+untouched) · screenshots of the highlight (the one visual tradeoff) ·
+`check_engine_parity.py --strict` 45/45 · manual pan/zoom with all layers on, on
+real hardware.
+
+### Effort
+Phase 0 **done**. Phase 1 ≈ 1 day (small fenced change + per-fork flags + port +
+verify). Vertex-reduction complement ≈ ½ day (re-run `build_*_boundaries.py` at a
+tighter tolerance, re-clear the 2,000-point gate). Phase 2 (SVG highlight pane)
+≈ 1–2 days, only if the highlight downgrade matters.
+
+**Gate before Phase 1:** a real-hardware capture that shows SVG *paint* (not
+projection) as the felt bottleneck. If projection dominates on GPU too, do the
+vertex-reduction pass first — it's the cheaper lever for a projection-bound cost.
