@@ -4630,6 +4630,14 @@ function initChiExplorer() {
     var features = geojson.features || [];
     var found = null;
     for (var i = 0; i < features.length; i++) {
+      // Cheap bounding-box reject before the full even-odd ray-cast: most
+      // features in a boundary set are nowhere near the point, and featureBBox
+      // memoizes per feature, so the linear scan's ray-casts collapse to the few
+      // candidates whose bbox contains the point (a production profile measured
+      // ~1.44 s in pointInRing). Answer-identical — a feature whose bbox excludes
+      // the point cannot contain it. (P7c / R2-6.)
+      var bb = featureBBox(features[i]);
+      if (point.lng < bb[0] || point.lng > bb[2] || point.lat < bb[1] || point.lat > bb[3]) continue;
       if (pointInGeometry(point, features[i].geometry)) { found = features[i]; break; }
     }
     geojson.__pointQueryCache = { point: point, feature: found };
