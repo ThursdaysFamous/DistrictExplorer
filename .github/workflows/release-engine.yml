@@ -30,9 +30,17 @@ name: Publish engine release
 # skipped and only the fan-out repeats (a dispatch is idempotent on the
 # sibling side — its bump PR lives on a fixed bot branch).
 
+# workflow_dispatch exists for tags created by create-engine-tag.yml: a tag
+# pushed with a workflow's own GITHUB_TOKEN never fires on:push:tags (GitHub
+# suppresses recursive triggers), so after that workflow creates the tag, run
+# THIS one manually AT THE TAG REF (Actions -> select the engine-v* tag).
+# GITHUB_REF_NAME is then the tag name, exactly as in the push path, so the
+# lockfile verification below is identical either way. Dispatching it on a
+# branch ref fails that verification by design.
 on:
   push:
     tags: ["engine-v*"]
+  workflow_dispatch: {}
 
 permissions:
   contents: write # create the release on this repo

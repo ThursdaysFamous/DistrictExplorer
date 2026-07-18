@@ -1,0 +1,71 @@
+name: Create engine tag
+
+# Companion to release-engine.yml for environments that cannot push tag refs
+# directly — e.g. sandboxed Claude Code sessions, whose git proxy accepts
+# branch pushes but silently drops tag pushes (discovered shipping v1.0.6).
+# Creates the engine-v* tag at a commit already on main, after verifying it
+# matches the engine.lock.json pin at that commit — the same invariant the
+# release workflow enforces, checked here so a typo'd dispatch can't plant a
+# tag the release job would then refuse.
+#
+# NOTE: a tag created with the workflow's GITHUB_TOKEN does NOT fire
+# on:push:tags workflows (GitHub suppresses recursive triggers). After this
+# completes, run "Publish engine release" via ITS workflow_dispatch at the
+# new tag ref to publish + fan out.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name (engine-vX.Y.Z; must equal the engine.lock.json pin at the target commit)"
+        required: true
+      sha:
+        description: "Commit sha the tag points at (must be on main)"
+        required: true
+
+permissions:
+  contents: write # push the tag ref
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate and create tag
+        env:
+          TAG: ${{ inputs.tag }}
+          SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$TAG" in
+            engine-v*) ;;
+            *) echo "::error::tag must match engine-v*"; exit 1 ;;
+          esac
+          move=""
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            # An existing tag may be re-pointed ONLY while no PUBLISHED release
+            # exists for it — a published release makes the bytes immutable; a
+            # bare tag is just a ref (e.g. one pushed before its changelog
+            # notes landed, which the release job then refused). The
+            # releases/tags endpoint 404s for drafts, same rationale as the
+            # release workflow's own already-published probe.
+            if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --silent 2>/dev/null; then
+              echo "::error::tag $TAG already has a published release — immutable, refusing to move"
+              exit 1
+            fi
+            echo "tag $TAG exists with no published release — re-pointing it"
+            move="--force"
+          fi
+          git merge-base --is-ancestor "$SHA" origin/main || {
+            echo "::error::$SHA is not on main"; exit 1; }
+          lock_ver="$(git show "$SHA:engine.lock.json" | jq -r .engine_version)"
+          if [ "$TAG" != "$lock_ver" ]; then
+            echo "::error::tag $TAG does not match the engine.lock.json pin at $SHA ($lock_ver)"
+            exit 1
+          fi
+          git tag $move "$TAG" "$SHA"
+          git push origin $move "refs/tags/$TAG"
+          echo "created $TAG at $SHA — now dispatch 'Publish engine release' at this tag ref"
