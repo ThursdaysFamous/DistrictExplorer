@@ -6530,6 +6530,43 @@ function initChiExplorer() {
     return first + " " + last;
   }
 
+  // When the City of Chicago Data Portal (the upstream source for both the ward
+  // boundaries and the alderperson roster) is unreachable, we can't determine
+  // the ward at all. Rather than the generic engine error, degrade gracefully:
+  // say plainly that the outage is on the data provider's end — not this tool —
+  // point users to the City's official ward lookup so they aren't stranded, and
+  // offer a Retry that re-attempts the load (the cached loaders reset on failure,
+  // so the same toggle path the engine's own Retry uses re-fetches cleanly).
+  function renderWardSourceUnavailable() {
+    var wrap = document.createElement("div");
+
+    var notice = document.createElement("p");
+    notice.style.margin = "0 0 10px";
+    notice.style.color = "var(--slate)";
+    notice.style.lineHeight = "1.45";
+    notice.textContent = "Ward data is temporarily unavailable. The City of Chicago Data Portal — the source for ward boundaries and alderperson info — isn't responding right now. This is an outage on the data provider's end, not this tool, and it doesn't affect the other layers.";
+    wrap.appendChild(notice);
+
+    // Static, trusted URL (mirrors the commissioner card's official-body link),
+    // so it's assembled directly rather than through sanitize().
+    wrap.appendChild(renderFieldList([{
+      label: "In the meantime",
+      html: '<a href="https://www.chicago.gov/city/en/depts/mayor/iframe/lookup_ward_and_alderman.html" target="_blank" rel="noopener">Find your ward &amp; alderperson at chicago.gov</a>'
+    }]));
+
+    var retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "retry-btn"; // styled by the shared .layer-card-body .retry-btn rule
+    retry.textContent = "Retry";
+    retry.addEventListener("click", function () {
+      var mod = getLayerById("ward");
+      if (mod) onLayerToggled(mod); // re-attempts overlay load + re-runs the query
+    });
+    wrap.appendChild(retry);
+
+    return wrap;
+  }
+
   registerLayer({
     id: "ward",
     group: "political",
@@ -6540,8 +6577,19 @@ function initChiExplorer() {
       style: { color: "#0B5394", weight: 2, fillColor: "#41B6E6", fillOpacity: 0.08, dashArray: "3 2 6 2" }
     },
     query: function (point, seq) {
-      return Promise.all([loadWards(), loadAldermen()]).then(function (results) {
+      // The alderperson roster (htai-wnw4) is secondary: if only it is down we
+      // can still answer "what ward" from the boundary, so swallow its failure
+      // to an empty roster. The ward boundary (p293-wvbd) is load-bearing —
+      // when the City's Data Portal can't serve it we can't determine the ward
+      // at all, so resolve to a sourceUnavailable sentinel that render() turns
+      // into a graceful "the outage is upstream, not this tool" card instead of
+      // throwing into the generic engine error. A logic error after the load
+      // still throws (surfacing real bugs); only a boundary-load failure degrades.
+      var wards = loadWards().then(function (geojson) { return geojson; }, function () { return null; });
+      var aldermen = loadAldermen().catch(function () { return []; });
+      return Promise.all([wards, aldermen]).then(function (results) {
         var geojson = results[0], roster = results[1];
+        if (!geojson) return { seq: seq, sourceUnavailable: true };
         var feature = findFeatureContaining(geojson, point);
         if (!feature) return null;
         var props = feature.properties || {};
@@ -6564,6 +6612,7 @@ function initChiExplorer() {
       });
     },
     render: function (result) {
+      if (result.sourceUnavailable) return renderWardSourceUnavailable();
       var fields = [{ label: "Ward", value: result.ward ? String(result.ward) : "Unknown" }];
       if (result.alderman) fields.push({ label: "Alderman", value: String(result.alderman) });
       if (result.phone) fields.push({ label: "Office Phone", value: String(result.phone) });
