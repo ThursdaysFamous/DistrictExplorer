@@ -5990,20 +5990,60 @@ function initChiExplorer() {
    * loader (cached FeatureCollection promise), intro (card lead-in text),
    * line(props) (formats one list item from a feature's raw properties),
    * count (defaults 3 — keep N small so "nearest as the crow flies" stays
-   * obviously honest). Back-ported from the NYC fork, which minted it as the
+   * obviously honest). Hovering a dot surfaces its identity (derived from the
+   * same line() the card renders) in the shared hover snapshot, via the
+   * POI-pin path. Back-ported from the NYC fork, which minted it as the
    * fifth factory (METRO_EXPANSION_PLAYBOOK §2). ---------- */
   /* ==== ENGINE:BEGIN nearest-point-factory ==== */
   function registerNearestPointLayer(opts) {
     var count = opts.count || 3;
+    var fullLabel = opts.label + " (nearest " + count + ")";
     registerLayer({
       id: opts.id,
       group: opts.group,
-      label: opts.label + " (nearest " + count + ")",
+      label: fullLabel,
       color: opts.color, // overlay has no flat style object for moduleColor() to read
       overlay: {
         load: opts.loader,
         pointToLayer: function (feature, latlng) {
-          return L.circleMarker(latlng, { radius: 5, color: opts.color, weight: 1.5, fillColor: opts.fill, fillOpacity: 0.85 });
+          var marker = L.circleMarker(latlng, { radius: 5, color: opts.color, weight: 1.5, fillColor: opts.fill, fillOpacity: 0.85 });
+          // Hover identity for the dots — the POI-pin path (see updateLayerPoi):
+          // mouseover surfaces this feature in the shared dark hover snapshot,
+          // anchored to the dot (a standalone row, since a point layer has no
+          // polygon footprint for hoverContainingLayers to match); mouseout
+          // clears it. The identity is the same line() the card renders, so the
+          // two surfaces can't disagree — the segment before the first " — "
+          // separator reads as the name, the rest as the address sub-line.
+          // Same touch-device gate as the office pins (hoverCapable), so a tap
+          // never pops the popup on mobile.
+          if (hoverCapable) {
+            var token = null;
+            marker
+              .on("mouseover", function () {
+                var text = "";
+                try { text = String(opts.line(feature.properties || {}) || ""); } catch (e) { /* identity stays empty — fall back to the layer label */ }
+                var sep = text.indexOf(" — ");
+                token = {
+                  modId: opts.id,
+                  label: sep > 0 ? text.slice(0, sep) : (text || fullLabel),
+                  address: sep > 0 ? text.slice(sep + 3) : "",
+                  latlng: latlng,
+                  color: opts.color,
+                  layerLabel: fullLabel
+                };
+                hoveredPoi = token;
+                updateHover();
+              })
+              .on("mouseout", function () {
+                // token identity (not modId) so moving from dot A to dot B within
+                // the same layer never lets A's mouseout wipe B's fresh hover.
+                if (hoveredPoi === token) {
+                  hoveredPoi = null;
+                  updateHover();
+                }
+              });
+          }
+          return marker;
         }
       },
       query: function (point, seq) {
@@ -7509,8 +7549,10 @@ function initChiExplorer() {
   // roster. No network request is fired here — an un-prefetched roster just drops
   // the name; full officeholder/contact detail stays on the click cards.
   function hoverSnapshotHTML(rows, poi) {
-    // the hovered pin's office address, tucked under its own layer's row below
-    var poiLine = poi ? '<span class="hover-row-poi">' + sanitize(poi.address) + "</span>" : "";
+    // the hovered pin's office address, tucked under its own layer's row below —
+    // only when it actually carries one: an empty span would still render its
+    // 📍 prefix (CSS ::before), and nearest-point dots can hover without one
+    var poiLine = poi && poi.address ? '<span class="hover-row-poi">' + sanitize(poi.address) + "</span>" : "";
     var poiPlaced = false;
     var html = '<div class="hover-snapshot">';
     for (var i = 0; i < rows.length; i++) {
