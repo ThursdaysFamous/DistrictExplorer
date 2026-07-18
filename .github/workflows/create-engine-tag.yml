@@ -38,13 +38,26 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
           SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$TAG" in
             engine-v*) ;;
             *) echo "::error::tag must match engine-v*"; exit 1 ;;
           esac
+          move=""
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "::error::tag $TAG already exists"; exit 1
+            # An existing tag may be re-pointed ONLY while no PUBLISHED release
+            # exists for it — a published release makes the bytes immutable; a
+            # bare tag is just a ref (e.g. one pushed before its changelog
+            # notes landed, which the release job then refused). The
+            # releases/tags endpoint 404s for drafts, same rationale as the
+            # release workflow's own already-published probe.
+            if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --silent 2>/dev/null; then
+              echo "::error::tag $TAG already has a published release — immutable, refusing to move"
+              exit 1
+            fi
+            echo "tag $TAG exists with no published release — re-pointing it"
+            move="--force"
           fi
           git merge-base --is-ancestor "$SHA" origin/main || {
             echo "::error::$SHA is not on main"; exit 1; }
@@ -53,6 +66,6 @@ jobs:
             echo "::error::tag $TAG does not match the engine.lock.json pin at $SHA ($lock_ver)"
             exit 1
           fi
-          git tag "$TAG" "$SHA"
-          git push origin "refs/tags/$TAG"
+          git tag $move "$TAG" "$SHA"
+          git push origin $move "refs/tags/$TAG"
           echo "created $TAG at $SHA — now dispatch 'Publish engine release' at this tag ref"
