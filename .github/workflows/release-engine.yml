@@ -143,7 +143,10 @@ jobs:
             exit 1
           fi
           sha="$(jq -r .sha256 dist/engine.manifest.json)"
-          for sibling in ThursdaysFamous/DistrictExplorer-NYC; do
+          # EVERY sibling fork belongs in this list (and in the
+          # ENGINE_DISPATCH_TOKEN PAT's repo scope) the day it goes live —
+          # SF missed the v1.0.6 fan-out because this list stopped at NYC.
+          for sibling in ThursdaysFamous/DistrictExplorer-NYC ThursdaysFamous/DistrictExplorer-SF; do
             gh api "repos/$sibling/dispatches" \
               -f event_type=engine-release \
               -f "client_payload[engine_version]=$GITHUB_REF_NAME" \
