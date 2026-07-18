@@ -1,0 +1,844 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)",
+    "source_url": "https://chicagoelections.gov/voting/early-voting",
+    "source_page_title": "Early Voting/Vote Centers | Chicago Board of Elections",
+    "source_published_time": "Fri, 17 Jul 2026 22:43:36 GMT",
+    "retrieved": "2026-07-18",
+    "coordinates": "geocoded from the official street address (Nominatim); locations approximate",
+    "note": "Hand-transcribed from the Chicago Board of Elections voting-locations page. Refresh each election."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Goldblatts Building",
+        "address": "1615 W. Chicago Ave.",
+        "ward": "1",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.667928,
+          41.895788
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Near North Library",
+        "address": "310 W. Division St.",
+        "ward": "2",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.63658,
+          41.904125
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Dawson Technical Institute",
+        "address": "3901 S. State St.",
+        "ward": "3",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.625597,
+          41.822832
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Dr. Martin Luther King Center",
+        "address": "4314 S. Cottage Grove Ave.",
+        "ward": "4",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.607281,
+          41.816335
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Southside YMCA",
+        "address": "6330 S. Stony Island Ave.",
+        "ward": "5",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.588397,
+          41.779794
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Whitney Young Library",
+        "address": "415 E. 79th St.",
+        "ward": "6",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.614542,
+          41.750926
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Trumball Park",
+        "address": "2400 E. 105th St.",
+        "ward": "7",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.564434,
+          41.705689
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Olive Harvey College",
+        "address": "10001 S. Woodlawn Ave.",
+        "ward": "8",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.590923,
+          41.710816
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Palmer Park",
+        "address": "201 E. 111th St.",
+        "ward": "9",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.616399,
+          41.691862
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Vodak East-Side Library",
+        "address": "3710 E. 106th St.",
+        "ward": "10",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.533617,
+          41.702955
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "McGuane Park",
+        "address": "2901 S. Poplar Ave.",
+        "ward": "11",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.64867,
+          41.84121
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "McKinley Park Library",
+        "address": "1915 W. 35th St.",
+        "ward": "12",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.673574,
+          41.830162
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Clearing Library",
+        "address": "6423 W. 63rd Pl.",
+        "ward": "13",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.782239,
+          41.776484
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Archer Heights Library",
+        "address": "5055 S. Archer Ave.",
+        "ward": "14",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.726631,
+          41.800888
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Brighton Park Community Campus (Park No. 596)",
+        "address": "4830 S. Western Ave.",
+        "ward": "15",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.685504,
+          41.805758
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Lindblom Park",
+        "address": "6054 S. Damen Ave.",
+        "ward": "16",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.674603,
+          41.783267
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Thurgood Marshall Library",
+        "address": "7506 S. Racine Ave.",
+        "ward": "17",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.654373,
+          41.757365
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Wrightwood Ashburn Library",
+        "address": "8530 S. Kedzie Ave.",
+        "ward": "18",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.702498,
+          41.737695
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mt. Greenwood Park",
+        "address": "3721 W. 111th St.",
+        "ward": "19",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.713742,
+          41.690888
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Bessie Coleman Library",
+        "address": "731 E. 63rd St.",
+        "ward": "20",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.606835,
+          41.780132
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "West Pullman Library",
+        "address": "830 W. 119th St.",
+        "ward": "21",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.643112,
+          41.67806
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Toman Library",
+        "address": "2708 S. Pulaski Rd.",
+        "ward": "22",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.724853,
+          41.842087
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "St. Faustina Kowalska Parish",
+        "address": "5157 S. McVicker Ave.",
+        "ward": "23",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.772997,
+          41.79822
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "St. Agatha Catholic Parish",
+        "address": "3151 W. Douglas Bv.",
+        "ward": "24",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.705252,
+          41.862228
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Rudy Lozano Library",
+        "address": "1805 S. Loomis St.",
+        "ward": "25",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.660935,
+          41.857552
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Humboldt Park Library",
+        "address": "1605 N. Troy St.",
+        "ward": "26",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.705303,
+          41.910515
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Union Park",
+        "address": "1501 W. Randolph St.",
+        "ward": "27",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.664538,
+          41.884382
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Malcolm X College - West Campus",
+        "address": "4624 W. Madison St.",
+        "ward": "28",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.741151,
+          41.881347
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Amundsen Park",
+        "address": "6200 W. Bloomingdale Ave.",
+        "ward": "29",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.780239,
+          41.913446
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kilbourn Park",
+        "address": "3501 N. Kilbourn Ave.",
+        "ward": "30",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.738579,
+          41.944601
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Portage Cragin Library",
+        "address": "5108 W. Belmont Ave.",
+        "ward": "31",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.754904,
+          41.938901
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Bucktown-Wicker Park Library",
+        "address": "1701 N. Milwaukee Ave.",
+        "ward": "32",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.680344,
+          41.912561
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "American Indian Center",
+        "address": "3401 W. Ainslie St.",
+        "ward": "33",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.71377,
+          41.969978
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "UIC Student Center East",
+        "address": "750 S. Halsted St.",
+        "ward": "34",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.647939,
+          41.871969
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Northeastern IL University El Centro",
+        "address": "3390 N. Avondale Ave.",
+        "ward": "35",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.714776,
+          41.942994
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "West Belmont Library",
+        "address": "3104 N. Narragansett Ave.",
+        "ward": "36",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.786207,
+          41.936718
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "West Chicago Library",
+        "address": "4856 W. Chicago Ave.",
+        "ward": "37",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.747997,
+          41.895316
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Hiawatha Park",
+        "address": "8029 W. Forest Preserve Dr.",
+        "ward": "38",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.827537,
+          41.943705
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "North Park Village Admin Building",
+        "address": "5801 N. Pulaski Rd.",
+        "ward": "39",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.72321,
+          41.985191
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Budlong Woods Library",
+        "address": "5630 N. Lincoln Ave.",
+        "ward": "40",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.696339,
+          41.983369
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Roden Library",
+        "address": "6083 N. Northwest Hw.",
+        "ward": "41",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.798027,
+          41.992129
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Historic Lawson House",
+        "address": "803 N. Dearborn St.",
+        "ward": "42",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.62959,
+          41.896836
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Lincoln Park Library",
+        "address": "1150 W. Fullerton Ave.",
+        "ward": "43",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.658149,
+          41.925661
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Merlo Library",
+        "address": "644 W. Belmont Ave.",
+        "ward": "44",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.646212,
+          41.940342
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kolping Society of Chicago",
+        "address": "5826 N. Elston Ave.",
+        "ward": "45",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.773084,
+          41.987222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Truman College",
+        "address": "1145 W. Wilson Ave.",
+        "ward": "46",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.659002,
+          41.964536
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Welles Park",
+        "address": "2333 W. Sunnyside Ave.",
+        "ward": "47",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.686634,
+          41.962818
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Broadway Armory",
+        "address": "5917 N. Broadway St.",
+        "ward": "48",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.659627,
+          41.988964
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Willye B White Park",
+        "address": "1610 W. Howard St.",
+        "ward": "49",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.671463,
+          42.019645
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Northtown Library",
+        "address": "6800 N. Western Ave.",
+        "ward": "50",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.690454,
+          42.005546
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "New Downtown Voting Supersite",
+        "address": "137 S. State St.",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.627274,
+          41.879703
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "CBOE Offices (6th Floor)",
+        "address": "69 W. Washington St. - 6th Floor",
+        "election": "Early Voting/Vote Centers, 2026 cycle (schedule published on the page: downtown early voting begins Sept 24, 2026; 50-ward early voting begins Oct 19, 2026; the page itself does not name a specific election)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.629953,
+          41.882943
+        ]
+      }
+    }
+  ]
+}

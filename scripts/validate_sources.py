@@ -87,6 +87,8 @@ SOCRATA = [
     # boundary line) — the endpoint is tracked in ENDPOINTS below, not here.
     {"id": "28km-gtjn", "layer": "Fire Stations",
      "name_contains": "Fire Stations"},
+    {"id": "x8fc-8rcq", "layer": "Library locations (nearest N)",
+     "name_contains": "Libraries - Locations"},
     {"id": "x72b-38qv", "layer": "CPS Elementary School Zone",
      "name_contains": "Elementary School Attendance Boundaries",
      "year_search": {"query": "Elementary School Attendance Boundaries",
@@ -137,6 +139,13 @@ PROVENANCE = [
      "app_file": "il-house-districts.json",
      "source_url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Legislative/MapServer/2?f=json",
      "note": "TIGERweb Legislative layer 2 (2024 Lower, STATE=17), pre-built. Redrawn ~once a decade."},
+    {"layer": "Early-voting sites (Chicago Board of Elections)",
+     "app_file": "early-voting-sites.json",
+     "source_url": "https://chicagoelections.gov/voting/early-voting",
+     "note": "Hand-transcribed per election (see WATCH.md row). The site 403s "
+             "non-browser clients, so a reachability WARN here is expected, "
+             "not drift — refresh the file when the Board posts the next "
+             "election's list."},
 ]
 
 # Live named services the app queries at runtime. These aren't year-versioned
@@ -152,6 +161,8 @@ ENDPOINTS = [
      "url": "https://services2.arcgis.com/t3tlzCPfmaQzSWAk/arcgis/rest/services/Police_Beat_Boundary/FeatureServer/0?f=json"},
     {"layer": "CPS school sites",
      "url": "https://services2.arcgis.com/t3tlzCPfmaQzSWAk/arcgis/rest/services/Schools/FeatureServer/0?f=json"},
+    {"layer": "USGS National Map structures — post offices (layer 38)",
+     "url": "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/38?f=json"},
     {"layer": "Census TIGERweb counties (statewide county layer)",
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer?f=json"},
     {"layer": "Census TIGERweb county subdivisions + places (township/municipality layers)",

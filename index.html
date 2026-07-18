@@ -2102,6 +2102,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <a href="https://www.ilsenateredistricting.com" target="_blank" rel="noopener">School board district map (ilsenateredistricting.com)</a>
       <a href="https://www.illinoiscourts.gov" target="_blank" rel="noopener">IL Supreme Court districts (PA 102-0011 shapefile)</a>
       <a href="https://www.cookcountyboardofreview.com" target="_blank" rel="noopener">Cook County Board of Review districts (PA 102-0012 shapefile)</a>
+      <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map (post offices)</a>
+      <a href="https://chicagoelections.gov" target="_blank" rel="noopener">Chicago Board of Elections (early-voting sites)</a>
     </div>
     <!-- ==== ENGINE:BEGIN metro-links-html ==== -->
     <div class="footer-metros" id="footer-metros" hidden>
@@ -3640,7 +3642,10 @@ function initChiExplorer() {
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
-    "fire-station"       // point marker — no polygon area, always topmost
+    "fire-station",      // point marker — no polygon area, always topmost
+    "post-office",       // point marker — no polygon area, always topmost
+    "library",           // point marker — no polygon area, always topmost
+    "early-voting"       // point marker — no polygon area, always topmost
   ];
   /* ==== GENERATED:END layer-area-rank ==== */
 
@@ -6082,6 +6087,108 @@ function initChiExplorer() {
   declareDataSource("fire-station", { label: CHICAGO_PORTAL });
 
   /* =========================================================================
+   * AMENITY POINT LAYERS — Post Office / Library / Early Voting
+   * Same nearest-N pattern as Police/Fire Stations above (haversine,
+   * straight-line, N=3). post-office pulls the national USGS structures
+   * layer clipped to METRO_BBOX; library is CPL's Socrata dataset;
+   * early-voting reads the hand-curated per-election data/app file.
+   * ======================================================================= */
+
+  /* ---------- Post Offices (nearest 3) ----------
+   * USGS National Map structures layer 38 — the successor to the retired
+   * HIFLD Open post-office layer. Country-wide, so the METRO_BBOX envelope
+   * is mandatory; f=geojson serves lowercase property names
+   * (name/address/city/state/zipcode). CORS-open; public domain
+   * ("USGS The National Map"). */
+  var USGS_POST_OFFICE_LAYER = "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/38";
+  var loadPostOffices = makeCached(function () {
+    var url = USGS_POST_OFFICE_LAYER + "/query?geometry=" +
+      [METRO_BBOX.minLng, METRO_BBOX.minLat, METRO_BBOX.maxLng, METRO_BBOX.maxLat].join(",") +
+      "&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects" +
+      "&where=1%3D1&outFields=NAME,ADDRESS,CITY,STATE,ZIPCODE&outSR=4326&f=geojson&geometryPrecision=6";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2).then(function (gj) {
+      if (!hasUsableGeometry(gj)) throw new Error("no usable geometry from USGS structures layer 38");
+      return gj;
+    });
+  });
+
+  registerNearestPointLayer({
+    id: "post-office",
+    group: "geography",
+    // no coverage test: the USGS pull spans the whole metro bbox (suburbs
+    // included), so the layer stays honest outside the city line — unlike
+    // the city-scoped library/early-voting layers below.
+    label: "Post Office",
+    color: "#4B2E83",
+    fill: "#B39DDB",
+    loader: loadPostOffices,
+    intro: "Nearest post offices (USGS National Map structures data), straight-line distance:",
+    line: function (props) {
+      var name = findPropCI(props, ["name"]);
+      var address = findPropCI(props, ["address"]);
+      var city = findPropCI(props, ["city"]);
+      var zip = findPropCI(props, ["zipcode", "zip"]);
+      return (name ? String(name) : "Post office") +
+        (address ? " — " + String(address) : "") +
+        (city ? ", " + String(city) : "") +
+        (zip ? " " + String(zip) : "");
+    }
+  });
+
+  /* ---------- Libraries (nearest 3) ----------
+   * CPL locations dataset — real Point geometry on the .geojson route.
+   * NOTE: the dataset's `website` property is an object ({url: …}), not a
+   * string — keep it out of line(). */
+  var loadLibraries = makeCachedLoader("x8fc-8rcq");
+
+  registerNearestPointLayer({
+    id: "library",
+    group: "geography",
+    label: "Library",
+    coverage: chicagoCoverage, // CPL is city-only
+    color: "#8A5A00",
+    fill: "#F2B84B",
+    loader: loadLibraries,
+    intro: "Nearest Chicago Public Library locations, straight-line distance:",
+    line: function (props) {
+      var name = findPropCI(props, ["branch_", "branch", "name"]);
+      var address = findPropCI(props, ["address"]);
+      var phone = findPropCI(props, ["phone"]);
+      return (name ? String(name) : "Library") +
+        (address ? " — " + String(address) : "") +
+        (phone ? " — " + String(phone) : "");
+    }
+  });
+
+  /* ---------- Early Voting Sites (nearest 3) ----------
+   * No open point dataset exists — chicagoelections.gov publishes sites as
+   * per-election web pages only, so the layer reads the hand-curated
+   * data/app/early-voting-sites.json (network-first roster). Refresh the
+   * file AND the election name in the intro below together each election. */
+  var loadEarlyVotingSites = makeCached(function () {
+    return fetchJSONWithRetry("data/app/early-voting-sites.json", {}, 2);
+  });
+
+  registerNearestPointLayer({
+    id: "early-voting",
+    group: "political",
+    label: "Early Voting Site",
+    coverage: chicagoCoverage, // Chicago BOE serves city voters; suburban Cook is the County Clerk
+    color: "#7A1E5C",
+    fill: "#E060A8",
+    loader: loadEarlyVotingSites,
+    intro: "Official early-voting sites published by the Chicago Board of Elections for the 2026 cycle (downtown sites open from Sept 24, ward sites from Oct 19, 2026). Any Chicago voter may use any site — confirm current sites and hours at chicagoelections.gov:",
+    line: function (props) {
+      var name = findPropCI(props, ["name", "site", "location"]);
+      var ward = findPropCI(props, ["ward"]);
+      var address = findPropCI(props, ["address"]);
+      return (name ? String(name) : "Early-voting site") +
+        (ward ? " (Ward " + String(ward) + ")" : "") +
+        (address ? " — " + String(address) : "");
+    }
+  });
+
+  /* =========================================================================
    * THREAD 3 — SCHOOLS: Elementary / Middle / High attendance zones
    * All three are the same point-in-polygon pattern as Thread 1/2's polygon
    * modules, so they share one factory. Per the playbook, school-level
@@ -7676,7 +7783,7 @@ function initChiExplorer() {
   whenIdle(function () { drawOutOfScopeMask(loadSchoolBoardDistricts); });
 
   var verifiedEl = document.getElementById("verified-date");
-  verifiedEl.textContent = "July 9, 2026";
+  verifiedEl.textContent = "July 18, 2026";
 
   /* ==== ENGINE:BEGIN metro-links ==== */
   (function renderMetroLinks() {

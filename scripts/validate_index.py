@@ -93,7 +93,8 @@ EXPECT_LAYER_IDS = [
     "cps-network", "ward", "ward-precinct", "police-district", "police-beat",
     "ccpsa-district-council", "community-area", "zip-code", "cps-high",
     "cps-middle", "will-county-precinct", "cps-elementary", "school-site",
-    "police-station", "fire-station",
+    "police-station", "fire-station", "post-office", "library",
+    "early-voting",
 ]
 
 # file -> (min features, max features) for the boundary layers fetched by the app.
@@ -116,6 +117,7 @@ ROSTER_FILES = {
     "cpd-district-info.json": 0,  # ships as an empty placeholder until its first scrape lands
     "ccpsa-district-councils.json": 20,  # 22 councils (13 & 21 retired); floor guards a partial scrape
     "will-county-board-members.json": 11,  # 11 board districts (2 members each) scraped weekly from willcountyboard.com
+    "early-voting-sites.json": 3,  # GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale
 }
 # ==== GENERATED:END validator-config ====
 

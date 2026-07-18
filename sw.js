@@ -37,9 +37,11 @@
 // ship for downstate counties (Hamilton, Macon, Saline, St. Clair, Washington)
 // but are intentionally left out of the shell precache: they load on demand
 // (network, then the name-badge fallback offline), so rarely-seen markers don't
-// weigh down every install.)
+// weigh down every install; -v12 added the hand-curated early-voting-sites.json
+// roster backing the Early Voting Site nearest-point layer — network-first,
+// refreshed per election.)
 /* ==== GENERATED:BEGIN sw-metro-config ==== */
-const CACHE_NAME = "district-explorer-shell-v11";
+const CACHE_NAME = "district-explorer-shell-v12";
 
 const SHELL_URLS = [
   "./",
@@ -79,6 +81,7 @@ const ROSTER_URLS = [
   "./data/app/cpd-district-info.json",
   "./data/app/ccpsa-district-councils.json",
   "./data/app/will-county-board-members.json",
+  "./data/app/early-voting-sites.json",
 ];
 /* ==== GENERATED:END sw-metro-config ==== */
 /* ==== METRO:END sw-config ==== */

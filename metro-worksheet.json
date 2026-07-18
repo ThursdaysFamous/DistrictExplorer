@@ -94,10 +94,16 @@
     { "id": "police-station", "label": "Police Station", "group": "safety", "area_rank": 32,
       "rank_note": "point marker \u2014 no polygon area, always topmost" },
     { "id": "fire-station", "label": "Fire Station", "group": "safety", "area_rank": 33,
+      "rank_note": "point marker \u2014 no polygon area, always topmost" },
+    { "id": "post-office", "label": "Post Office", "group": "geography", "area_rank": 34,
+      "rank_note": "point marker \u2014 no polygon area, always topmost" },
+    { "id": "library", "label": "Library", "group": "geography", "area_rank": 35,
+      "rank_note": "point marker \u2014 no polygon area, always topmost" },
+    { "id": "early-voting", "label": "Early Voting Site", "group": "political", "area_rank": 36,
       "rank_note": "point marker \u2014 no polygon area, always topmost" }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + will-county-board (per-county, coverage-gated) — live-verified 2026-07",
+  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + will-county-board (per-county, coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) — live-verified 2026-07",
   "anchor_point": { "lat": 41.8825, "lng": -87.6285, "note": "downtown Loop — inside Cook County" },
   "anchors": [
     { "layer": "school-board", "expected": "12" },
@@ -128,11 +134,13 @@
       { "file": "ccpsa-district-councils.json", "min_keys": 20,
         "note": "22 councils (13 & 21 retired); floor guards a partial scrape" },
       { "file": "will-county-board-members.json", "min_keys": 11,
-        "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com" }
+        "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com" },
+      { "file": "early-voting-sites.json", "min_keys": 3,
+        "note": "GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale" }
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v11",
+    "cache_name": "district-explorer-shell-v12",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",

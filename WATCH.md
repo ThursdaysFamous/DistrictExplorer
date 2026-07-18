@@ -35,6 +35,19 @@ won't. Record the run in the runbook's drill-evidence habit and stamp the date a
 
 ---
 
+## Per-election — early-voting sites refresh
+
+| When | What | Last done |
+|---|---|---|
+| ~1 month before each election, when chicagoelections.gov posts the voting-locations list | Refresh `data/app/early-voting-sites.json` (hand-transcribe the official list, geocode, verify pins), update the election name in the `early-voting` layer's `intro` in `index.html`, update the `source_url` in `scripts/validate_sources.py` PROVENANCE if the page moved, and bump `sw.cache_name` in `metro-worksheet.json` + regenerate | 2026-07 (initial) |
+
+The layer's honesty depends on this row: the card names the election the sites belong to, so
+a stale file is visibly stale rather than silently wrong — but refresh it anyway. The site
+403s non-browser clients, so the monthly source scan can only WARN on reachability; the
+transcription itself is manual (Playwright or by hand).
+
+---
+
 ## Fixed checkpoints (put these on a real calendar)
 
 | Date | Trigger | Action | Done |

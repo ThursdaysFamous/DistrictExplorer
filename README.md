@@ -23,6 +23,7 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | Elected School Board District | ERSB district + "6b"-style sub-district, elected board member |
 | | IL Supreme Court District | District under PA 102-0011 (District 1 = Cook County) |
 | | Cook County Board of Review District | District under PA 102-0012 (property-tax appeals) |
+| | Early Voting Site (nearest 3) | Official early-voting sites for the named election — site, ward, address, distance (hand-curated per election from chicagoelections.gov) |
 | **Public Safety** | Police District | CPD district number and name, commander, CAPS unit phone/email, station address + phone, district map link |
 | | Police Beat | Beat number (a sub-selection of Police District — turning it on drops the district to an outline and fills it with its beats) |
 | | CCPSA District Council | The three elected District Councilors for that police district (name + role — Chair / Nominating Committee / Community Engagement) and links to each Councilor's profile + the council page |
@@ -32,6 +33,8 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | CPS Network (K-8 / High School) | Network, chief, phone, office address |
 | **Geography** | Community Area | Official community area name + number |
 | | ZIP Code | ZIP code |
+| | Post Office (nearest 3) | Post office name, address, distance (USGS National Map structures) |
+| | Library (nearest 3) | Chicago Public Library location, address, phone, distance |
 
 Every result card is independent: a layer whose data source is down shows an error with a Retry button in that card and never affects the others.
 
@@ -49,7 +52,7 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
-Most layers fetch live data from public APIs at runtime, so they need an internet connection. Three layers — Elected School Board, IL Supreme Court, and Board of Review — have no public API, so their boundaries ship as same-origin files under `data/app/` that the page fetches on first toggle. With the service worker installed those boundary files are cached (cache-first), so once a layer has loaded it keeps working offline; the officeholder rosters are cached network-first so a returning visitor always gets the latest.
+Most layers fetch live data from public APIs at runtime, so they need an internet connection. Layers with no public API ship same-origin files under `data/app/` that the page fetches on first toggle: the Elected School Board, IL Supreme Court, and Board of Review boundaries, and the hand-curated early-voting site list. With the service worker installed the boundary files are cached (cache-first), so once a layer has loaded it keeps working offline; the officeholder rosters and the early-voting list are cached network-first so a returning visitor always gets the latest.
 
 ## Architecture
 
@@ -63,7 +66,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 
 | Source | Used for |
 |---|---|
-| [Chicago Data Portal](https://data.cityofchicago.org) (Socrata) | Wards + aldermen roster, ward precincts, fire stations, CPS zones + networks, community areas, ZIP codes |
+| [Chicago Data Portal](https://data.cityofchicago.org) (Socrata) | Wards + aldermen roster, ward precincts, fire stations, library locations, CPS zones + networks, community areas, ZIP codes |
 | CPD ArcGIS (`services2.arcgis.com/t3tlzCPfmaQzSWAk`) | Police district boundaries, police beat boundaries, police station roster |
 | [chicagopolice.org](https://www.chicagopolice.org) per-district pages (scraped weekly by CI) | Police district commander, CAPS unit phone/email, station address (`data/app/cpd-district-info.json`) |
 | [ccpsa.chicago.gov](https://ccpsa.chicago.gov) per-council pages (scraped weekly by CI) | CCPSA District Council elected Councilors — name + role per police district (`data/app/ccpsa-district-councils.json`); boundaries reuse the CPD police-district geometry |
@@ -73,6 +76,8 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 | [ilga.gov](https://www.ilga.gov) (scraped weekly by CI) | IL Senate/House member rosters (`data/app/il-{senate,house}-members.json`) |
 | ERSB shapefile (`ERSB_20_Sub_District_Map_FA1_SB_15`) | Elected School Board sub-districts (`data/app/school-board-*.json`) |
 | PA 102-0011 / PA 102-0012 shapefiles | IL Supreme Court + Cook County Board of Review districts (`data/app/*.json`) |
+| [USGS The National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map) structures layer 38 | Post office locations (live bbox query; public domain) |
+| [chicagoelections.gov](https://chicagoelections.gov) (hand-transcribed per election) | Early-voting sites (`data/app/early-voting-sites.json`) — no open point dataset exists, so the official list is curated by hand each election |
 | [Nominatim / OpenStreetMap](https://www.openstreetmap.org/copyright) | Address search + school-address pins |
 
 The app-data boundary layers in `data/app/` are topology-preserving simplifications (mapshaper) of the official shapefiles; the full-precision GeoJSON conversions are kept in `data/` and the untouched originals in `data/source/raw/`. The simplified copies agreed with full precision on 100% of 2,000 random in-city test points.
