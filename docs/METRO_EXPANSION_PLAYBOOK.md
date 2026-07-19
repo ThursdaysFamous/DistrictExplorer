@@ -128,13 +128,81 @@ The five rules every module must honor are unchanged and non-negotiable: seq-tag
 1. **Fork** the reference repo. Don't start from scratch — the engine, gates, and CI shape are the value.
 2. **Fill in the §0 City Worksheet** — the port's parameter block. Research §5 answers the portal/geocoder rows.
 3. **Swap the METRO config block + the remaining §1 constants** and branding; rename the debug namespace in both files or leave it. Never edit inside an `ENGINE:BEGIN/END` fence — when the re-core is done, `check_engine_parity.py index.html --against https://chidistricts.com/ --strict` must pass, and stays a per-thread gate from here on.
-4. **Decide the layer roster.** Walk the reference city's 22 layers (political 9 · safety 5 · schools 6 · geography 2) and map each to the local equivalent. Be explicit where **no honest analog exists** — drop the layer rather than invent geometry or names for an appointed/citywide body, and record each drop in a table with the structural reason (Part II's "no honest NYC analog" table is the model — it is a governance argument per row, not a shrug). Two edge cases the drop rule does *not* cover. **Elected citywide/at-large offices** (mayor, comptroller, at-large council seats — e.g. Houston's five at-large members) are honest, roster-verifiable offices whose district is the whole city: don't drop them under this rule, but note they add zero point-discrimination — every click gives the same answer — which is why neither reference city ships one. Make an explicit, recorded per-office decision: ship via the §7 shared-loader pattern on a city-boundary polygon, fold in as labeled "At-Large" rows on the council card, or defer deliberately into a "future layers" list — silence is the only wrong answer. And **multi-district school metros** (§0's governance row) never assume one citywide zone dataset: register per-system zone layers where each system publishes one, ship a district-boundary layer with link-only cards, or record an honest drop — never stitch or invent a unified dataset. Add local layers the reference city lacks. Then write the full `LAYER_AREA_RANK`, largest→smallest. **Rule: every registered layer id appears in the rank, no exceptions** — the rank has two consumers, `reorderActiveLayers` (restacking) and `hoverContainingLayers` (hover civic profiles), and an id missing from the list is invisible to both. (Chicago itself shipped this bug — `ward-precinct` was missing until it was fixed alongside this playbook's first edition.) Sub-layers deliberately rank just *before* their parent so the parent outline frames the fills — see the police-beat comment in the Chicago rank.
+4. **Decide the layer roster.** Start from `docs/DATA_LAYER_GUIDEBOOK.md` — the fleet's concept × metro matrix: reuse the patterns siblings already recorded for each concept, check whether an existing drop rationale applies to your metro before re-researching it, and record the new fork's roster **and its drops** there in the same change (the weekly fleet-status run cross-checks every fork's live roster against it). Then walk the reference city's layers and map each to the local equivalent. Be explicit where **no honest analog exists** — drop the layer rather than invent geometry or names for an appointed/citywide body, and record each drop in a table with the structural reason (Part II's "no honest NYC analog" table is the model — it is a governance argument per row, not a shrug). Two edge cases the drop rule does *not* cover. **Elected citywide/at-large offices** (mayor, comptroller, at-large council seats — e.g. Houston's five at-large members) are honest, roster-verifiable offices whose district is the whole city: don't drop them under this rule, but note they add zero point-discrimination — every click gives the same answer — which is why neither reference city ships one. Make an explicit, recorded per-office decision: ship via the §7 shared-loader pattern on a city-boundary polygon, fold in as labeled "At-Large" rows on the council card, or defer deliberately into a "future layers" list — silence is the only wrong answer. And **multi-district school metros** (§0's governance row) never assume one citywide zone dataset: register per-system zone layers where each system publishes one, ship a district-boundary layer with link-only cards, or record an honest drop — never stitch or invent a unified dataset. Add local layers the reference city lacks. Then write the full `LAYER_AREA_RANK`, largest→smallest. **Rule: every registered layer id appears in the rank, no exceptions** — the rank has two consumers, `reorderActiveLayers` (restacking) and `hoverContainingLayers` (hover civic profiles), and an id missing from the list is invisible to both. (Chicago itself shipped this bug — `ward-precinct` was missing until it was fixed alongside this playbook's first edition.) Sub-layers deliberately rank just *before* their parent so the parent outline frames the fills — see the police-beat comment in the Chicago rank.
 5. **Build the data registry** using §5 to find sources and §6 to verify them (Part II N.1 is a completed model): one row per layer, geometry source + roster source, each labeled VERIFIED only after a live fetch *you* performed.
 6. **Pick the offline anchors** (§4) and the smoke-test ground-truth points (§9) — two positive points landing in different districts, plus the §4 negative point where the geography allows one. While here, pick the anchor whose features **tile the metro exactly** and hand its loader to `drawOutOfScopeMask(...)` in BOOT — that one call is all the fork owes the out-of-scope wash (§4).
 7. **Map the pipeline**: for each roster, which scraper/builder pair template applies, which fetch engine (§8's escalation ladder), and the count guards. Don't defer *every* roster to the pipeline thread: land the cheapest real one (a no-scrape public file, congress-legislators-style) during the modules thread itself — real data flushes factory paths that empty placeholders never exercise (see §1's re-core surgery notes).
 8. **Re-derive every gate constant** (§9) and the `sw.js` lists (all three — §1).
 9. **Cross-group parity audit** before calling assembly done: for each field one group's cards render (office address, inline pin, map pin, phone, oversight links), check every other group's cards that *could* carry it. NYC shipped its political cards name-only while the safety and school cards already carried addresses and pins — no gate catches this class of gap; only a deliberate side-by-side pass does. The audit has a **second axis: surfaces, not just groups.** The hover explorer renders every polygon layer too, and it fails *soft* by design (a missed property is a blank row, not an error card) — so also do a **hover sweep**: toggle every polygon layer on, hover each smoke-test ground-truth point, and confirm every row shows a real identity matching its card's headline, not the em-dash fallback. NYC shipped every hover row label-only (fixed in PR #9) because no automated gate exercises the popup.
-10. **Swap deploy**: CNAME, manifest, icons, README, CLAUDE.md, footer attribution; add the new metro to `METRO_EXPLORERS` here **and in every sibling fork** (§1 — full entry: `id`/`label`/`url`/`emoji`/`bbox`, then run `validate_index.py` in each fork); replace this playbook with the root pointer stub to the Chicago master. The `deploy-pages.yml` rsync exclude list is generic — but confirm nothing city-new (e.g. a large source GeoJSON) slips into the artifact.
+10. **Swap deploy, register the fork in the fleet, and prove the localization.** The deploy swap (CNAME, manifest, icons, README, CLAUDE.md, footer attribution) is the visible half. The invisible half is §3.1 — the **day-one fork-registration checklist**, every fleet touchpoint that must name the new fork the day it goes live; each item on it was missed by at least one real port. Then run the §3.2 **localization sweep** — SF shipped a Chicago-biased geocoder and Chicago SEO metadata through five build threads because no gate greps for leftover reference-city content. Replace this playbook with the root pointer stub to the Chicago master and record the final roster in `docs/DATA_LAYER_GUIDEBOOK.md`. The `deploy-pages.yml` rsync exclude list is generic — but confirm nothing city-new (e.g. a large source GeoJSON) slips into the artifact.
+
+### 3.1 Day-one fork registration — the fleet checklist
+
+A new fork isn't launched when its site loads; it's launched when **the fleet knows it
+exists**. These are all the places that must name the fork, split by where the change
+lands. History: SF missed #1 (invisible to the weekly fleet-status dashboard), #2 and #3
+(engine-v1.0.6 never fanned out to it), #6 (it shipped CHI's *producer* release workflow
+and no consumer), #7 (its Pages deploy 404'd from repo creation until Thread 1), and #13
+(its WATCH.md still said "This file is CHI's" after launch). NYC missed #9's verification
+and #11 (Chicago placeholder icons at launch). None of this is hypothetical.
+
+**In the Chicago (reference) repo:**
+1. Add the fork to `metros.json` — the canonical fleet manifest — then run
+   `generate_metro_files.py --sync-fleet` + regenerate **in every fork** (regeneration
+   PRs, never hand edits). Fleet-status iterates this manifest; a fork missing here is
+   invisible to the weekly dashboard, silently.
+2. Add the fork's repo to the `release-engine.yml` fan-out sibling list — otherwise the
+   next engine release skips it and the bump must be hand-delivered.
+3. *(Operator)* Add the fork's repo to the `ENGINE_DISPATCH_TOKEN` fine-grained PAT
+   (Contents read/write, Metadata read) — the fan-out dispatch fails without it.
+4. Add the fork to `docs/DATA_LAYER_GUIDEBOOK.md` — coverage map + inventory + concept
+   matrix (its drops included).
+
+**In every sibling fork:** — nothing by hand; the `--sync-fleet` regeneration from #1
+carries the new `METRO_EXPLORERS` entry to each sibling.
+
+**In the new fork:**
+5. Delete the *producer* `release-engine.yml`; carry the *consumer* `engine-bump.yml`
+   (forks consume engine releases; only the reference publishes).
+6. `deploy-pages.yml` must download the engine from `engine.lock.json`'s `source_repo`,
+   never `$GITHUB_REPOSITORY`.
+7. *(Operator)* Pages settings: Source = "GitHub Actions"; custom domain set; `CNAME`
+   committed.
+8. *(Operator)* Repo setting: Actions → General → "Allow GitHub Actions to create and
+   approve pull requests" = **ON** — every bot roster/engine-bump PR dies without it,
+   some silently.
+9. *(Operator)* CI repo secrets the pipelines need (portal app tokens, roster API keys —
+   §5.4, §11).
+10. Replace the PWA icons (`icons/…192/512`) — not the reference city's.
+11. Pointer-stub every CHI-mastered doc (`METRO_EXPANSION_PLAYBOOK.md`,
+    `BUILD_PLAYBOOK_1.md`, `OPTIMIZATION_PLAYBOOK.md`, `REDISTRICTING_RUNBOOK.md`;
+    `ENGINE_SYNC.md` stays — it ships identically in every fork by design).
+12. Localize `WATCH.md` — it is a per-fork operations calendar, not shared prose.
+13. Re-derive `scripts/validate_sources.py` for the fork's real sources — including
+    `SOCRATA_DOMAIN`/`CATALOG_API` (DataSF, for one, is not in the federated
+    us.socrata.com catalog) — a stale reference-city manifest FAILs against the fork's
+    app forever.
+
+### 3.2 The localization sweep (leftover-reference-city gate)
+
+Run at assembly and again just before launch. Grep the fork for the reference city's
+fingerprints:
+
+```bash
+grep -rn -i --exclude-dir=node_modules --exclude-dir=.git \
+  -e 'chidistricts.com' -e 'cityofchicago' -e 'ChiExplorer' -e 'chicago' \
+  index.html sw.js README.md CLAUDE.md WATCH.md manifest.webmanifest scripts/ .github/
+```
+
+Expected hits (the allowlist): ENGINE-fenced comments that name the reference
+implementation; `engine.lock.json`'s `source_repo`; the `chicago` entry in
+`METRO_EXPLORERS`/`metros-`derived config; deliberate doc citations. **Everything else is
+a leftover.** Past leftovers this sweep would have caught, by name: the geocoder bias
+hardcoded to the reference `METRO_CENTER` (SF's autocomplete favored Chicago through
+Threads 0–5); the SEO head block (canonical, `og:url`, `og:image`, JSON-LD ids,
+`sitemap.xml`) and the og-image art; the `sw.js` version-history comment; the
+`validate_sources.py` manifest; footer attribution anchors; `requirements.txt` deps;
+orphaned reference-city assets (county seals, marker art, source GeoJSON, seal tooling).
 
 ## 4. The offline-anchor rule
 
@@ -282,6 +350,9 @@ The rationale is fixed even when the roster differs: anchors come early because 
 3. Hand-verify and supply any operator-maintained roster (offices whose official sites are the only source — per the honesty rule, a human checks each name before it ships).
 4. Review the anchor conversions (mapshaper validation output) and pin the feature counts + ground-truth values into `smoke_test.mjs`/`validate_index.py`.
 5. Evaluate any documented-but-optional source upgrades (official APIs behind keys) — record them; none should block launch.
+6. Work every *(Operator)*-marked row of §3.1 — Pages source + domain, the Actions
+   "allow PR creation" setting, the engine-dispatch PAT scope, CI secrets. They are
+   repo/account settings no PR can carry, and each has silently broken a real fork.
 
 ## 12. Per-thread handoff protocol
 
@@ -394,6 +465,12 @@ NYC's portal `data.cityofnewyork.us` is Socrata — same platform and SoQL gramm
 **NYC bounds (the §0 worksheet rows):** practical bbox ≈ SW `[40.48, -74.27]`, NE `[40.93, -73.68]` (Tottenville → north Bronx → Rockaways); permalink sanity gate ≈ `lat 40.4–41.05, lng -74.3–-73.6`. Water-heavy — the §7 water-click and nearest-N-across-water gotchas both apply, as do Marble Hill (trust the polygon) and the non-neighborhood NTAs (surface `ntatype`).
 
 ## N.2 NYC layer roster — 24 layers (political 10 · safety 5 · schools 6 · geography 3)
+
+> **Frozen worked example (July 10, 2026).** NYC has since grown past this table (27
+> layers as of the July 18 amenity additions). **Current rosters for every fork live in
+> `docs/DATA_LAYER_GUIDEBOOK.md`** — machine-checked weekly against each fork's deployed
+> worksheet; this section is kept as the model of what a completed port roster looks
+> like, not as inventory.
 
 `GROUPS` taxonomy unchanged. `EXPECT_LAYERS = 24`.
 

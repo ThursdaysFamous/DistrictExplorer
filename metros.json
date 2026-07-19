@@ -6,6 +6,9 @@
       "bbox": { "minLng": -88.6, "minLat": 41.0, "maxLng": -87.0, "maxLat": 42.6 } },
     { "id": "nyc", "label": "New York City", "url": "https://nyc.chidistricts.com/", "emoji": "🗽",
       "repo": "ThursdaysFamous/DistrictExplorer-NYC",
-      "bbox": { "minLng": -74.3, "minLat": 40.45, "maxLng": -73.6, "maxLat": 41.0 } }
+      "bbox": { "minLng": -74.3, "minLat": 40.45, "maxLng": -73.6, "maxLat": 41.0 } },
+    { "id": "sf", "label": "San Francisco", "url": "https://sf.chidistricts.com/", "emoji": "🌉",
+      "repo": "ThursdaysFamous/DistrictExplorer-SF",
+      "bbox": { "minLng": -122.6, "minLat": 37.6, "maxLng": -122.3, "maxLat": 37.95 } }
   ]
 }

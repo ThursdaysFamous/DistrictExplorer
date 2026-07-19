@@ -1,0 +1,291 @@
+# Data Layer Guidebook — the fleet's layer roster, in one place
+
+**This is the master copy, in the Chicago repo (the reference implementation), covering
+every metro fork.** Sibling forks do not carry a copy (the playbook pointer-stub rule,
+`docs/ENGINE_SYNC.md` backlog item 9). It answers, for every civic-district concept the
+fleet has ever considered: which metros ship it, which metros *can't* honestly ship it and
+why (recorded drop rationale), which metros simply haven't yet (parity debt), and what's
+in the researched-but-unbuilt backlog.
+
+**Maintenance contract — this file is load-bearing, not decorative:**
+
+1. **Any PR in any fork that adds, renames, or removes a layer updates this guidebook in
+   the same change** (for a fork PR, a companion CHI PR — same rule as fork-born engine
+   improvements). Update the machine-readable coverage map below *and* the affected
+   tables.
+2. **The weekly fleet-status run enforces it**: `scripts/fleet_status.py` diffs each
+   fork's live `metro-worksheet.json` layer roster against the coverage map below and
+   puts a **GUIDEBOOK WARN** on the standing "Fleet status" issue on any mismatch. A
+   layer that ships without a guidebook row is drift, exactly like an engine fence
+   mismatch.
+3. **A deliberate "we will not ship this here" is recorded, never implied.** Every
+   NO HONEST ANALOG cell cites its rationale; a concept a fork lacks *without* a recorded
+   rationale sits in the Parity debts table until someone either ships it or records the
+   drop. (This rule exists because SF's BART-districts candidate silently evaporated
+   between worksheet and launch — see Backlog.)
+
+<!-- ==== GUIDEBOOK:BEGIN coverage-map ==== -->
+```json
+{
+  "chicago": ["il-supreme-court", "congress", "il-senate", "il-house", "county", "school-district-secondary", "school-district-unified", "school-district-elementary", "township", "municipality", "will-county-judicial", "will-county-board", "ccbr", "commissioner", "will-county-fire", "will-county-park", "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat", "police-district", "ccpsa-district-council", "community-area", "zip-code", "cps-high", "cps-middle", "will-county-precinct", "cps-elementary", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
+  "nyc": ["borough", "judicial-district", "borough-president", "district-attorney", "congress", "municipal-court", "state-senate", "school-district", "cec", "fire-battalion", "council", "community-district", "election-district", "state-assembly", "police-sector", "police-precinct", "zip-code", "neighborhood", "hs-zone", "ms-zone", "es-zone", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
+  "sf": ["congress", "ca-senate", "ca-assembly", "supervisor-district", "police-district", "zip-code", "neighborhood", "elementary-attendance-area", "police-station", "fire-station", "school-site", "post-office", "library", "early-voting"]
+}
+```
+<!-- ==== GUIDEBOOK:END coverage-map ==== -->
+
+The block above is the machine truth `fleet_status.py` checks — one array per metro
+(keys = `metros.json` ids), each listing that fork's registered layer ids exactly as its
+`metro-worksheet.json` declares them. Everything below is the human explanation.
+
+## How to read the tables
+
+Status key: **SHIPPED** `id` · **NO HONEST ANALOG** (recorded drop — the body doesn't
+exist, isn't elected, or publishes no boundary; never faked) · **GAP** (a sibling ships
+the concept, this fork doesn't, and no rationale is recorded — parity debt) · **n/a**
+(structurally inapplicable, e.g. a township layer in a consolidated city).
+
+Pattern legend (which engine factory a layer uses): **Polygon** `registerPolygonLayer` ·
+**Bespoke** hand-written `registerLayer` (roster joins, shared geometry, filters) ·
+**Chamber** `registerIlgaChamber` (legislative boundary + roster file) · **SchoolZone**
+`registerSchoolZone` via each fork's wrapper · **CpsNetwork** `registerCpsNetwork` ·
+**BoroughOffice** `registerBoroughOfficeLayer` (NYC) · **NearestPt**
+`registerNearestPointLayer` (nearest-3 haversine; hover identity built in as of engine
+v1.0.6).
+
+Fleet totals: **Chicago 36 · NYC 27 · SF 14** layers.
+
+---
+
+## Concept coverage matrix
+
+### Political / legislative
+
+| Concept | Chicago | NYC | SF |
+|---|---|---|---|
+| U.S. House district | SHIPPED `congress` | SHIPPED `congress` | SHIPPED `congress` |
+| State upper chamber | SHIPPED `il-senate` | SHIPPED `state-senate` | SHIPPED `ca-senate` |
+| State lower chamber | SHIPPED `il-house` | SHIPPED `state-assembly` | SHIPPED `ca-assembly` |
+| City council district | SHIPPED `ward` (50) | SHIPPED `council` (51) | SHIPPED `supervisor-district` (11; doubles as the county board — consolidated city-county) |
+| Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `will-county-precinct` | SHIPPED `election-district` (~4,200) | **GAP** — SF publishes precinct polygons (`jg6x-23ig`); no layer, no recorded drop |
+| County legislature / commissioner | SHIPPED `commissioner` (Cook) + `will-county-board` | NO HONEST ANALOG¹ | NO HONEST ANALOG (folded into `supervisor-district`) |
+| County property-tax appeals board (elected) | SHIPPED `ccbr` | NO HONEST ANALOG² | NO HONEST ANALOG⁵ |
+| State high-court electoral district | SHIPPED `il-supreme-court` | SHIPPED `judicial-district` (NY Supreme is trial-level, elected by district) | NO HONEST ANALOG⁶ |
+| Trial/civil-court sub-district | SHIPPED `will-county-judicial` (12th-Circuit subcircuits) | SHIPPED `municipal-court` (28) | NO HONEST ANALOG⁶ |
+| District Attorney (districted) | n/a (Cook State's Attorney is one countywide office) | SHIPPED `district-attorney` (5 borough DAs) | NO HONEST ANALOG (one citywide DA)⁷ |
+| Borough president / by-county executive | n/a | SHIPPED `borough-president` | n/a |
+| Community district / board (appointed, labeled so) | n/a | SHIPPED `community-district` | n/a |
+| Elected school board (districted) | SHIPPED `school-board` (ERSB) | NO HONEST ANALOG³ | NO HONEST ANALOG (at-large board)⁴ |
+| Parent-elected education council | n/a | SHIPPED `cec` | n/a |
+| Early-voting / vote-center sites | SHIPPED `early-voting` (hand-curated per election) | SHIPPED `early-voting` (live NYS GIS) | SHIPPED `early-voting` (hand-curated; includes the 37 ballot drop boxes) |
+
+Recorded drop rationales (full quotes live in the cited docs):
+¹ NYC counties have no legislature — county government absorbed into the City (*Board of
+Estimate v. Morris*, 1989). ² NYC's Tax Commission is appointed, citywide, no districts.
+³ Mayoral control; the Panel for Educational Policy is appointed — `cec` is the honest
+*parent*-elected analog and its card says so. ⁴ SF's Board of Education is elected
+at-large; no district geometry exists. ⁵ SF's assessment-appeals board is appointed.
+⁶ California Supreme Court is statewide; Courts of Appeal justices are appointed →
+link-only at most. ⁷ SF's DA is one at-large office. (¹–³:
+`docs/METRO_EXPANSION_PLAYBOOK.md` Part II "NO honest NYC analog" table /
+`docs/archive/METRO_EXPANSION_NYC.md` §7; ⁴–⁷: `docs/METRO_EXPANSION_SF_WORKSHEET.md`
+§0 + the SF repo's worksheet drop appendix.)
+
+### Public safety
+
+| Concept | Chicago | NYC | SF |
+|---|---|---|---|
+| Police district / precinct | SHIPPED `police-district` (22) | SHIPPED `police-precinct` (78) | SHIPPED `police-district` (10) |
+| Police subdivision (beat / sector) | SHIPPED `police-beat` | SHIPPED `police-sector` | NO HONEST ANALOG — SFPD publishes no patrol-beat boundary (the only "beats" dataset is Parking Control's) |
+| Elected police oversight | SHIPPED `ccpsa-district-council` | NO HONEST ANALOG — CCRB is appointed/citywide; oversight story lives as labeled link rows on the precinct card | **GAP** — SF Police Commission is appointed (defensible no-analog), but no drop is recorded; record it or ship link rows |
+| Fire-service boundary | SHIPPED `will-county-fire` (suburban Fire *Protection* Districts, coverage-gated) | SHIPPED `fire-battalion` (operational battalions, 49) | NO HONEST ANALOG — SFFD battalions exist but no boundary is published |
+| Police / fire station points | SHIPPED `police-station` · `fire-station` | SHIPPED | SHIPPED |
+
+Note the fire-boundary concept is not equivalent across forks: NYC maps *operational*
+battalions; CHI maps suburban *taxing* districts. Chicago-proper CFD battalion/division
+boundaries are unmapped in every fork and un-recorded — see Parity debts.
+
+### Schools
+
+| Concept | Chicago | NYC | SF |
+|---|---|---|---|
+| Elementary attendance zone | SHIPPED `cps-elementary` | SHIPPED `es-zone` | SHIPPED `elementary-attendance-area` (bespoke — card carries the lottery-tiebreaker caveat) |
+| Middle / high attendance zone | SHIPPED `cps-middle` · `cps-high` | SHIPPED `ms-zone` · `hs-zone` | NO HONEST ANALOG — SFUSD publishes only elementary areas; MS is feeder-pattern, HS is citywide choice |
+| School admin region / network | SHIPPED `cps-network` · `cps-hs-network` | SHIPPED `school-district` (32 CSDs) | NO HONEST ANALOG — one undivided district, no sub-regions |
+| Statewide school-district identity | SHIPPED `school-district-{unified,secondary,elementary}` (TIGERweb, coverage-gated) | n/a | n/a |
+| School site points | SHIPPED `school-site` | SHIPPED `school-site` | SHIPPED `school-site` |
+
+### Geography / amenities
+
+| Concept | Chicago | NYC | SF |
+|---|---|---|---|
+| Neighborhood / community area | SHIPPED `community-area` (77) | SHIPPED `neighborhood` (NTA, ~262) | SHIPPED `neighborhood` (41) |
+| ZIP code | SHIPPED `zip-code` (ZCTA) | SHIPPED `zip-code` (MODZCTA) | SHIPPED `zip-code` (ZCTA) |
+| County | SHIPPED `county` (statewide IL) | SHIPPED `borough` (= county) | n/a — city and county are coterminous (recorded) |
+| Township / municipality | SHIPPED `township` · `municipality` (statewide IL) | n/a | n/a |
+| Park district | SHIPPED `will-county-park` (Will only) | n/a | n/a |
+| Post office points | SHIPPED `post-office` (USGS National Map L38 — same national source in every fork) | SHIPPED | SHIPPED |
+| Library points | SHIPPED `library` (CPL) | SHIPPED `library` (NYPL/BPL/QPL) | SHIPPED `library` (SFPL) |
+| Ballot drop boxes | **GAP** — not shipped, not recorded | **GAP** — not shipped, not recorded | SHIPPED (inside `early-voting`) |
+
+---
+
+## Parity debts (GAPs with no recorded decision — work them or record the drop)
+
+| # | Debt | Owed by | Notes |
+|--:|---|---|---|
+| 1 | Electoral precinct layer | SF | DataSF publishes current precinct polygons (`jg6x-23ig`, 2022 map). CHI and NYC both ship the concept. |
+| 2 | Elected-police-oversight decision | SF | Likely an honest no-analog (appointed Police Commission) — but write the drop row; NYC's precedent adds labeled link rows to the police card. |
+| 3 | Ballot drop boxes | CHI, NYC | SF ships 37 official drop boxes inside `early-voting`. Chicago BOE publishes secure drop-box sites per election (same transcription pipeline as the early-voting file); NYC BOE likewise. Decide: fold into each fork's `early-voting` or record why not. |
+| 4 | Chicago-proper fire battalion/division | CHI | CFD operational boundaries — no drop recorded and no dataset verified either way; investigate, then ship or record. |
+| 5 | BART Director districts decision | SF | The worksheet's flagged "genuinely local add" was silently deferred at launch — see Backlog. Verify sources, then build it or record the drop. |
+
+## Backlog — researched candidates, deliberately not (yet) built
+
+Every entry cites where it's recorded and the blocker. When one ships, move it into the
+matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnote.
+
+**San Francisco**
+- **BART Director districts** — elected by district, partly in SF; "a genuinely local,
+  honestly-districted, roster-backed layer with no Chicago analog"
+  (`docs/METRO_EXPANSION_SF_WORKSHEET.md` §0). Blocker: director-district geometry +
+  roster source unverified. The strongest unbuilt candidate in the fleet.
+
+**New York City** (from `docs/METRO_EXPANSION_PLAYBOOK.md` Part II "Future layers")
+- Surrogate's Court judges — borough geometry ready; roster unverified.
+- FDNY Divisions — Socrata `68m2-uzcb` is map-type (export-route geometry only).
+- NYPD sector NCO names — no structured source exists (honesty rules say wait).
+- Full community-board member lists — per-borough HTML, non-uniform; only chair/manager
+  are machine-readable today.
+- LCGMS principal enrichment for `school-site` — needs a Socrata app token.
+- Mayor / Public Advocate / Comptroller — real citywide electeds, but an at-large
+  citywide polygon adds zero point-discrimination (the at-large rule: link, don't map).
+- District Leader / State Committee — party-internal; recorded as "recommend never".
+
+**Chicago / Illinois** (from `docs/STATEWIDE_EXPANSION_PLAYBOOK.md` §4/§7 +
+`docs/BUILD_PLAYBOOK_1.md` §2b)
+- Statewide judicial circuits (25) — blocked: the county→circuit table has no
+  authoritative machine-readable source (ilga.gov 403s; illinoiscourts.gov JS-rendered);
+  hand-encoding violates the never-guess rule.
+- Judicial subcircuits beyond Will — PA 102-0693 shapefiles exist (Cook + collar).
+- Statewide voting precincts — hardest class: 102 clerks, non-uniform, frequently
+  redrawn; collar-first plan recorded (suburban Cook `k7sw-w3b8`, Lake, …).
+- Collar-county boards (DuPage, Lake, Kane, McHenry, Kendall) — per-county ArcGIS Hubs;
+  Cook + Will shipped.
+- Park districts statewide (~350) — no statewide GIS; per-county sources.
+- Cook County GIS layers never wired — library/park/fire/TIF/MWRD/forest-preserve tax
+  districts on `gis.cookcountyil.gov` (`politicalBoundary` server), "not evaluated" in
+  the original build.
+
+---
+
+## Per-fork inventories
+
+### Chicago — 36 layers
+
+| id | label | group | pattern | source | roster / join | coverage |
+|---|---|---|---|---|---|---|
+| `il-supreme-court` | IL Supreme Court District | political | Polygon | pre-built (PA 102-0011 shapefile) | link-only | — |
+| `congress` | U.S. House District | political | Bespoke | pre-built (TIGERweb L0, STATE=17) | `congress-roster.json` (weekly CI) | — |
+| `il-senate` | IL State Senate District | political | Chamber | pre-built (TIGERweb L1) | `il-senate-members.json` (weekly CI) | — |
+| `il-house` | IL State House District | political | Chamber | pre-built (TIGERweb L2) | `il-house-members.json` (weekly CI) | — |
+| `county` | County | geography | Polygon | live TIGERweb State_County | link-only | — |
+| `school-district-secondary` | High School District | schools | Polygon | live TIGERweb School L1 | — | outsideChicagoSchoolCoverage |
+| `school-district-unified` | Unified School District | schools | Polygon | live TIGERweb School L0 | — | — |
+| `school-district-elementary` | Elementary School District | schools | Polygon | live TIGERweb School L2 | — | outsideChicagoSchoolCoverage |
+| `township` | Township / County Subdivision | geography | Polygon | live TIGERweb CouSub | — | — (subOf `county`) |
+| `municipality` | Municipality | geography | Polygon | live TIGERweb Places | — | — |
+| `will-county-judicial` | Judicial Subcircuit (12th Circuit) | political | Polygon | Will County ArcGIS | link-only | willCountyCoverage |
+| `will-county-board` | Will County Board District | political | Bespoke | Will County ArcGIS | `will-county-board-members.json` (weekly CI) | willCountyCoverage |
+| `ccbr` | Cook County Board of Review District | political | Polygon | pre-built (PA 102-0012 shapefile) | link-only | cookCountyCoverage |
+| `commissioner` | Cook County Commissioner District | political | Bespoke | Cook County GIS L9 | live office join (same server) | cookCountyCoverage |
+| `will-county-fire` | Fire Protection District | safety | Polygon | Will County ArcGIS | trustees in GIS attrs | willCountyCoverage |
+| `will-county-park` | Park District | geography | Polygon | Will County ArcGIS | commissioners in GIS attrs | willCountyCoverage |
+| `school-board` | Elected School Board District | political | Bespoke | pre-built (ERSB SB15 shapefile) | `school-board-members.json` (hand-curated) | chicagoCoverage |
+| `cps-hs-network` | CPS Network (High School) | schools | CpsNetwork | Socrata `aupu-jt2g` | chief in dataset props | chicagoCoverage |
+| `cps-network` | CPS Network (K-8) | schools | CpsNetwork | Socrata `pnta-kuqa` | chief in dataset props | chicagoCoverage |
+| `ward-precinct` | Ward Precinct | political | Bespoke | Socrata `i8fv-xe4b` | — | chicagoCoverage (subOf `ward`) |
+| `ward` | City Ward | political | Bespoke | Socrata `p293-wvbd` | live Socrata `htai-wnw4` join | chicagoCoverage |
+| `police-beat` | Police Beat | safety | Bespoke | CPD ArcGIS | — | chicagoCoverage (subOf `police-district`) |
+| `police-district` | Police District | safety | Bespoke | CPD ArcGIS | `cpd-district-info.json` (weekly CI, Playwright) | chicagoCoverage |
+| `ccpsa-district-council` | CCPSA District Council | safety | Bespoke | shares `police-district` geometry | `ccpsa-district-councils.json` (weekly CI) | chicagoCoverage |
+| `community-area` | Community Area | geography | Polygon | Socrata `igwz-8jzy` | — | chicagoCoverage |
+| `zip-code` | ZIP Code | geography | Polygon | live TIGERweb ZCTA | — | — |
+| `cps-high` | CPS High School Zone | schools | SchoolZone | Socrata `xg7c-d8rm` (year-versioned) | zoned-school POI | chicagoCoverage |
+| `cps-middle` | CPS Middle School Zone | schools | SchoolZone | Socrata `fyff-53xy` (year-versioned) | zoned-school POI | chicagoCoverage |
+| `will-county-precinct` | Voting Precinct | geography | Bespoke | Will County ArcGIS `Precincts_2022` | — | willCountyCoverage (subOf `township`) |
+| `cps-elementary` | CPS Elementary School Zone | schools | SchoolZone | Socrata `x72b-38qv` (year-versioned) | zoned-school POI | chicagoCoverage |
+| `school-site` | School Location (nearest N) | schools | Bespoke nearest | CPD-org ArcGIS `Schools` | — | chicagoCoverage |
+| `police-station` | Police Station | safety | NearestPt | CPD ArcGIS stations | — | chicagoCoverage |
+| `fire-station` | Fire Station | safety | NearestPt | Socrata `28km-gtjn` | — | chicagoCoverage |
+| `post-office` | Post Office | geography | NearestPt | USGS National Map structures L38 | — | — |
+| `library` | Library | geography | NearestPt | Socrata `x8fc-8rcq` | — | chicagoCoverage |
+| `early-voting` | Early Voting Site | political | NearestPt | hand-curated `early-voting-sites.json` (per election; WATCH.md row) | — | chicagoCoverage |
+
+### NYC — 27 layers
+
+| id | label | group | pattern | source | roster / join |
+|---|---|---|---|---|---|
+| `borough` | Borough / County | geography | Polygon | pre-built (offline anchor) | — |
+| `judicial-district` | NY Supreme Court Judicial District | political | Polygon | pre-built (counties → districts derivation) | link-only |
+| `borough-president` | Borough President | political | BoroughOffice | shares `borough` geometry | `borough-officials.json` (operator-maintained) |
+| `district-attorney` | District Attorney | political | BoroughOffice | shares `borough` geometry | same roster |
+| `congress` | U.S. House District | political | Chamber | pre-built (TIGERweb L0, STATE=36) | `congress-roster.json` (weekly CI) |
+| `municipal-court` | Civil Court District | political | Polygon | pre-built (offline anchor) | link-only |
+| `state-senate` | NY State Senate District | political | Chamber | pre-built (TIGERweb L1) | `ny-senate-members.json` (weekly CI; API keys) |
+| `school-district` | Community School District | schools | Polygon | Socrata `8ugf-3d8u` | superintendent link-only |
+| `cec` | Community Education Council | schools | Bespoke | shares `school-district` geometry | `cec-members.json` (weekly CI, placeholder until scrape lands) |
+| `fire-battalion` | FDNY Battalion | safety | Polygon | DCP ArcGIS | — |
+| `council` | City Council District | political | Bespoke | Socrata `872g-cjhh` | `council-members.json` (weekly CI) |
+| `community-district` | Community District / Board | political | Bespoke | Socrata `5crt-au7u` | live Socrata `ruf7-3wgc` join (chair/manager, labeled appointed) |
+| `election-district` | Election District | political | Bespoke | DCP ArcGIS (paged, ~4,200) | — (subOf `state-assembly`) |
+| `state-assembly` | NY State Assembly District | political | Chamber | pre-built (TIGERweb L2) | `ny-assembly-members.json` (weekly CI) |
+| `police-sector` | NYPD Sector | safety | Bespoke | Socrata `5rqd-h5ci` | — (subOf `police-precinct`) |
+| `police-precinct` | NYPD Precinct | safety | Bespoke | Socrata `y76i-bdw7` | `nypd-precinct-info.json` (weekly CI) |
+| `zip-code` | ZIP Code (MODZCTA) | geography | Polygon | Socrata `pri4-ifjk` | — |
+| `neighborhood` | Neighborhood (NTA 2020) | geography | Polygon | Socrata `9nt8-h7nd` | — |
+| `hs-zone` / `ms-zone` / `es-zone` | School Zones | schools | SchoolZone | Socrata `ruu9-egea` / `t26j-jbq7` / `cmjf-yawu` (year-versioned) | zoned-school POI |
+| `school-site` | School (nearest 3) | schools | NearestPt | NYSED ArcGIS L2/3/4 (paged) | — |
+| `police-station` | Police Station | safety | NearestPt | Socrata `ji82-xba5` (FacDB) | — |
+| `fire-station` | Firehouse | safety | NearestPt | Socrata `hc8x-tcnd` | — |
+| `post-office` | Post Office | geography | NearestPt | USGS National Map L38 | — |
+| `library` | Library | geography | NearestPt | Socrata `feuq-due4` (all 3 systems) | — |
+| `early-voting` | Early Voting Site | political | NearestPt | live NYS GIS elections service L1 | — |
+
+### SF — 14 layers
+
+| id | label | group | pattern | source | roster / join |
+|---|---|---|---|---|---|
+| `congress` | U.S. House District | political | Chamber | pre-built SF-clipped (TIGERweb L0, STATE=06) | `congress-roster.json` (weekly CI) |
+| `ca-senate` | CA State Senate District | political | Chamber | pre-built SF-clipped (TIGERweb L1) | `ca-senate-members.json` (weekly CI, OpenStates) |
+| `ca-assembly` | CA State Assembly District | political | Chamber | pre-built SF-clipped (TIGERweb L2) | `ca-assembly-members.json` (weekly CI) |
+| `supervisor-district` | Supervisor District | political | Bespoke | pre-built (DataSF `hcgx-vtsb`, water-trimmed; offline anchor) | `sf-supervisor-members.json` (weekly CI) |
+| `police-district` | Police District | safety | Polygon | pre-built (DataSF `d4vc-q76h`; offline anchor) | — |
+| `zip-code` | ZIP Code | geography | Polygon | live TIGERweb ZCTA | — |
+| `neighborhood` | Neighborhood | geography | Polygon | pre-built (DataSF `j2bu-swwd`; offline anchor) | — |
+| `elementary-attendance-area` | Elementary Attendance Area | schools | Bespoke | Socrata `e6tr-sxwg` (year-versioned) | — (lottery caveat on card) |
+| `police-station` | Police Station | safety | NearestPt | Socrata `rwdu-9wb2` | — |
+| `fire-station` | Fire Station | safety | NearestPt | Socrata `nc68-ngbr` (City Facilities filter) | — |
+| `school-site` | School Location | schools | NearestPt | Socrata `7e7j-59qk` | — |
+| `post-office` | Post Office | geography | NearestPt | USGS National Map L38 | — |
+| `library` | Library | geography | NearestPt | Socrata `fhhu-wqa7` (support facility excluded) | — |
+| `early-voting` | Voting Center & Ballot Drop-off | political | NearestPt | hand-curated `early-voting-sites.json` (incl. 37 drop boxes; WATCH.md row) | — |
+
+---
+
+## Adding or changing a layer — the procedure
+
+1. Consult the matrix first: if a sibling already ships the concept, reuse its recorded
+   pattern and source-hunting notes (`docs/METRO_EXPANSION_PLAYBOOK.md` §2/§6); if a
+   sibling recorded a drop, check whether the rationale applies to your metro before
+   re-researching.
+2. Build per the playbook (worksheet entry → regenerate → registration → source manifest
+   → docs), and **in the same change** update: the coverage-map JSON above, the fork's
+   inventory table, the concept matrix row (add the row if the concept is new
+   fleet-wide), and — if the layer resolves a Parity debt or Backlog entry — move that
+   entry accordingly.
+3. If you decide a concept **won't** ship in a metro, add the NO HONEST ANALOG footnote
+   with the rationale and source of truth. Silence is the only wrong answer.
+4. The weekly fleet-status run cross-checks the coverage map against every fork's live
+   worksheet; a mismatch WARNs on the "Fleet status" issue until the guidebook and the
+   fleet agree.

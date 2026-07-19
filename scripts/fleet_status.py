@@ -14,6 +14,10 @@ manifest (metros.json) and, for every fork, aggregates:
   - scraper health: last completed run per workflow named in the fork's
     metro-worksheet.json, plus any per-field coverage one-liners greppable
     from that run's log;
+  - guidebook coverage: the fork's worksheet layer roster diffed against the
+    coverage map in docs/DATA_LAYER_GUIDEBOOK.md. A layer shipped without a
+    guidebook row (or a guidebook row no fork backs) is a **GUIDEBOOK WARN** —
+    the layer-parity analog of the engine parity check;
   - open bot PRs (roster + engine-bump branches awaiting human review).
 
 Emits a markdown report and a status word (ok|warn). It never edits anything —
@@ -40,6 +44,10 @@ import zipfile
 
 API = "https://api.github.com"
 CAP_RE = re.compile(r"^CAPABILITIES\s*=\s*\[(.*?)\]", re.DOTALL | re.MULTILINE)
+GUIDEBOOK_PATH = os.path.join("docs", "DATA_LAYER_GUIDEBOOK.md")
+GUIDEBOOK_RE = re.compile(
+    r"<!-- ==== GUIDEBOOK:BEGIN coverage-map ==== -->\s*```json\s*(.*?)\s*```",
+    re.DOTALL)
 
 
 def api_get(path, raw=False):
@@ -68,6 +76,44 @@ def parse_capabilities(validator_text):
     if not m:
         return None  # fork hasn't declared yet — reported as such, not a WARN
     return sorted(re.findall(r'"([a-z0-9-]+)"', m.group(1)))
+
+
+def load_guidebook_map(repo_root):
+    """The per-metro layer-id lists from the guidebook's coverage-map block,
+    or None if the guidebook / block is missing or unparseable (reported as a
+    WARN by the caller — a broken guidebook must not pass silently)."""
+    try:
+        with open(os.path.join(repo_root, GUIDEBOOK_PATH), encoding="utf-8") as f:
+            m = GUIDEBOOK_RE.search(f.read())
+        return json.loads(m.group(1)) if m else None
+    except (OSError, ValueError):
+        return None
+
+
+def guidebook_diff(gb_map, metro_id, layer_ids):
+    """(report_line, warn_list) for one metro's roster vs the guidebook map."""
+    listed = gb_map.get(metro_id)
+    if listed is None:
+        w = "%s: metro missing from the guidebook coverage map" % metro_id
+        return ("- Guidebook coverage: **GUIDEBOOK WARN — metro not in the coverage map**", [w])
+    unlisted = sorted(set(layer_ids) - set(listed))
+    phantom = sorted(set(listed) - set(layer_ids))
+    warns = []
+    if unlisted:
+        warns.append("%s: GUIDEBOOK — shipped layers not in the guidebook: %s"
+                     % (metro_id, ", ".join(unlisted)))
+    if phantom:
+        warns.append("%s: GUIDEBOOK — guidebook lists layers the fork doesn't register: %s"
+                     % (metro_id, ", ".join(phantom)))
+    if warns:
+        line = ("- Guidebook coverage: **GUIDEBOOK WARN** — "
+                + ("unlisted: %s" % ", ".join("`%s`" % i for i in unlisted) if unlisted else "")
+                + ("; " if unlisted and phantom else "")
+                + ("phantom: %s" % ", ".join("`%s`" % i for i in phantom) if phantom else "")
+                + ". Update docs/DATA_LAYER_GUIDEBOOK.md in the change that touched the roster.")
+    else:
+        line = "- Guidebook coverage: in sync (%d layers)" % len(layer_ids)
+    return (line, warns)
 
 
 def latest_engine_release(chi_repo):
@@ -132,6 +178,13 @@ def main():
     lines.append("Latest engine release: **%s**" % (latest or "unknown (API unreachable?)"))
     lines.append("")
 
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    gb_map = load_guidebook_map(repo_root)
+    if gb_map is None:
+        warns.append("guidebook: %s missing or its coverage-map block is unparseable" % GUIDEBOOK_PATH)
+        lines.append("**GUIDEBOOK WARN:** `%s` missing or unparseable — layer-parity checks skipped." % GUIDEBOOK_PATH)
+        lines.append("")
+
     for m in metros:
         repo = m["repo"]
         lines.append("## %s (`%s`)" % (m["label"], repo))
@@ -168,12 +221,24 @@ def main():
                 lines.append("  (fork missing vs CHI: %s — forward parity, arrives via normal porting)" % ", ".join("`%s`" % c for c in behind))
 
         ws_raw = fetch_file(repo, "metro-worksheet.json")
-        wfs = []
+        ws = None
         if ws_raw:
             try:
-                wfs = json.loads(ws_raw).get("workflows", [])
+                ws = json.loads(ws_raw)
             except ValueError:
                 pass
+        wfs = (ws or {}).get("workflows", [])
+
+        if gb_map is not None:
+            if ws is None:
+                warns.append("%s: worksheet unreadable — guidebook coverage unchecked" % m["id"])
+                lines.append("- Guidebook coverage: **worksheet unreadable — unchecked**")
+            else:
+                gb_line, gb_warns = guidebook_diff(
+                    gb_map, m["id"], [l.get("id") for l in ws.get("layers", [])])
+                lines.append(gb_line)
+                warns.extend(gb_warns)
+
         if not wfs:
             lines.append("- Scrapers: worksheet not found — no workflow inventory (Conversion 2 pending?)")
         else:
