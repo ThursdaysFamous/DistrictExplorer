@@ -112,6 +112,31 @@ try {
       () => document.querySelectorAll('input[type=checkbox][id^="toggle-"]').length
     );
     check(`${EXPECT_LAYERS} layers registered`, n === EXPECT_LAYERS, `found ${n}`);
+
+    // Regression guard for the office-pin address cleaner (a recurring break
+    // point — secondary-unit fragments packed into the street segment made the
+    // geocode return nothing, silently dropping the map pin). Pure function,
+    // run in-browser against a fixed table — no network, deterministic.
+    const poiCases = [
+      ["118 NORTH CLARK STREET ROOM 230 CHICAGO, IL 60602", "118 NORTH CLARK STREET CHICAGO, IL 60602"], // embedded Room
+      ["105 SOUTH 5TH STREET SUITE 104 OREGON, IL 61061", "105 SOUTH 5TH STREET OREGON, IL 61061"],       // embedded Suite
+      ["88-11 Sutphin Blvd #106, Jamaica, NY 11435", "88-11 Sutphin Blvd, Jamaica, NY 11435"],            // embedded #, dashed house no.
+      ["851 Grand Concourse, Room 118, Bronx, NY 10451", "851 Grand Concourse, Bronx, NY 10451"],         // comma-part Room (must still work)
+      ["#10 PUBLIC SQUARE BELLEVILLE, IL 62220", "#10 PUBLIC SQUARE BELLEVILLE, IL 62220"],               // leading # is a primary number — keep it
+      ["200 S Biscayne Blvd, Miami, FL 33131", "200 S Biscayne Blvd, Miami, FL 33131"],                   // FL state code — never strip
+      ["507 VERMONT STREET QUINCY, IL 62301", "507 VERMONT STREET QUINCY, IL 62301"]                      // no unit — untouched
+    ];
+    const poiResults = await page.evaluate(
+      (cases) => cases.map(([input]) => window.ChiExplorer.cleanPoiAddress(input)),
+      poiCases
+    );
+    const poiBad = poiCases
+      .map(([input, want], i) => ({ input, want, got: poiResults[i] }))
+      .filter((r) => r.got !== r.want);
+    check("cleanPoiAddress strips embedded units, keeps primary #/state",
+      poiBad.length === 0,
+      poiBad.length ? JSON.stringify(poiBad[0]) : "7/7 cases");
+
     await context.close();
   }
 

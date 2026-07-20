@@ -3980,19 +3980,31 @@ function initChiExplorer() {
     return run;
   }
 
-  // A structured geocode can return ZERO results when the query carries a
-  // secondary-unit fragment — "250 Broadway, Suite 102" and "121 North LaSalle
-  // Street, Room 300" can both geocode to nothing, so those office cards
-  // silently drop their map pin. Strip any comma-part that reads as a unit
-  // designator (Suite/Ste/Room/Rm/Floor/Fl/Unit/Apt/No/#, each carrying a
-  // number); the street + city + ZIP that remain resolve to the right building.
+  // A geocode returns ZERO results when the query carries a secondary-unit
+  // fragment, so the office card silently drops its map pin. Two shapes recur:
+  //   own comma-part  — "250 Broadway, Suite 102"; "851 Grand Concourse, Room 118"
+  //   packed INTO the street with NO comma (the persistent one) —
+  //     "118 North Clark Street Room 230 Chicago"; "455 Golden Gate Ave. Suite
+  //     14800"; "88-11 Sutphin Blvd #106".
+  // Strip the unit fragment wherever it sits, leaving the street + city + ZIP
+  // that resolve to the building. This lives in the engine on purpose: fixing
+  // it here fixes every fork and every future data source, instead of teaching
+  // each roster builder to reformat addresses (the fragile per-source patch
+  // this replaces). Two guards the comma-part-only version lacked:
+  //   (1) the fragment must be preceded by street content (the `(\S)` capture),
+  //       so a LEADING primary number like "#10 Public Square" (a real clerk
+  //       address) is never mistaken for a unit and stripped;
+  //   (2) the token set excludes "fl"/"no" — they collide with the FL state
+  //       code ("Miami, FL 33131") and ordinals; "floor" as a full word is safe.
   function cleanPoiAddress(address) {
-    var UNIT_RE = /^\s*(?:suite|ste|room|rm|floor|fl|unit|apt|apartment|no|#)\b\D*\d/i;
-    var kept = String(address).split(",").filter(function (part) {
-      return !UNIT_RE.test(part);
-    });
-    var cleaned = kept.join(",").trim();
-    return cleaned || String(address); // never geocode an empty string
+    var s = String(address);
+    // "<n>th Floor" — the ordinal precedes the token
+    s = s.replace(/(\S)[,\s]+\d+(?:st|nd|rd|th)?\s+floors?\b\.?/gi, "$1 ");
+    // "<Unit> <number>" — the token precedes the unit number
+    s = s.replace(/(\S)[,\s]+(?:suite|ste|room|rm|unit|apt|apartment|building|bldg|floor|#)\.?\s*#?\s*[0-9][-0-9a-z]*/gi, "$1 ");
+    // collapse the comma/space debris a removal leaves behind
+    s = s.replace(/\s+/g, " ").replace(/\s+,/g, ",").replace(/,(?:\s*,)+/g, ",").replace(/^[\s,]+|[\s,]+$/g, "");
+    return s || String(address); // never geocode an empty string
   }
 
   function geocodePoiAddress(address, isCurrent) {
@@ -8011,7 +8023,8 @@ function initChiExplorer() {
     pointInGeometry: pointInGeometry,
     fetchJSONWithRetry: fetchJSONWithRetry,
     probeGeometryColumn: probeGeometryColumn,
-    renderFieldList: renderFieldList
+    renderFieldList: renderFieldList,
+    cleanPoiAddress: cleanPoiAddress // exposed so the smoke test can regression-guard the office-pin address cleaner (a recurring break point) without any network call
   };
   /* ==== ENGINE:END exports ==== */
   window.ChiExplorer = EXPLORER_EXPORTS;
