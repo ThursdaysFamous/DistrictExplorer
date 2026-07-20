@@ -127,6 +127,12 @@ PROVENANCE = [
      "app_file": "ccbr-districts.json",
      "source_url": "https://www.cookcountyboardofreview.com/",
      "note": "PA 102-0012 shapefile. Redrawn ~once a decade."},
+    {"layer": "Illinois county clerks (roster)",
+     "app_file": "il-county-clerks.json",
+     "source_url": "https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx",
+     "note": "Scraped weekly from ISBE's election-authority directory "
+             "(il_county_clerk_scraper.py); Peoria deliberately absent (its "
+             "authority is the appointed county election commission)."},
     {"layer": "Board of Review commissioners (roster)",
      "app_file": "ccbr-roster.json",
      "source_url": "https://www.cookcountyboardofreview.com/",

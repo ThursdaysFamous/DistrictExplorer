@@ -80,6 +80,7 @@ Fleet totals: **Chicago 36 · NYC 27 · SF 16** layers.
 | Elected school board (districted) | SHIPPED `school-board` (ERSB) | NO HONEST ANALOG³ | NO HONEST ANALOG (at-large board)⁴ |
 | Parent-elected education council | n/a | SHIPPED `cec` | n/a |
 | Elected regional transit board | NO HONEST ANALOG⁸ | NO HONEST ANALOG⁸ | SHIPPED `bart-director` (9 districts, BART's own ArcGIS + hand-verified roster) |
+| County clerk (surfaced on the county-identity card) | SHIPPED on `county` — all 101 clerk-authority counties via ISBE's election-authority directory (weekly CI; Peoria deliberately absent, its authority is an appointed election commission) | SHIPPED on `borough` — appointed (Appellate Division), labeled so; operator-verified `clerk` entries in `borough-officials.json` (nycourts.gov is Cloudflare-fronted, so no scraper; names only where the office's own page publishes one) | n/a⁹ |
 | Early-voting / vote-center sites | SHIPPED `early-voting` (hand-curated per election; every site doubles as a secured ballot drop box) | SHIPPED `early-voting` (live NYS GIS) | SHIPPED `early-voting` (hand-curated; includes the 37 ballot drop boxes) |
 
 Recorded drop rationales (full quotes live in the cited docs):
@@ -92,7 +93,16 @@ at-large; no district geometry exists. ⁵ SF's assessment-appeals board is appo
 link-only at most. ⁷ SF's DA is one at-large office. ⁸ Neither sibling elects its
 transit board: the Chicago Transit Board is appointed (4 mayoral + 3 gubernatorial
 appointees, 70 ILCS 3605/19) and the MTA board is appointed (Governor + city/county
-recommendations) — BART is the fleet's only transit board elected by district. (¹–³:
+recommendations) — BART is the fleet's only transit board elected by district.
+⁹ SF has no county-identity card to host a clerk (city and county are coterminous —
+the `county` concept itself is recorded n/a) and the SF County Clerk is an appointed
+city office under the City Administrator. **Future-metro recipe for this concept:**
+if the fork has a county-identity layer, join the state's election-authority /
+clerk directory (Illinois: ISBE's ElectionAuthorities.aspx — one postback returns
+every county; other states usually have a Secretary-of-State analog) via the
+weekly scraper→builder→review-PR pattern; where the authoritative source is
+challenge-fronted or names aren't published, fall back to NYC's operator-verified
+entries with per-office source URLs, and label appointed clerks as appointed. (¹–³:
 `docs/METRO_EXPANSION_PLAYBOOK.md` Part II "NO honest NYC analog" table /
 `docs/archive/METRO_EXPANSION_NYC.md` §7; ⁴–⁷: `docs/METRO_EXPANSION_SF_WORKSHEET.md`
 §0 + the SF repo's worksheet drop appendix.)
@@ -229,7 +239,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `congress` | U.S. House District | political | Bespoke | pre-built (TIGERweb L0, STATE=17) | `congress-roster.json` (weekly CI) | — |
 | `il-senate` | IL State Senate District | political | Chamber | pre-built (TIGERweb L1) | `il-senate-members.json` (weekly CI) | — |
 | `il-house` | IL State House District | political | Chamber | pre-built (TIGERweb L2) | `il-house-members.json` (weekly CI) | — |
-| `county` | County | geography | Polygon | live TIGERweb State_County | link-only | — |
+| `county` | County | geography | Bespoke | live TIGERweb State_County | `il-county-clerks.json` (weekly CI from ISBE; Peoria deliberately absent) | — |
 | `school-district-secondary` | High School District | schools | Polygon | live TIGERweb School L1 | — | outsideChicagoSchoolCoverage |
 | `school-district-unified` | Unified School District | schools | Polygon | live TIGERweb School L0 | — | — |
 | `school-district-elementary` | Elementary School District | schools | Polygon | live TIGERweb School L2 | — | outsideChicagoSchoolCoverage |
@@ -266,7 +276,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 
 | id | label | group | pattern | source | roster / join |
 |---|---|---|---|---|---|
-| `borough` | Borough / County | geography | Polygon | pre-built (offline anchor) | — |
+| `borough` | Borough / County | geography | Bespoke | pre-built (offline anchor) | `borough-officials.json` clerk entries (operator-verified; appointed, labeled) |
 | `judicial-district` | NY Supreme Court Judicial District | political | Polygon | pre-built (counties → districts derivation) | link-only |
 | `borough-president` | Borough President | political | BoroughOffice | shares `borough` geometry | `borough-officials.json` (operator-maintained) |
 | `district-attorney` | District Attorney | political | BoroughOffice | shares `borough` geometry | same roster |

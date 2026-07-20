@@ -5112,17 +5112,94 @@ function initChiExplorer() {
       });
   });
 
-  registerPolygonLayer({
+  /* ---------- County clerk roster, keyed by county name normalized to
+   * uppercase letters only ("STCLAIR", "LASALLE") — ISBE and TIGERweb spell
+   * counties differently ("ST. CLAIR" vs "St. Clair"), so both sides of the
+   * join strip punctuation/case. Scraped weekly by CI from the State Board
+   * of Elections' election-authority directory (il_county_clerk_scraper.py +
+   * build_county_clerk_roster.py). Peoria is a deliberate absence: its
+   * election authority is the appointed Peoria County Election Commission,
+   * not the clerk, so its card shows identity rows only. ---------- */
+  var loadIlCountyClerks = makeCached(function () {
+    return fetchJSONWithRetry("data/app/il-county-clerks.json", {}, 2);
+  });
+
+  function normCountyName(name) {
+    return String(name || "").toUpperCase().replace(/\s*COUNTY\s*$/, "").replace(/[^A-Z]/g, "");
+  }
+
+  function countyClerkFor(feature, roster) {
+    if (!roster) return null;
+    var props = feature.properties || {};
+    var base = findPropCI(props, ["basename"]) || findPropCI(props, ["name"]);
+    var key = normCountyName(base);
+    return key ? roster[key] || null : null;
+  }
+
+  registerLayer({
     id: "county",
     group: "geography",
     label: "County",
-    loader: loadIlCounties,
-    // solid, slightly heavier stroke — the broadest local boundary on the map
-    style: { color: "#444B54", weight: 2, fillColor: "#6B7280", fillOpacity: 0.04 },
-    fields: [
-      { name: "name", label: "County", keys: ["name"], primary: true },
-      { name: "geoid", label: "FIPS", keys: ["geoid"] }
-    ],
+    overlay: {
+      load: loadIlCounties,
+      // solid, slightly heavier stroke — the broadest local boundary on the map
+      style: { color: "#444B54", weight: 2, fillColor: "#6B7280", fillOpacity: 0.04 }
+    },
+    hoverName: function (feature) {
+      var name = findPropCI(feature.properties || {}, ["name"]);
+      return name != null ? String(name) : null;
+    },
+    query: function (point, seq) {
+      return Promise.all([
+        loadIlCounties(),
+        loadIlCountyClerks().catch(function () { return {}; })
+      ]).then(function (results) {
+        var geojson = results[0], roster = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        return {
+          seq: seq,
+          name: findPropCI(props, ["name"]),
+          geoid: findPropCI(props, ["geoid"]),
+          clerk: countyClerkFor(feature, roster)
+        };
+      });
+    },
+    render: function (result) {
+      // Card convention: identifier → representative → location → contact → link.
+      var fields = [{ label: "County", value: result.name != null ? String(result.name) : "Unknown" }];
+      if (result.geoid != null) fields.push({ label: "FIPS", value: String(result.geoid) });
+      var clerk = result.clerk;
+      if (clerk && clerk.name) {
+        // Names render as ISBE publishes them (all-caps): title-casing would
+        // corrupt surnames like McHENRY / O'BRIEN, and guessing is worse.
+        fields.push({ label: "County Clerk", value: String(clerk.name) });
+        if (clerk.address) fields.push({ label: "Clerk's Office", value: String(clerk.address), pin: "#444B54" });
+        if (clerk.phone) fields.push({ label: "Phone", value: String(clerk.phone) });
+        if (clerk.email) {
+          fields.push({ label: "Email", html: '<a href="mailto:' + sanitize(String(clerk.email)) + '">' + sanitize(String(clerk.email)) + '</a>' });
+        }
+      }
+      fields.push({
+        label: "Directory",
+        html: '<a href="https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx" target="_blank" rel="noopener">ISBE election-authority directory</a>'
+      });
+      return renderFieldList(fields);
+    },
+    pointOfInterest: function (result) {
+      if (!result.clerk || !result.clerk.address) return null;
+      return { label: "County Clerk", address: String(result.clerk.address) };
+    },
+    // hover popup: name the clerk from the prefetched roster (same normalized
+    // county-name join as the query, run synchronously against the cache).
+    hoverOfficial: {
+      load: loadIlCountyClerks,
+      name: function (feature, roster) {
+        var clerk = countyClerkFor(feature, roster);
+        return clerk && clerk.name ? String(clerk.name) : null;
+      }
+    },
     // County is the top of the Township > Precinct nest. Turning it off can't
     // leave a nested sub-selection stranded on the map, so cascade Township off
     // (which in turn drops Precinct). No-op when Township isn't on.

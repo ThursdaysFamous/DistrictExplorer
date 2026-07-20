@@ -492,11 +492,15 @@
       {
         "file": "ccbr-roster.json",
         "min_keys": 3
+      },
+      {
+        "file": "il-county-clerks.json",
+        "min_keys": 101
       }
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v13",
+    "cache_name": "district-explorer-shell-v14",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",
@@ -544,6 +548,11 @@
       "file": "update-ccbr-roster.yml",
       "purpose": "Board of Review commissioner roster (cookcountyboardofreview.com scrape)",
       "schedule": "Fri 13:00 UTC"
+    },
+    {
+      "file": "update-county-clerk-roster.yml",
+      "purpose": "Illinois county clerk roster (ISBE election-authority directory scrape)",
+      "schedule": "Sat 13:00 UTC"
     },
     {
       "file": "validate-sources.yml",

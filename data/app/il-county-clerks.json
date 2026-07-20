@@ -1,0 +1,608 @@
+{
+  "ADAMS": {
+    "address": "507 VERMONT STREET QUINCY, IL 62301",
+    "email": "elections@adamscountyil.gov",
+    "name": "RYAN A. NIEKAMP",
+    "phone": "(217) 277-2150"
+  },
+  "ALEXANDER": {
+    "address": "2000 WASHINGTON AVENUE CAIRO, IL 62914",
+    "email": "acc@alexandercountyil.org",
+    "name": "ZACH PRICE",
+    "phone": "(618) 734-7000"
+  },
+  "BOND": {
+    "address": "206 W MAIN ST GREENVILLE, IL 62246",
+    "email": "brooke.weathers@bondcountyil.gov",
+    "name": "BROOKE WEATHERS",
+    "phone": "(618) 664-0449"
+  },
+  "BOONE": {
+    "address": "1212 LOGAN AVENUE SUITE 103 BELVIDERE, IL 61008",
+    "email": "countyclerk@boonecountyil.gov",
+    "name": "AMY OHLSEN",
+    "phone": "(815) 544-3103"
+  },
+  "BROWN": {
+    "address": "200 COURT STREET ROOM 4 MT. STERLING, IL 62353",
+    "email": "countyclerk@browncoil.gov",
+    "name": "JENNY WELTY",
+    "phone": "(217) 773-3421"
+  },
+  "BUREAU": {
+    "address": "700 SOUTH MAIN STREET ROOM 104 PRINCETON, IL 61356",
+    "email": "countyclerk@bureaucounty-il.gov",
+    "name": "MATTHEW S. EGGERS",
+    "phone": "(815) 875-2014"
+  },
+  "CALHOUN": {
+    "address": "301 SOUTH COUNTY ROAD HARDIN, IL 62047",
+    "email": "amy.friedel@calhouncountyil.gov",
+    "name": "AMY FRIEDEL",
+    "phone": "(618) 576-9700 x2"
+  },
+  "CARROLL": {
+    "address": "PO BOX 152 MT. CARROLL, IL 61053",
+    "email": "abuss@carrollcountyil.gov",
+    "name": "AMY R. BUSS",
+    "phone": "(815) 244-0221"
+  },
+  "CASS": {
+    "address": "100 EAST SPRINGFIELD STREET VIRGINIA, IL 62691",
+    "email": "cassclerkoffice@casscountyil.gov",
+    "name": "SHELLY WESSEL",
+    "phone": "(217) 452-2277 x4"
+  },
+  "CHAMPAIGN": {
+    "address": "102 EAST MAIN URBANA, IL 61801",
+    "email": "elections@champaigncountyclerkil.gov",
+    "name": "AARON O. AMMONS",
+    "phone": "(217) 384-3724"
+  },
+  "CHRISTIAN": {
+    "address": "101 SOUTH MAIN STREET PO BOX 647 TAYLORVILLE, IL 62568",
+    "email": "elections@christiancountyil.com",
+    "name": "JODIE BADMAN",
+    "phone": "(217) 824-4969 x 236"
+  },
+  "CLARK": {
+    "address": "501 ARCHER AVENUE MARSHALL, IL 62441",
+    "email": "clerk@clarkcounty.illinois.gov",
+    "name": "LAURA H. LEE",
+    "phone": "(217) 826-8311"
+  },
+  "CLAY": {
+    "address": "111 EAST CHESTNUT PO BOX 160 LOUISVILLE, IL 62858",
+    "email": "claycoclerk@claycounty.illinois.gov",
+    "name": "AMY BRITTON",
+    "phone": "(618) 665-3626"
+  },
+  "CLINTON": {
+    "address": "850 FAIRFAX STREET CARLYLE, IL 62231",
+    "email": "ccclerk@clintonco.illinois.gov",
+    "name": "VICKY ALBERS",
+    "phone": "(618) 594-6620"
+  },
+  "COLES": {
+    "address": "651 JACKSON AVENUE ROOM 122 CHARLESTON, IL 61920",
+    "email": "JCoe@colesco.illinois.gov",
+    "name": "JULIE COE",
+    "phone": "(217) 348-0501"
+  },
+  "COOK": {
+    "address": "118 NORTH CLARK STREET ROOM 230 CHICAGO, IL 60602",
+    "email": "Voter.Reg@cookcountyil.gov",
+    "name": "MONICA GORDON",
+    "phone": "(312) 603-0906"
+  },
+  "CRAWFORD": {
+    "address": "100 DOUGLAS STREET PO BOX 616 ROBINSON, IL 62454",
+    "email": "clerk@crawfordcounty.illinois.gov",
+    "name": "BECKIE STALEY",
+    "phone": "(618) 546-1212"
+  },
+  "CUMBERLAND": {
+    "address": "PO BOX 146 TOLEDO, IL 62468",
+    "email": "bhoward@cumberlandcoil.gov",
+    "name": "BEVERLY HOWARD",
+    "phone": "(217) 849-2631"
+  },
+  "DEKALB": {
+    "address": "110 EAST SYCAMORE STREET SYCAMORE, IL 60178",
+    "email": "tsims@dekalbcounty.org",
+    "name": "TASHA SIMS",
+    "phone": "(815) 895-7147"
+  },
+  "DEWITT": {
+    "address": "201 WEST WASHINGTON CLINTON, IL 61727",
+    "email": "kharris@dewittcountyil.gov",
+    "name": "KARI HARRIS",
+    "phone": "(217) 935-7780"
+  },
+  "DOUGLAS": {
+    "address": "401 SOUTH CENTER STREET P.O. Box 467 TUSCOLA, IL 61953",
+    "email": "judi.pollock@douglascountyil.gov",
+    "name": "JUDI POLLOCK",
+    "phone": "(217) 253-2442"
+  },
+  "DUPAGE": {
+    "address": "421 NORTH COUNTY FARM ROAD WHEATON, IL 60187",
+    "email": "countyclerk@dupagecounty.gov",
+    "name": "JEAN KACZMAREK",
+    "phone": "(630) 407-5600"
+  },
+  "EDGAR": {
+    "address": "115 WEST COURT STREET ROOM J PARIS, IL 61944",
+    "email": "agriffin@edgarcountyillinois.gov",
+    "name": "AUGUST GRIFFIN",
+    "phone": "(217) 466-7433"
+  },
+  "EDWARDS": {
+    "address": "50 EAST MAIN STREET SUITE 12 ALBION, IL 62806",
+    "email": "countyclerk@edwardscounty.illinois.gov",
+    "name": "MELANIE KNIGHT",
+    "phone": "(618) 445-2115"
+  },
+  "EFFINGHAM": {
+    "address": "101 NORTH 4TH STREET SUITE 201 EFFINGHAM, IL 62401",
+    "email": "mkollmann@effinghamcountyil.gov",
+    "name": "MICHELLE KOLLMANN",
+    "phone": "(217) 342-6535"
+  },
+  "FAYETTE": {
+    "address": "221 SOUTH 7TH STREET ROOM 106 VANDALIA, IL 62471",
+    "email": "jbarker@fayettecountyillinois.gov",
+    "name": "JESSICA BARKER",
+    "phone": "(618) 283-5000"
+  },
+  "FORD": {
+    "address": "200 WEST STATE STREET ROOM 101 PAXTON, IL 60957",
+    "email": "clerk@fordcounty.illinois.gov",
+    "name": "KELSIE VAUGHN",
+    "phone": "(217) 379-9400"
+  },
+  "FRANKLIN": {
+    "address": "901 PUBLIC SQUARE P.O. Box 607 BENTON, IL 62812",
+    "email": "paris.dunk@franklincountyil.gov",
+    "name": "PARIS DUNK",
+    "phone": "(618) 435-9800 x208"
+  },
+  "FULTON": {
+    "address": "100 NORTH MAIN STREET P.O. Box 226. LEWISTOWN, IL 61542",
+    "email": "pobrian@fultoncountyilelections.gov",
+    "name": "PATRICK O'BRIAN",
+    "phone": "(309) 547-3041"
+  },
+  "GALLATIN": {
+    "address": "PO BOX 550 SHAWNEETOWN, IL 62984",
+    "email": "CountyClerk@gallatinco.illinois.gov",
+    "name": "PAMELA DUVALL",
+    "phone": "(618) 269-3025"
+  },
+  "GREENE": {
+    "address": "519 NORTH MAIN CARROLLTON, IL 62016",
+    "email": "mcarter@greenecountyil.org",
+    "name": "MELISSA CARTER",
+    "phone": "(217) 942-5443"
+  },
+  "GRUNDY": {
+    "address": "111 EAST WASHINGTON STREET ROOM 12, P.O. Box 675 MORRIS, IL 60450",
+    "email": "elections@grundycountyil.gov",
+    "name": "KAY T. OLSON",
+    "phone": "(815) 941-3222"
+  },
+  "HAMILTON": {
+    "address": "100 SOUTH JACKSON STREET ROOM 2 McLEANSBORO, IL 62859",
+    "email": "coclerk@hamiltoncountyil.gov",
+    "name": "HEATHER BOMAN",
+    "phone": "(618) 643-2721"
+  },
+  "HANCOCK": {
+    "address": "PO BOX 39 CARTHAGE, IL 62321",
+    "email": "wilde-tillman@hancockcounty-il.gov",
+    "name": "HOLLY A. WILDE-TILLMAN",
+    "phone": "(217) 357-3911"
+  },
+  "HARDIN": {
+    "address": "PO BOX 187 ELIZABETHTOWN, IL 62931",
+    "email": "countyclerk@hardincountyil.gov",
+    "name": "JILL COWSERT",
+    "phone": "(618) 287-2251"
+  },
+  "HENDERSON": {
+    "address": "307 WARREN STREET PO BOX 308 OQUAWKA, IL 61469",
+    "email": "avanarsdale.coclerk@hendersoncountyil.gov",
+    "name": "AMANDA VAN ARSDALE",
+    "phone": "(309) 867-2911"
+  },
+  "HENRY": {
+    "address": "307 WEST CENTER STREET CAMBRIDGE, IL 61238",
+    "email": "blink@henrycty.com",
+    "name": "BARBARA M. LINK",
+    "phone": "(309) 937-3480"
+  },
+  "IROQUOIS": {
+    "address": "1001 EAST GRANT WATSEKA, IL 60970",
+    "email": "bsuver@iroquoiscountyil.gov",
+    "name": "BREEIN B. SUVER",
+    "phone": "(815) 432-6960"
+  },
+  "JACKSON": {
+    "address": "1001 WALNUT STREET MURPHYSBORO, IL 62966",
+    "email": "Frank.Byrd@jacksoncounty-il.gov",
+    "name": "FRANK L. BYRD",
+    "phone": "(618) 687-7360"
+  },
+  "JASPER": {
+    "address": "204 WEST WASHINGTON STREET SUITE 2 NEWTON, IL 62448",
+    "email": "Amy.tarr@jaspercounty.illinois.gov",
+    "name": "AMY TARR",
+    "phone": "(618) 783-3124"
+  },
+  "JEFFERSON": {
+    "address": "100 SOUTH 10TH STREET ROOM 105 MT. VERNON, IL 62864",
+    "email": "jeffcoclerk@jeffersoncounty.illinois.gov",
+    "name": "JOSEPH DAVIS",
+    "phone": "(618) 244-8020 x3"
+  },
+  "JERSEY": {
+    "address": "200 NORTH LAFAYETTE STREET SUITE 1 JERSEYVILLE, IL 62052",
+    "email": "pwarford@jerseycounty-il.gov",
+    "name": "PAM WARFORD",
+    "phone": "(618) 498-5571 x115"
+  },
+  "JODAVIESS": {
+    "address": "330 NORTH BENCH STREET Temporary: 219 Kelly Lane GALENA, IL 61036",
+    "email": "dtimmerman@jodaviesscountyil.gov",
+    "name": "DANA TIMMERMAN",
+    "phone": "(815) 777-0161"
+  },
+  "JOHNSON": {
+    "address": "117 NORTH 5TH STREET PO BOX 96 VIENNA, IL 62995",
+    "email": "CountyClerk@johnsonco.illinois.gov",
+    "name": "ROBIN HARPER-WHITEHEAD",
+    "phone": "(618) 658-3611"
+  },
+  "KANE": {
+    "address": "719 SOUTH BATAVIA AVENUE BUILDING B GENEVA, IL 60134",
+    "email": "countyclerk@kanecountyil.gov",
+    "name": "JOHN A. CUNNINGHAM",
+    "phone": "(630) 232-5990"
+  },
+  "KANKAKEE": {
+    "address": "189 EAST COURT STREET KANKAKEE, IL 60901",
+    "email": "countyclerk@kankakeecountyil.gov",
+    "name": "DAN HENDRICKSON",
+    "phone": "(815) 937-2990"
+  },
+  "KENDALL": {
+    "address": "502 South Main Street YORKVILLE, IL 60560",
+    "email": "elections@kendallcountyil.gov",
+    "name": "DEBBIE GILLETTE",
+    "phone": "(630) 553-4104"
+  },
+  "KNOX": {
+    "address": "200 SOUTH CHERRY GALESBURG, IL 61401",
+    "email": "serickson@knoxcountyil.gov",
+    "name": "SCOTT G. ERICKSON",
+    "phone": "(309) 345-3815"
+  },
+  "LAKE": {
+    "address": "18 NORTH COUNTY STREET ROOM 101 WAUKEGAN, IL 60085",
+    "email": "VoterRegistration@lakecountyil.gov",
+    "name": "ANTHONY VEGA",
+    "phone": "(847) 377-2410"
+  },
+  "LASALLE": {
+    "address": "707 EAST ETNA ROAD OTTAWA, IL 61350",
+    "email": "countyclerk@lasallecountyil.gov",
+    "name": "JENNIFER EBNER",
+    "phone": "(815) 434-8210"
+  },
+  "LAWRENCE": {
+    "address": "1100 STATE STREET LAWRENCEVILLE, IL 62439",
+    "email": "WGibson@lawrencecounty.illinois.gov",
+    "name": "WILL C. GIBSON",
+    "phone": "(618) 943-2346"
+  },
+  "LEE": {
+    "address": "112 EAST 2ND STREET P.O. Box 329 DIXON, IL 61021",
+    "email": "npetersen@countyoflee.org",
+    "name": "NANCY PETERSEN",
+    "phone": "(815) 288-3309"
+  },
+  "LIVINGSTON": {
+    "address": "112 WEST MADISON PO BOX 618 PONTIAC, IL 61764",
+    "email": "kmasching@livingstoncountyil.gov",
+    "name": "KRISTY A. MASCHING",
+    "phone": "(815) 844-2006"
+  },
+  "LOGAN": {
+    "address": "601 BROADWAY STREET LINCOLN, IL 62656",
+    "email": "elections@logancountyil.gov",
+    "name": "THERESA MOORE",
+    "phone": "(217) 732-4148"
+  },
+  "MACON": {
+    "address": "141 SOUTH MAIN STREET ROOM 104 DECATUR, IL 62523",
+    "email": "jtanner@maconcounty.illinois.gov",
+    "name": "JOSH TANNER",
+    "phone": "(217) 424-1305"
+  },
+  "MACOUPIN": {
+    "address": "201 EAST MAIN STREET PO BOX 107 CARLINVILLE, IL 62626",
+    "email": "pete.duncan@macoupincountyil.gov",
+    "name": "PETE DUNCAN",
+    "phone": "(217) 854-3214"
+  },
+  "MADISON": {
+    "address": "157 NORTH MAIN STREET SUITE 109, P.O.Box 218 EDWARDSVILLE, IL 62025",
+    "email": "laandreas@madisoncountyil.gov",
+    "name": "LINDA ANDREAS",
+    "phone": "(618) 692-6290"
+  },
+  "MARION": {
+    "address": "100 EAST MAIN PO BOX 637 SALEM, IL 62881",
+    "email": "CountyClerk@MarionCo.Illinois.gov",
+    "name": "STEVEN FOX",
+    "phone": "(618) 548-3400"
+  },
+  "MARSHALL": {
+    "address": "122 NORTH PRAIRIE STREET PO BOX 328 LACON, IL 61540",
+    "email": "coclerk@marshallcountyillinois.gov",
+    "name": "JILL M. KENYON",
+    "phone": "(309) 246-6325"
+  },
+  "MASON": {
+    "address": "100 NORTH BROADWAY PO BOX 77 HAVANA, IL 62644",
+    "email": "countyclerk@masoncountyil.gov",
+    "name": "SUMMER R. BROWN",
+    "phone": "(309) 543-6661"
+  },
+  "MASSAC": {
+    "address": "1 SUPERMAN SQUARE, ROOM 2A PO BOX 429 METROPOLIS, IL 62960",
+    "email": "hmiles@massaccountyil.gov",
+    "name": "HAILEY MILES",
+    "phone": "(618) 524-5213"
+  },
+  "MCDONOUGH": {
+    "address": "1 COURTHOUSE SQUARE MACOMB, IL 61455",
+    "email": "jbenson@mcdonoughcountyclerk.org",
+    "name": "JEREMY BENSON",
+    "phone": "(309) 833-2474"
+  },
+  "MCHENRY": {
+    "address": "2200 NORTH SEMINARY AVENUE WOODSTOCK, IL 60098",
+    "email": "countyclerk@mchenrycountyil.gov",
+    "name": "JOSEPH J. TIRIO",
+    "phone": "(815) 334-4242"
+  },
+  "MCLEAN": {
+    "address": "115 EAST WASHINGTON STREET ROOM 102 BLOOMINGTON, IL 61702",
+    "email": "kathy.michael@mcleancountyil.gov",
+    "name": "KATHY MICHAEL",
+    "phone": "(309) 888-4035"
+  },
+  "MENARD": {
+    "address": "102 SOUTH 7TH STREET PETERSBURG, IL 62675",
+    "email": "mgum@menardcountyil.gov",
+    "name": "MARTHA \"MARTY\" GUM",
+    "phone": "(217) 632-3201"
+  },
+  "MERCER": {
+    "address": "100 SOUTHEAST 3RD STREET ALEDO, IL 61231",
+    "email": "bgerber@mercercountyil.org",
+    "name": "BRIAN GERBER",
+    "phone": "(309) 582-7021"
+  },
+  "MONROE": {
+    "address": "100 SOUTH MAIN STREET WATERLOO, IL 62298",
+    "email": "countyclerk@monroecountyil.gov",
+    "name": "JONATHAN McLEAN",
+    "phone": "(618) 939-8623"
+  },
+  "MONTGOMERY": {
+    "address": "1 COURTHOUSE SQUARE, ROOM 102 PO BOX 595 HILLSBORO, IL 62049",
+    "email": "countyclerk@montgomerycountyil.gov",
+    "name": "SANDY LEITHEISER",
+    "phone": "(217) 532-9530"
+  },
+  "MORGAN": {
+    "address": "300 WEST STATE STREET JACKSONVILLE, IL 62650",
+    "email": "ssills@morgancounty-il.gov",
+    "name": "SHERRY SILLS",
+    "phone": "(217) 243-8581"
+  },
+  "MOULTRIE": {
+    "address": "10 SOUTH MAIN SUITE 6 SULLIVAN, IL 61951",
+    "email": "linda.qualls@moultriecountyil.gov",
+    "name": "LINDA QUALLS",
+    "phone": "(217) 728-4389"
+  },
+  "OGLE": {
+    "address": "105 SOUTH 5TH STREET SUITE 104 OREGON, IL 61061",
+    "email": "countyclerk@oglecountyil.gov",
+    "name": "LAURA J. COOK",
+    "phone": "(815) 732-1110"
+  },
+  "PERRY": {
+    "address": "3764 STATE ROUTE 13/127 PO BOX 438 PINCKNEYVILLE, IL 62274",
+    "email": "countyclerk@perrycountyil.gov",
+    "name": "BOBBY KELLY",
+    "phone": "(618) 357-5116"
+  },
+  "PIATT": {
+    "address": "101 WEST WASHINGTON PO BOX 558 MONTICELLO, IL 61856",
+    "email": "countyclerk@piatt.gov",
+    "name": "JENNIFER HARPER",
+    "phone": "(217) 762-9487"
+  },
+  "PIKE": {
+    "address": "121 EAST WASHINGTON PITTSFIELD, IL 62363",
+    "email": "nroseberry@pikecountyil.gov",
+    "name": "NATALIE ROSEBERRY",
+    "phone": "(217) 285-6812"
+  },
+  "POPE": {
+    "address": "310 EAST MAIN STREET PO BOX 216 GOLCONDA, IL 62938",
+    "email": "countyclerk@popeco.illinois.gov",
+    "name": "DARCI GARLING",
+    "phone": "(618) 683-4466"
+  },
+  "PULASKI": {
+    "address": "PO BOX 118 MOUND CITY, IL 62963",
+    "email": "jhancock@pulaskicountyil.gov",
+    "name": "JULIE HANCOCK",
+    "phone": "(618) 748-9360"
+  },
+  "PUTNAM": {
+    "address": "120 NORTH 4TH STREET PO BOX 236 HENNEPIN, IL 61327",
+    "email": "countyclerk@putnamil.gov",
+    "name": "TINA DOLDER",
+    "phone": "(815) 925-7129"
+  },
+  "RANDOLPH": {
+    "address": "1 TAYLOR STREET ROOM 202 CHESTER, IL 62233",
+    "email": "mjohnson@randolphcountyil.gov",
+    "name": "MELANIE L. JOHNSON",
+    "phone": "(618) 826-5000 x191"
+  },
+  "RICHLAND": {
+    "address": "103 WEST MAIN STREET OLNEY, IL 62450",
+    "email": "atroyer@richlandcounty.illinois.gov",
+    "name": "AMANDA TROYER",
+    "phone": "(618) 392-3111"
+  },
+  "ROCKISLAND": {
+    "address": "1504 THIRD AVENUE ROCK ISLAND, IL 61201",
+    "email": "kkinney@rockislandcountyil.gov",
+    "name": "KAREN KINNEY",
+    "phone": "(309) 558-3555"
+  },
+  "SALINE": {
+    "address": "10 EAST POPLAR STREET SUITE 17 HARRISBURG, IL 62946",
+    "email": "jcox@salinecounty.illinois.gov",
+    "name": "JIMI WILLIAMS-COX",
+    "phone": "(618) 253-8197"
+  },
+  "SANGAMON": {
+    "address": "200 SOUTH 9TH STREET ROOM 105 SPRINGFIELD, IL 62701",
+    "email": "elections@sangamonil.gov",
+    "name": "DON GRAY",
+    "phone": "(217) 753-8683"
+  },
+  "SCHUYLER": {
+    "address": "102 SOUTH CONGRESS STREET SUITE 104 RUSHVILLE, IL 62681",
+    "email": "elections@schuylercountyil.gov",
+    "name": "MINDY GARRETT",
+    "phone": "(217) 322-4734"
+  },
+  "SCOTT": {
+    "address": "35 EAST MARKET STREET WINCHESTER, IL 62694",
+    "email": "countyclerk@scottcoil.gov",
+    "name": "BROOKE SMITH",
+    "phone": "(217) 742-3178"
+  },
+  "SHELBY": {
+    "address": "301 EAST MAIN PO BOX 230 SHELBYVILLE, IL 62565",
+    "email": "shcoclerk@shelbycounty-il.gov",
+    "name": "JESSICA FOX",
+    "phone": "(217) 774-4421"
+  },
+  "STARK": {
+    "address": "130 WEST MAIN STREET P.O. Box 97 TOULON, IL 61483",
+    "email": "elections@starkco.illinois.gov",
+    "name": "HEATHER HOLLIS",
+    "phone": "(309) 286-5911"
+  },
+  "STCLAIR": {
+    "address": "#10 PUBLIC SQUARE BELLEVILLE, IL 62220",
+    "email": "elections@stclaircountyil.gov",
+    "name": "THOMAS HOLBROOK",
+    "phone": "(618) 825-2377"
+  },
+  "STEPHENSON": {
+    "address": "50 WEST DOUGLAS SUITE 500 FREEPORT, IL 61032",
+    "email": "jwingert@stephensoncountyil.gov",
+    "name": "JAZMIN WINGERT",
+    "phone": "(815) 235-8289"
+  },
+  "TAZEWELL": {
+    "address": "11 SOUTH 4TH STREET SUITE 203 PEKIN, IL 61554",
+    "email": "jcackerman@tazewell-il.gov",
+    "name": "JOHN C. ACKERMAN",
+    "phone": "(309) 477-2267"
+  },
+  "UNION": {
+    "address": "309 WEST MARKET STREET ROOM 116 JONESBORO, IL 62952",
+    "email": "scox@unioncountyil.gov",
+    "name": "STEPHANIE COX",
+    "phone": "(618) 833-5711"
+  },
+  "VERMILION": {
+    "address": "201 NORTH VERMILION STREET SUITE 110 DANVILLE, IL 61832",
+    "email": "Robyn.heffern@vercountyil.gov",
+    "name": "ROBYN HEFFERN",
+    "phone": "(217) 554-1900"
+  },
+  "WABASH": {
+    "address": "401 NORTH MARKET STREET PO BOX 277 MT. CARMEL, IL 62863",
+    "email": "wccr1@wabashcounty.illinois.gov",
+    "name": "JANET L. WILL",
+    "phone": "(618) 262-4561"
+  },
+  "WARREN": {
+    "address": "100 WEST BROADWAY MONMOUTH, IL 61462",
+    "email": "warrencountyclerk@warrencountyil.gov",
+    "name": "RANDI S. REYNOLDS",
+    "phone": "(309) 734-4612"
+  },
+  "WASHINGTON": {
+    "address": "101 EAST ST. LOUIS STREET NASHVILLE, IL 62263",
+    "email": "shari.hempen@washingtonco.illinois.gov",
+    "name": "SHARI HEMPEN",
+    "phone": "(618) 327-4800 x300"
+  },
+  "WAYNE": {
+    "address": "301 EAST MAIN STREET FAIRFIELD, IL 62837",
+    "email": "waycoclerk@waynecountyil.gov",
+    "name": "LIZ ANN WOODROW",
+    "phone": "(618) 842-5182"
+  },
+  "WHITE": {
+    "address": "323 EAST MAIN ST P.O. Box 339 CARMI, IL 62821",
+    "email": "clerk@whitecounty-il.gov",
+    "name": "KAYCI HEIL",
+    "phone": "(618) 382-7211 x1"
+  },
+  "WHITESIDE": {
+    "address": "200 EAST KNOX STREET MORRISON, IL 61270",
+    "email": "kstralow@whiteside.org",
+    "name": "KAREN STRALOW",
+    "phone": "(815) 772-5189"
+  },
+  "WILL": {
+    "address": "302 NORTH CHICAGO STREET JOLIET, IL 60432",
+    "email": "electionsmgmt@willcounty.gov",
+    "name": "ANNETTE PARKER",
+    "phone": "(815) 740-4615"
+  },
+  "WILLIAMSON": {
+    "address": "407 NORTH MONROE STREET SUITE 119 MARION, IL 62959",
+    "email": "abarnes@williamsoncountyil.gov",
+    "name": "AMANDA BARNES",
+    "phone": "(618) 998-2112"
+  },
+  "WINNEBAGO": {
+    "address": "404 ELM STREET ROCKFORD, IL 61101",
+    "email": "elections@clerk.wincoil.gov",
+    "name": "LORI GUMMOW",
+    "phone": "(815) 319-4250"
+  },
+  "WOODFORD": {
+    "address": "115 NORTH MAIN STREET ROOM 202 EUREKA, IL 61530",
+    "email": "cntyclk@woodfordcountyil.gov",
+    "name": "DAWN L. KUPFER",
+    "phone": "(309) 467-2822"
+  }
+}
