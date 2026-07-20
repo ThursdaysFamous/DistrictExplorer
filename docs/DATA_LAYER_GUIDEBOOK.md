@@ -71,7 +71,7 @@ Fleet totals: **Chicago 36 · NYC 27 · SF 16** layers.
 | City council district | SHIPPED `ward` (50) | SHIPPED `council` (51) | SHIPPED `supervisor-district` (11; doubles as the county board — consolidated city-county) |
 | Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `will-county-precinct` | SHIPPED `election-district` (~4,200) | SHIPPED `election-precinct` (`jg6x-23ig`, 2022 map; subOf `supervisor-district`, polling-place lookup link) |
 | County legislature / commissioner | SHIPPED `commissioner` (Cook) + `will-county-board` | NO HONEST ANALOG¹ | NO HONEST ANALOG (folded into `supervisor-district`) |
-| County property-tax appeals board (elected) | SHIPPED `ccbr` | NO HONEST ANALOG² | NO HONEST ANALOG⁵ |
+| County property-tax appeals board (elected) | SHIPPED `ccbr` (commissioner roster scraped weekly from the Board's own site) | NO HONEST ANALOG² | NO HONEST ANALOG⁵ |
 | State high-court electoral district | SHIPPED `il-supreme-court` | SHIPPED `judicial-district` (NY Supreme is trial-level, elected by district) | NO HONEST ANALOG⁶ |
 | Trial/civil-court sub-district | SHIPPED `will-county-judicial` (12th-Circuit subcircuits) | SHIPPED `municipal-court` (28) | NO HONEST ANALOG⁶ |
 | District Attorney (districted) | n/a (Cook State's Attorney is one countywide office) | SHIPPED `district-attorney` (5 borough DAs) | NO HONEST ANALOG (one citywide DA)⁷ |
@@ -237,7 +237,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `municipality` | Municipality | geography | Polygon | live TIGERweb Places | — | — |
 | `will-county-judicial` | Judicial Subcircuit (12th Circuit) | political | Polygon | Will County ArcGIS | link-only | willCountyCoverage |
 | `will-county-board` | Will County Board District | political | Bespoke | Will County ArcGIS | `will-county-board-members.json` (weekly CI) | willCountyCoverage |
-| `ccbr` | Cook County Board of Review District | political | Polygon | pre-built (PA 102-0012 shapefile) | link-only | cookCountyCoverage |
+| `ccbr` | Cook County Board of Review District | political | Bespoke | pre-built (PA 102-0012 shapefile) | `ccbr-roster.json` (weekly CI from cookcountyboardofreview.com) | cookCountyCoverage |
 | `commissioner` | Cook County Commissioner District | political | Bespoke | Cook County GIS L9 | live office join (same server) | cookCountyCoverage |
 | `will-county-fire` | Fire Protection District | safety | Polygon | Will County ArcGIS | trustees in GIS attrs | willCountyCoverage |
 | `will-county-park` | Park District | geography | Polygon | Will County ArcGIS | commissioners in GIS attrs | willCountyCoverage |

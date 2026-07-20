@@ -16,7 +16,7 @@ Chicago District Explorer: a single-file, dependency-light web app. Click a poin
 - Geocoders: address Photon (Chicago-bounded type-ahead); unbounded Photon (whole-coverage, sibling-metro lookup); POI Nominatim (office-address pin lookup, serial >=1s queue)
 - Ground truth: 41.88250,-87.62850 (downtown Loop — inside Cook County) → school-board 12; il-supreme-court 1; ccbr 3. Negative point 41.70000,-87.10000 (Lake Michigan, Indiana waters — outside all three anchor layers).
 - Layers: 36 registered (political 12, safety 6, schools 9, geography 9); `registerLayer(` floor 15. Debug namespace `window.ChiExplorer`.
-- Scheduled workflows: `update-ilga-roster.yml` (Mon 13:00 UTC); `update-congress-roster.yml` (Mon 13:00 UTC); `update-cpd-roster.yml` (Tue 13:00 UTC); `update-ccpsa-roster.yml` (Wed 13:00 UTC); `update-will-county-board-roster.yml` (Thu 13:00 UTC); `validate-sources.yml` (1st of month 14:00 UTC).
+- Scheduled workflows: `update-ilga-roster.yml` (Mon 13:00 UTC); `update-congress-roster.yml` (Mon 13:00 UTC); `update-cpd-roster.yml` (Tue 13:00 UTC); `update-ccpsa-roster.yml` (Wed 13:00 UTC); `update-will-county-board-roster.yml` (Thu 13:00 UTC); `update-ccbr-roster.yml` (Fri 13:00 UTC); `validate-sources.yml` (1st of month 14:00 UTC).
 - Source registry: `scripts/validate_sources.py` (machine-checked monthly)
 <!-- ==== GENERATED:END metro-facts ==== -->
 
@@ -100,7 +100,7 @@ Most layers fetch live public APIs at runtime (Chicago Data Portal / Socrata, CP
 ## CI workflows (`.github/workflows/`)
 
 - `smoke-test.yml` — runs the behaviour gate on every PR and push to `main`.
-- `update-{ilga,congress,cpd,ccpsa,will-county-board}-roster.yml` — weekly (staggered) roster refreshes. Each re-scrapes, rebuilds `data/app/`, runs `validate_index.py`, and — if anything changed — **opens a PR rather than committing to `main`.** Officeholder data always gets a human review before it ships. Match this pattern for any new roster: never auto-commit roster changes to `main`.
+- `update-{ilga,congress,cpd,ccpsa,will-county-board,ccbr}-roster.yml` — weekly (staggered) roster refreshes. Each re-scrapes, rebuilds `data/app/`, runs `validate_index.py`, and — if anything changed — **opens a PR rather than committing to `main`.** Officeholder data always gets a human review before it ships. Match this pattern for any new roster: never auto-commit roster changes to `main`.
 - `validate-sources.yml` — monthly source-freshness check. Runs `scripts/validate_sources.py`; on any WARN/FAIL (e.g. a Socrata dataset superseded by a newer-year edition, or a shapefile source gone unreachable) it **opens or updates a single tracking issue** rather than editing anything — the job stays green, the issue is the signal. Same "surface for a human, don't auto-apply" convention as the roster PRs.
 - `fleet-status.yml` — weekly (Mon 15:00 UTC) fleet aggregator, **Chicago repo only**: `scripts/fleet_status.py` reads `metros.json`, checks every fork's deploy/engine-pin/roster state, and diffs each fork's layer roster against `docs/DATA_LAYER_GUIDEBOOK.md`'s coverage map. Reports on a single standing issue.
 - Engine release machinery — `release-engine.yml` (publishes a hash-verified engine artifact on `engine-v*` tags and fans out bump PRs to the sibling forks), `create-engine-tag.yml` (tag helper), `engine-parity.yml` (weekly deployed-site comparison, belt-and-suspenders; Chicago only).

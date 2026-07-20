@@ -41,7 +41,7 @@
 // roster backing the Early Voting Site nearest-point layer — network-first,
 // refreshed per election.)
 /* ==== GENERATED:BEGIN sw-metro-config ==== */
-const CACHE_NAME = "district-explorer-shell-v12";
+const CACHE_NAME = "district-explorer-shell-v13";
 
 const SHELL_URLS = [
   "./",
@@ -82,6 +82,7 @@ const ROSTER_URLS = [
   "./data/app/ccpsa-district-councils.json",
   "./data/app/will-county-board-members.json",
   "./data/app/early-voting-sites.json",
+  "./data/app/ccbr-roster.json",
 ];
 /* ==== GENERATED:END sw-metro-config ==== */
 /* ==== METRO:END sw-config ==== */

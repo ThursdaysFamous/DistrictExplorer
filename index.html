@@ -7301,18 +7301,72 @@ function initChiExplorer() {
     return fetchJSONWithRetry("data/app/ccbr-districts.json", {}, 2);
   });
 
-  registerPolygonLayer({
+  /* ---------- Commissioner roster, keyed by district number ("1"/"2"/"3").
+   * Scraped weekly by CI from the Board's own commissioner pages
+   * (scripts/ccbr_scraper.py + build_ccbr_roster.py) — the PA 102-0012
+   * shapefile carries no officeholder fields and no open dataset names the
+   * commissioners. A district may honestly lack email/phone (District 2
+   * published only a contact form when this shipped); missing keys simply
+   * drop their card rows. ---------- */
+  var loadCcbrRoster = makeCached(function () {
+    return fetchJSONWithRetry("data/app/ccbr-roster.json", {}, 2);
+  });
+
+  registerLayer({
     id: "ccbr",
     group: "political",
     label: "Cook County Board of Review District",
     coverage: cookCountyCoverage,
-    loader: loadCcbrDistricts,
-    style: { color: "#1E7A8C", weight: 2, fillColor: "#1E7A8C", fillOpacity: 0.05, dashArray: "4 4" },
-    fields: [
-      { name: "district", label: "District", keys: ["districtn", "district"], primary: true },
-      { label: "What it does", value: "Hears property-tax assessment appeals; one commissioner is elected per district." },
-      { label: "Board info", html: '<a href="https://www.cookcountyboardofreview.com/" target="_blank" rel="noopener">Cook County Board of Review</a>' }
-    ]
+    overlay: {
+      load: loadCcbrDistricts,
+      style: { color: "#1E7A8C", weight: 2, fillColor: "#1E7A8C", fillOpacity: 0.05, dashArray: "4 4" }
+    },
+    hoverName: function (feature) {
+      var d = findPropCI(feature.properties || {}, ["districtn", "district"]);
+      return d != null ? "District " + String(d) : null;
+    },
+    query: function (point, seq) {
+      return Promise.all([
+        loadCcbrDistricts(),
+        loadCcbrRoster().catch(function () { return {}; })
+      ]).then(function (results) {
+        var geojson = results[0], roster = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var district = findPropCI(props, ["districtn", "district"]);
+        var member = district != null ? roster[String(district)] : undefined;
+        return { seq: seq, district: district, member: member };
+      });
+    },
+    render: function (result) {
+      // Card convention: identifier → representative → contact → link.
+      var fields = [{ label: "District", value: result.district != null ? String(result.district) : "Unknown" }];
+      var m = result.member;
+      if (m && m.name) fields.push({ label: "Commissioner", value: String(m.name) });
+      if (m && m.email) {
+        fields.push({ label: "Email", html: '<a href="mailto:' + sanitize(String(m.email)) + '">' + sanitize(String(m.email)) + '</a>' });
+      }
+      if (m && m.phone) fields.push({ label: "Phone", value: String(m.phone) });
+      var page = m ? safeHttpUrl(m.url) : null;
+      if (page) {
+        fields.push({ label: "Commissioner page", html: '<a href="' + sanitize(page) + '" target="_blank" rel="noopener">' + sanitize(page) + '</a>' });
+      }
+      fields.push({ label: "What it does", value: "Hears property-tax assessment appeals; one commissioner is elected per district." });
+      fields.push({ label: "Board info", html: '<a href="https://www.cookcountyboardofreview.com/" target="_blank" rel="noopener">Cook County Board of Review</a>' });
+      return renderFieldList(fields);
+    },
+    // hover popup: name the commissioner from the prefetched roster (same
+    // district-number join as the query, run synchronously against the cache).
+    hoverOfficial: {
+      load: loadCcbrRoster,
+      name: function (feature, roster) {
+        if (!roster) return null;
+        var d = findPropCI(feature.properties || {}, ["districtn", "district"]);
+        var m = d != null ? roster[String(d)] : null;
+        return m && m.name ? String(m.name) : null;
+      }
+    }
   });
 
   /* ---------- Cook County Commissioner District — the one Political layer

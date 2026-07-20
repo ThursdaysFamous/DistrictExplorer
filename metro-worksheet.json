@@ -1,148 +1,502 @@
 {
   "this_metro": "chicago",
   "metro_name": "Chicago",
-  "metro_bbox": { "minLng": -88.6, "minLat": 41.0, "maxLng": -87.0, "maxLat": 42.6 },
-  "metro_center": [41.8781, -87.6298],
-  "permalink_gate": { "minLat": 40.8, "maxLat": 42.7, "minLng": -88.8, "maxLng": -86.9 },
+  "metro_bbox": {
+    "minLng": -88.6,
+    "minLat": 41.0,
+    "maxLng": -87.0,
+    "maxLat": 42.6
+  },
+  "metro_center": [
+    41.8781,
+    -87.6298
+  ],
+  "permalink_gate": {
+    "minLat": 40.8,
+    "maxLat": 42.7,
+    "minLng": -88.8,
+    "maxLng": -86.9
+  },
   "socrata_host": "https://data.cityofchicago.org",
   "socrata_app_token": "",
   "repo_issues": "https://github.com/ThursdaysFamous/DistrictExplorer-CHI/issues/new",
   "feedback_subject": "Chicago District Explorer feedback",
   "metro_explorers": [
-    { "id": "chicago", "label": "Chicago", "url": "https://chidistricts.com/", "emoji": "🌭",
-      "bbox": { "minLng": -88.6, "minLat": 41.0, "maxLng": -87.0, "maxLat": 42.6 } },
-    { "id": "nyc", "label": "New York City", "url": "https://nyc.chidistricts.com/", "emoji": "🗽",
-      "bbox": { "minLng": -74.3, "minLat": 40.45, "maxLng": -73.6, "maxLat": 41.0 } },
-    { "id": "sf", "label": "San Francisco", "url": "https://sf.chidistricts.com/", "emoji": "🌉",
-      "bbox": { "minLng": -122.6, "minLat": 37.6, "maxLng": -122.3, "maxLat": 37.95 } }
+    {
+      "id": "chicago",
+      "label": "Chicago",
+      "url": "https://chidistricts.com/",
+      "emoji": "🌭",
+      "bbox": {
+        "minLng": -88.6,
+        "minLat": 41.0,
+        "maxLng": -87.0,
+        "maxLat": 42.6
+      }
+    },
+    {
+      "id": "nyc",
+      "label": "New York City",
+      "url": "https://nyc.chidistricts.com/",
+      "emoji": "🗽",
+      "bbox": {
+        "minLng": -74.3,
+        "minLat": 40.45,
+        "maxLng": -73.6,
+        "maxLat": 41.0
+      }
+    },
+    {
+      "id": "sf",
+      "label": "San Francisco",
+      "url": "https://sf.chidistricts.com/",
+      "emoji": "🌉",
+      "bbox": {
+        "minLng": -122.6,
+        "minLat": 37.6,
+        "maxLng": -122.3,
+        "maxLat": 37.95
+      }
+    }
   ],
   "highlight_class": "chi-region-highlight",
   "poi_pin_class": "chi-poi-pin",
   "hover_number_keys": [
-    ["ward", "ward_num", "ward_number", "ward_id"],
-    ["district", "dist_num", "dist", "district_number", "district_no"],
-    ["area_numbe", "area_num_1", "area_number", "community_area_number", "area_num"],
-    ["beat_num", "beat", "beat_number", "beat_no"],
-    ["zip", "zip_code", "zipcode", "zcta5ce10"],
-    ["number"]
+    [
+      "ward",
+      "ward_num",
+      "ward_number",
+      "ward_id"
+    ],
+    [
+      "district",
+      "dist_num",
+      "dist",
+      "district_number",
+      "district_no"
+    ],
+    [
+      "area_numbe",
+      "area_num_1",
+      "area_number",
+      "community_area_number",
+      "area_num"
+    ],
+    [
+      "beat_num",
+      "beat",
+      "beat_number",
+      "beat_no"
+    ],
+    [
+      "zip",
+      "zip_code",
+      "zipcode",
+      "zcta5ce10"
+    ],
+    [
+      "number"
+    ]
   ],
   "hover_name_keys": [
-    ["community", "community_area_name", "commarea", "comarea"],
-    ["short_name", "school_nam", "school_nm", "school_name", "schoolname", "sch_name"]
+    [
+      "community",
+      "community_area_name",
+      "commarea",
+      "comarea"
+    ],
+    [
+      "short_name",
+      "school_nam",
+      "school_nm",
+      "school_name",
+      "schoolname",
+      "sch_name"
+    ]
   ],
   "layers": [
-    { "id": "il-supreme-court", "label": "IL Supreme Court District", "group": "political", "area_rank": 1,
-      "rank_note": "judicial district \u2014 largest" },
-    { "id": "congress", "label": "U.S. House District", "group": "political", "area_rank": 2,
-      "rank_note": "U.S. House district" },
-    { "id": "il-senate", "label": "IL State Senate District", "group": "political", "area_rank": 3,
-      "rank_note": "IL State Senate district" },
-    { "id": "il-house", "label": "IL State House District", "group": "political", "area_rank": 4,
-      "rank_note": "IL State House district" },
-    { "id": "county", "label": "County", "group": "geography", "area_rank": 5,
-      "rank_note": "IL county (102 statewide; TIGERweb, live-verified 2026-07)" },
-    { "id": "school-district-secondary", "label": "High School District", "group": "schools", "area_rank": 6,
-      "rank_note": "IL secondary school district (105 statewide; only where elem/HS pairs exist)" },
-    { "id": "school-district-unified", "label": "Unified School District", "group": "schools", "area_rank": 7,
-      "rank_note": "IL unified school district (387 statewide incl. CPS as SD 299)" },
-    { "id": "school-district-elementary", "label": "Elementary School District", "group": "schools", "area_rank": 8,
-      "rank_note": "IL elementary school district (371 statewide)" },
-    { "id": "township", "label": "Township / County Subdivision", "group": "geography", "area_rank": 9,
-      "rank_note": "IL county subdivision (1,695 statewide: townships + city/precinct MCDs)" },
-    { "id": "municipality", "label": "Municipality", "group": "geography", "area_rank": 10,
-      "rank_note": "IL incorporated place (1,294 statewide; empty card = unincorporated)" },
-    { "id": "will-county-judicial", "label": "Judicial Subcircuit (12th Circuit)", "group": "political", "area_rank": 11,
-      "rank_note": "Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)" },
-    { "id": "will-county-board", "label": "Will County Board District", "group": "political", "area_rank": 12,
-      "rank_note": "Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)" },
-    { "id": "ccbr", "label": "Cook County Board of Review District", "group": "political", "area_rank": 13,
-      "rank_note": "Cook County Board of Review district (only 3, county-wide)" },
-    { "id": "commissioner", "label": "Cook County Commissioner District", "group": "political", "area_rank": 14,
-      "rank_note": "Cook County Commissioner district" },
-    { "id": "will-county-fire", "label": "Fire Protection District", "group": "safety", "area_rank": 15,
-      "rank_note": "Will County fire protection district (37; trustees live from county GIS, coverage-gated)" },
-    { "id": "will-county-park", "label": "Park District", "group": "geography", "area_rank": 16,
-      "rank_note": "Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)" },
-    { "id": "school-board", "label": "Elected School Board District", "group": "political", "area_rank": 17,
-      "rank_note": "Elected School Board district (10, citywide)" },
-    { "id": "cps-hs-network", "label": "CPS Network (High School, admin office)", "group": "schools", "area_rank": 18,
-      "rank_note": "CPS High School Network (admin grouping)" },
-    { "id": "cps-network", "label": "CPS Network (K-8, admin office)", "group": "schools", "area_rank": 19,
-      "rank_note": "CPS K-8 Network (admin grouping)" },
-    { "id": "ward-precinct", "label": "Ward Precinct", "group": "political", "area_rank": 21,
-      "rank_note": "Ward Precinct (sub-selection of City Ward)", "rank_comment": ["Smaller than its parent ward, so it renders on top (smallest-on-top); turning it", "on drops the ward to outline-only, framing the precinct fills from underneath."] },
-    { "id": "ward", "label": "City Ward", "group": "political", "area_rank": 20,
-      "rank_note": "City Ward (50)" },
-    { "id": "police-beat", "label": "Police Beat", "group": "safety", "area_rank": 23,
-      "rank_note": "Police Beat (~277)", "rank_comment": ["Smaller than its parent district, so it renders on top (smallest-on-top);", "turning it on drops the district to outline-only, framing the beat fills from underneath."] },
-    { "id": "police-district", "label": "Police District", "group": "safety", "area_rank": 22,
-      "rank_note": "Police District (22)" },
-    { "id": "ccpsa-district-council", "label": "CCPSA District Council", "group": "safety", "area_rank": 24,
-      "rank_comment": ["CCPSA District Council shares the police-district geometry exactly (22,", "one council per district); place it just after so its outline draws on", "top when both are on and its distinct teal dash stays legible."] },
-    { "id": "community-area", "label": "Community Area", "group": "geography", "area_rank": 25,
-      "rank_note": "Community Area (77)" },
-    { "id": "zip-code", "label": "ZIP Code", "group": "geography", "area_rank": 26,
-      "rank_note": "ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)" },
-    { "id": "cps-high", "label": "CPS High School Zone", "group": "schools", "area_rank": 27,
-      "rank_note": "High School attendance zone" },
-    { "id": "cps-middle", "label": "CPS Middle School Zone", "group": "schools", "area_rank": 28,
-      "rank_note": "Middle School attendance zone" },
-    { "id": "will-county-precinct", "label": "Voting Precinct", "group": "geography", "area_rank": 29,
-      "rank_note": "Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)", "rank_comment": ["Smallest Will County layer, so it renders on top of Township and County", "(smallest-on-top); turning it on drops both to outline-only, framing the", "precinct fills from underneath."] },
-    { "id": "cps-elementary", "label": "CPS Elementary School Zone", "group": "schools", "area_rank": 30,
-      "rank_note": "Elementary School attendance zone \u2014 smallest polygon layer" },
-    { "id": "school-site", "label": "School Location (all, incl. private, nearest N)", "group": "schools", "area_rank": 31,
-      "rank_note": "individual school-campus footprints \u2014 smallest polygons, above the zones" },
-    { "id": "police-station", "label": "Police Station", "group": "safety", "area_rank": 32,
-      "rank_note": "point marker \u2014 no polygon area, always topmost" },
-    { "id": "fire-station", "label": "Fire Station", "group": "safety", "area_rank": 33,
-      "rank_note": "point marker \u2014 no polygon area, always topmost" },
-    { "id": "post-office", "label": "Post Office", "group": "geography", "area_rank": 34,
-      "rank_note": "point marker \u2014 no polygon area, always topmost" },
-    { "id": "library", "label": "Library", "group": "geography", "area_rank": 35,
-      "rank_note": "point marker \u2014 no polygon area, always topmost" },
-    { "id": "early-voting", "label": "Early Voting Site", "group": "political", "area_rank": 36,
-      "rank_note": "point marker \u2014 no polygon area, always topmost" }
+    {
+      "id": "il-supreme-court",
+      "label": "IL Supreme Court District",
+      "group": "political",
+      "area_rank": 1,
+      "rank_note": "judicial district — largest"
+    },
+    {
+      "id": "congress",
+      "label": "U.S. House District",
+      "group": "political",
+      "area_rank": 2,
+      "rank_note": "U.S. House district"
+    },
+    {
+      "id": "il-senate",
+      "label": "IL State Senate District",
+      "group": "political",
+      "area_rank": 3,
+      "rank_note": "IL State Senate district"
+    },
+    {
+      "id": "il-house",
+      "label": "IL State House District",
+      "group": "political",
+      "area_rank": 4,
+      "rank_note": "IL State House district"
+    },
+    {
+      "id": "county",
+      "label": "County",
+      "group": "geography",
+      "area_rank": 5,
+      "rank_note": "IL county (102 statewide; TIGERweb, live-verified 2026-07)"
+    },
+    {
+      "id": "school-district-secondary",
+      "label": "High School District",
+      "group": "schools",
+      "area_rank": 6,
+      "rank_note": "IL secondary school district (105 statewide; only where elem/HS pairs exist)"
+    },
+    {
+      "id": "school-district-unified",
+      "label": "Unified School District",
+      "group": "schools",
+      "area_rank": 7,
+      "rank_note": "IL unified school district (387 statewide incl. CPS as SD 299)"
+    },
+    {
+      "id": "school-district-elementary",
+      "label": "Elementary School District",
+      "group": "schools",
+      "area_rank": 8,
+      "rank_note": "IL elementary school district (371 statewide)"
+    },
+    {
+      "id": "township",
+      "label": "Township / County Subdivision",
+      "group": "geography",
+      "area_rank": 9,
+      "rank_note": "IL county subdivision (1,695 statewide: townships + city/precinct MCDs)"
+    },
+    {
+      "id": "municipality",
+      "label": "Municipality",
+      "group": "geography",
+      "area_rank": 10,
+      "rank_note": "IL incorporated place (1,294 statewide; empty card = unincorporated)"
+    },
+    {
+      "id": "will-county-judicial",
+      "label": "Judicial Subcircuit (12th Circuit)",
+      "group": "political",
+      "area_rank": 11,
+      "rank_note": "Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)"
+    },
+    {
+      "id": "will-county-board",
+      "label": "Will County Board District",
+      "group": "political",
+      "area_rank": 12,
+      "rank_note": "Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)"
+    },
+    {
+      "id": "ccbr",
+      "label": "Cook County Board of Review District",
+      "group": "political",
+      "area_rank": 13,
+      "rank_note": "Cook County Board of Review district (only 3, county-wide)"
+    },
+    {
+      "id": "commissioner",
+      "label": "Cook County Commissioner District",
+      "group": "political",
+      "area_rank": 14,
+      "rank_note": "Cook County Commissioner district"
+    },
+    {
+      "id": "will-county-fire",
+      "label": "Fire Protection District",
+      "group": "safety",
+      "area_rank": 15,
+      "rank_note": "Will County fire protection district (37; trustees live from county GIS, coverage-gated)"
+    },
+    {
+      "id": "will-county-park",
+      "label": "Park District",
+      "group": "geography",
+      "area_rank": 16,
+      "rank_note": "Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)"
+    },
+    {
+      "id": "school-board",
+      "label": "Elected School Board District",
+      "group": "political",
+      "area_rank": 17,
+      "rank_note": "Elected School Board district (10, citywide)"
+    },
+    {
+      "id": "cps-hs-network",
+      "label": "CPS Network (High School, admin office)",
+      "group": "schools",
+      "area_rank": 18,
+      "rank_note": "CPS High School Network (admin grouping)"
+    },
+    {
+      "id": "cps-network",
+      "label": "CPS Network (K-8, admin office)",
+      "group": "schools",
+      "area_rank": 19,
+      "rank_note": "CPS K-8 Network (admin grouping)"
+    },
+    {
+      "id": "ward-precinct",
+      "label": "Ward Precinct",
+      "group": "political",
+      "area_rank": 21,
+      "rank_note": "Ward Precinct (sub-selection of City Ward)",
+      "rank_comment": [
+        "Smaller than its parent ward, so it renders on top (smallest-on-top); turning it",
+        "on drops the ward to outline-only, framing the precinct fills from underneath."
+      ]
+    },
+    {
+      "id": "ward",
+      "label": "City Ward",
+      "group": "political",
+      "area_rank": 20,
+      "rank_note": "City Ward (50)"
+    },
+    {
+      "id": "police-beat",
+      "label": "Police Beat",
+      "group": "safety",
+      "area_rank": 23,
+      "rank_note": "Police Beat (~277)",
+      "rank_comment": [
+        "Smaller than its parent district, so it renders on top (smallest-on-top);",
+        "turning it on drops the district to outline-only, framing the beat fills from underneath."
+      ]
+    },
+    {
+      "id": "police-district",
+      "label": "Police District",
+      "group": "safety",
+      "area_rank": 22,
+      "rank_note": "Police District (22)"
+    },
+    {
+      "id": "ccpsa-district-council",
+      "label": "CCPSA District Council",
+      "group": "safety",
+      "area_rank": 24,
+      "rank_comment": [
+        "CCPSA District Council shares the police-district geometry exactly (22,",
+        "one council per district); place it just after so its outline draws on",
+        "top when both are on and its distinct teal dash stays legible."
+      ]
+    },
+    {
+      "id": "community-area",
+      "label": "Community Area",
+      "group": "geography",
+      "area_rank": 25,
+      "rank_note": "Community Area (77)"
+    },
+    {
+      "id": "zip-code",
+      "label": "ZIP Code",
+      "group": "geography",
+      "area_rank": 26,
+      "rank_note": "ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)"
+    },
+    {
+      "id": "cps-high",
+      "label": "CPS High School Zone",
+      "group": "schools",
+      "area_rank": 27,
+      "rank_note": "High School attendance zone"
+    },
+    {
+      "id": "cps-middle",
+      "label": "CPS Middle School Zone",
+      "group": "schools",
+      "area_rank": 28,
+      "rank_note": "Middle School attendance zone"
+    },
+    {
+      "id": "will-county-precinct",
+      "label": "Voting Precinct",
+      "group": "geography",
+      "area_rank": 29,
+      "rank_note": "Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)",
+      "rank_comment": [
+        "Smallest Will County layer, so it renders on top of Township and County",
+        "(smallest-on-top); turning it on drops both to outline-only, framing the",
+        "precinct fills from underneath."
+      ]
+    },
+    {
+      "id": "cps-elementary",
+      "label": "CPS Elementary School Zone",
+      "group": "schools",
+      "area_rank": 30,
+      "rank_note": "Elementary School attendance zone — smallest polygon layer"
+    },
+    {
+      "id": "school-site",
+      "label": "School Location (all, incl. private, nearest N)",
+      "group": "schools",
+      "area_rank": 31,
+      "rank_note": "individual school-campus footprints — smallest polygons, above the zones"
+    },
+    {
+      "id": "police-station",
+      "label": "Police Station",
+      "group": "safety",
+      "area_rank": 32,
+      "rank_note": "point marker — no polygon area, always topmost"
+    },
+    {
+      "id": "fire-station",
+      "label": "Fire Station",
+      "group": "safety",
+      "area_rank": 33,
+      "rank_note": "point marker — no polygon area, always topmost"
+    },
+    {
+      "id": "post-office",
+      "label": "Post Office",
+      "group": "geography",
+      "area_rank": 34,
+      "rank_note": "point marker — no polygon area, always topmost"
+    },
+    {
+      "id": "library",
+      "label": "Library",
+      "group": "geography",
+      "area_rank": 35,
+      "rank_note": "point marker — no polygon area, always topmost"
+    },
+    {
+      "id": "early-voting",
+      "label": "Early Voting Site",
+      "group": "political",
+      "area_rank": 36,
+      "rank_note": "point marker — no polygon area, always topmost"
+    }
   ],
   "min_register_layer": 15,
   "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 36 — live-verified 2026-07",
-  "anchor_point": { "lat": 41.8825, "lng": -87.6285, "note": "downtown Loop — inside Cook County" },
+  "anchor_point": {
+    "lat": 41.8825,
+    "lng": -87.6285,
+    "note": "downtown Loop — inside Cook County"
+  },
   "anchors": [
-    { "layer": "school-board", "expected": "12" },
-    { "layer": "il-supreme-court", "expected": "1" },
-    { "layer": "ccbr", "expected": "3" }
+    {
+      "layer": "school-board",
+      "expected": "12"
+    },
+    {
+      "layer": "il-supreme-court",
+      "expected": "1"
+    },
+    {
+      "layer": "ccbr",
+      "expected": "3"
+    }
   ],
-  "negative_point": { "lat": 41.7, "lng": -87.1, "note": "Lake Michigan, Indiana waters — outside all three anchor layers" },
+  "negative_point": {
+    "lat": 41.7,
+    "lng": -87.1,
+    "note": "Lake Michigan, Indiana waters — outside all three anchor layers"
+  },
   "data_files": {
     "geometry": [
-      { "file": "school-board-districts.json", "min_features": 20, "max_features": 20 },
-      { "file": "il-supreme-court-districts.json", "min_features": 5, "max_features": 5 },
-      { "file": "ccbr-districts.json", "min_features": 3, "max_features": 3 },
-      { "file": "will-county-outline.json", "min_features": 1, "max_features": 1 },
-      { "file": "congress-districts.json", "min_features": 18, "max_features": 18,
-        "note": "17 IL U.S. House districts + a ZZ water pseudo-district; pre-built from TIGERweb by scripts/build_legislative_boundaries.py (R2-2)" },
-      { "file": "il-senate-districts.json", "min_features": 60, "max_features": 60,
-        "note": "59 IL Senate districts + ZZ; pre-built from TIGERweb layer 1" },
-      { "file": "il-house-districts.json", "min_features": 119, "max_features": 119,
-        "note": "118 IL House districts + ZZ; pre-built from TIGERweb layer 2" }
+      {
+        "file": "school-board-districts.json",
+        "min_features": 20,
+        "max_features": 20
+      },
+      {
+        "file": "il-supreme-court-districts.json",
+        "min_features": 5,
+        "max_features": 5
+      },
+      {
+        "file": "ccbr-districts.json",
+        "min_features": 3,
+        "max_features": 3
+      },
+      {
+        "file": "will-county-outline.json",
+        "min_features": 1,
+        "max_features": 1
+      },
+      {
+        "file": "congress-districts.json",
+        "min_features": 18,
+        "max_features": 18,
+        "note": "17 IL U.S. House districts + a ZZ water pseudo-district; pre-built from TIGERweb by scripts/build_legislative_boundaries.py (R2-2)"
+      },
+      {
+        "file": "il-senate-districts.json",
+        "min_features": 60,
+        "max_features": 60,
+        "note": "59 IL Senate districts + ZZ; pre-built from TIGERweb layer 1"
+      },
+      {
+        "file": "il-house-districts.json",
+        "min_features": 119,
+        "max_features": 119,
+        "note": "118 IL House districts + ZZ; pre-built from TIGERweb layer 2"
+      }
     ],
     "rosters": [
-      { "file": "il-senate-members.json", "min_keys": 59 },
-      { "file": "il-house-members.json", "min_keys": 118 },
-      { "file": "school-board-members.json", "min_keys": 20 },
-      { "file": "congress-roster.json", "min_keys": 17 },
-      { "file": "cpd-district-info.json", "min_keys": 0,
-        "note": "ships as an empty placeholder until its first scrape lands" },
-      { "file": "ccpsa-district-councils.json", "min_keys": 20,
-        "note": "22 councils (13 & 21 retired); floor guards a partial scrape" },
-      { "file": "will-county-board-members.json", "min_keys": 11,
-        "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com" },
-      { "file": "early-voting-sites.json", "min_keys": 3,
-        "note": "GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale" }
+      {
+        "file": "il-senate-members.json",
+        "min_keys": 59
+      },
+      {
+        "file": "il-house-members.json",
+        "min_keys": 118
+      },
+      {
+        "file": "school-board-members.json",
+        "min_keys": 20
+      },
+      {
+        "file": "congress-roster.json",
+        "min_keys": 17
+      },
+      {
+        "file": "cpd-district-info.json",
+        "min_keys": 0,
+        "note": "ships as an empty placeholder until its first scrape lands"
+      },
+      {
+        "file": "ccpsa-district-councils.json",
+        "min_keys": 20,
+        "note": "22 councils (13 & 21 retired); floor guards a partial scrape"
+      },
+      {
+        "file": "will-county-board-members.json",
+        "min_keys": 11,
+        "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com"
+      },
+      {
+        "file": "early-voting-sites.json",
+        "min_keys": 3,
+        "note": "GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale"
+      },
+      {
+        "file": "ccbr-roster.json",
+        "min_keys": 3
+      }
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v12",
+    "cache_name": "district-explorer-shell-v13",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",
@@ -161,12 +515,41 @@
     "note": "The machine-checked source manifest (Socrata ids, shapefile provenance, live endpoints, year-search patterns) lives in the freshness gate, which already guards manifest<->app drift monthly. A second copy here would drift against it."
   },
   "workflows": [
-    { "file": "update-ilga-roster.yml", "purpose": "IL Senate + House rosters (ilga.gov scrape)", "schedule": "Mon 13:00 UTC" },
-    { "file": "update-congress-roster.yml", "purpose": "U.S. House roster (unitedstates/congress-legislators)", "schedule": "Mon 13:00 UTC" },
-    { "file": "update-cpd-roster.yml", "purpose": "CPD district info (Cloudflare-challenged scrape via Playwright)", "schedule": "Tue 13:00 UTC" },
-    { "file": "update-ccpsa-roster.yml", "purpose": "CCPSA district council rosters", "schedule": "Wed 13:00 UTC" },
-    { "file": "update-will-county-board-roster.yml", "purpose": "Will County Board roster (willcountyboard.com scrape)", "schedule": "Thu 13:00 UTC" },
-    { "file": "validate-sources.yml", "purpose": "source freshness + redistricting watch (opens/updates one tracking issue)", "schedule": "1st of month 14:00 UTC" }
+    {
+      "file": "update-ilga-roster.yml",
+      "purpose": "IL Senate + House rosters (ilga.gov scrape)",
+      "schedule": "Mon 13:00 UTC"
+    },
+    {
+      "file": "update-congress-roster.yml",
+      "purpose": "U.S. House roster (unitedstates/congress-legislators)",
+      "schedule": "Mon 13:00 UTC"
+    },
+    {
+      "file": "update-cpd-roster.yml",
+      "purpose": "CPD district info (Cloudflare-challenged scrape via Playwright)",
+      "schedule": "Tue 13:00 UTC"
+    },
+    {
+      "file": "update-ccpsa-roster.yml",
+      "purpose": "CCPSA district council rosters",
+      "schedule": "Wed 13:00 UTC"
+    },
+    {
+      "file": "update-will-county-board-roster.yml",
+      "purpose": "Will County Board roster (willcountyboard.com scrape)",
+      "schedule": "Thu 13:00 UTC"
+    },
+    {
+      "file": "update-ccbr-roster.yml",
+      "purpose": "Board of Review commissioner roster (cookcountyboardofreview.com scrape)",
+      "schedule": "Fri 13:00 UTC"
+    },
+    {
+      "file": "validate-sources.yml",
+      "purpose": "source freshness + redistricting watch (opens/updates one tracking issue)",
+      "schedule": "1st of month 14:00 UTC"
+    }
   ],
   "geocoder": {
     "address": "Photon (Chicago-bounded type-ahead)",
@@ -179,6 +562,8 @@
     "accent_warm": "#C8102E",
     "accent_warm_deep": "#9C0B24"
   },
-  "domains": { "canonical": "https://chidistricts.com/" },
+  "domains": {
+    "canonical": "https://chidistricts.com/"
+  },
   "exports_name": "ChiExplorer"
 }

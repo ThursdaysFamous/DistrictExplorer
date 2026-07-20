@@ -127,6 +127,12 @@ PROVENANCE = [
      "app_file": "ccbr-districts.json",
      "source_url": "https://www.cookcountyboardofreview.com/",
      "note": "PA 102-0012 shapefile. Redrawn ~once a decade."},
+    {"layer": "Board of Review commissioners (roster)",
+     "app_file": "ccbr-roster.json",
+     "source_url": "https://www.cookcountyboardofreview.com/",
+     "note": "Scraped weekly from the Board's commissioner pages "
+             "(ccbr_scraper.py); the menu-discovered pages move to new "
+             "name-derived paths after elections, which the scraper follows."},
     {"layer": "U.S. House districts (IL)",
      "app_file": "congress-districts.json",
      "source_url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Legislative/MapServer/0?f=json",
