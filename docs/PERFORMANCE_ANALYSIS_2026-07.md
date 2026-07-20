@@ -1,5 +1,8 @@
 # Performance Analysis — Chicago District Explorer
 
+> **Historical measurement record** — figures are as of the stated date (the app was 33
+> layers when measured; 36 as of 2026-07-19). New measurements get a new dated document.
+
 **Repo:** ThursdaysFamous/DistrictExplorer-CHI · **Date:** 2026-07-14 (rev. 2026-07-16: mobile-Lighthouse + production-capture cross-checks) · **Scope:** `index.html` (6,558 lines / 311 KB), `sw.js`, boot + interaction paths, delivered payload.
 
 This is a fresh, Chrome-measured pass over the *current* working tree — a companion to `docs/OPTIMIZATION_PLAYBOOK.md`, which recorded the 2026-07-09 optimization campaign (externalize embedded data, incremental restyle P7/P8, SW rework, layer-graph release P11). Since then the app has grown from 18 to **33 registered layers** and picked up statewide-Illinois / Will County / Cook County features. This document measures where it stands now and what's worth doing next.

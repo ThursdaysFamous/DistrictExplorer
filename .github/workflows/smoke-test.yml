@@ -2,8 +2,9 @@ name: Smoke test
 
 # Headless boot + behaviour check on every pull request: serves the real
 # index.html and drives it in Chromium (scripts/smoke_test.mjs) to confirm the
-# app boots, registers all 18 layers, classifies a known point with the three
-# no-API layers, and degrades gracefully when a data source fails. This is the
+# app boots, registers every layer (the worksheet-generated EXPECT_LAYERS
+# count), classifies a known point with the no-API anchor layers, and degrades
+# gracefully when a data source fails. This is the
 # validation the README describes; it runs before merge so a change that breaks
 # boot or the data files can't land unnoticed.
 

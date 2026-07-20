@@ -95,9 +95,12 @@ as reviewed PRs, then ship in the next release.
    of the fence; never "adapt" a hunk inside a fence.~~
 4. ~~New-metro forks inherit the fences by construction (they start as a clone
    of Chicago), so this protocol applies from their first commit.~~ New-metro
-   forks now start from a clone of Chicago **plus** its `engine.lock.json`,
-   `apply_engine.py`, `engine-bump.yml`, and deploy assembly steps — the
-   artifact model applies from their first commit.
+   forks now start from a clone of Chicago and **add** the consumer half of the
+   artifact model — `engine.lock.json`, `apply_engine.py`, the *consumer*
+   `engine-bump.yml`, and the deploy assembly steps. (Chicago itself carries
+   only the *producer* side: `release-engine.yml` + `create-engine-tag.yml`;
+   it has no `engine-bump.yml`.) The artifact model applies from the fork's
+   first commit.
 
 ## The tooling
 
@@ -116,10 +119,12 @@ as reviewed PRs, then ship in the next release.
   asserting the spliced blocks equal the downloaded bundle. The cross-fork
   compare mode (`--against <path-or-URL>`) remains for ad-hoc checks.
 - `.github/workflows/engine-parity.yml` — the old scheduled cross-fork
-  watcher, superseded by construction. NYC deleted its copy (work order 1.6)
-  after its first clean assembled deploy; Chicago's weekly run is retained
-  one more cycle as belt-and-suspenders, then deleted (playbook migration
-  step 4).
+  watcher, superseded by construction. Siblings carry no copy (NYC deleted
+  its under work order 1.6 after its first clean assembled deploy; SF's
+  inherited copy was removed 2026-07). **Decision (2026-07): Chicago's weekly
+  run is retained indefinitely** as a deployed-site belt-and-suspenders check
+  — it costs one scheduled job and catches the class of drift the assemble
+  gate can't (a fork deploying outside the pipeline).
 
 ## Definition of done for fork-born engine improvements (Conversion 3)
 
@@ -273,6 +278,8 @@ directions, so reconciling means merging features, not overwriting:
    port *checks*, not bytes, when reconciling them.
 9. ~~Duplicated playbook copies~~ — **resolved July 2026**: the master
    `METRO_EXPANSION_PLAYBOOK.md` lives in the Chicago repo under `docs/`
-   (sibling forks carry a root pointer stub only), and the raw NYC
-   research notes are archived at `docs/archive/METRO_EXPANSION_NYC.md`
-   in the Chicago repo.
+   (sibling forks carry a pointer stub at `docs/METRO_EXPANSION_PLAYBOOK.md`
+   — all doc stubs live under `docs/`), and the raw NYC research notes are
+   archived at `docs/archive/METRO_EXPANSION_NYC.md` in the Chicago repo.
+   The authoritative stubbed-vs-not-carried list is
+   `METRO_EXPANSION_PLAYBOOK.md` §3.1 item 11.

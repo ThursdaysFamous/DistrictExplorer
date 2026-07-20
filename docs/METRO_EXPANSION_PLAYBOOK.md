@@ -2,7 +2,7 @@
 
 The reference-of-truth for recreating this app for another large metro. **Chicago is the reference implementation; each metro is its own fork** — a separate repo and site cloned from this one, evolving independently **in its metro-specific code only**: the fenced `ENGINE` blocks in `index.html` stay byte-identical across every fork — see `docs/ENGINE_SYNC.md` for the sync protocol (port the diff, not the prompt) and `scripts/check_engine_parity.py` for the check. Nothing in this document changes the Chicago app.
 
-**How to use it:** fork (or copy) the Chicago repo into the new city's repo — this file travels with the fork at fork time, but **this copy, `docs/METRO_EXPANSION_PLAYBOOK.md` in the Chicago repo, is the master**: once the port completes, the fork replaces its copy with a root pointer stub (the NYC fork's is the model) and lessons are folded back here — two full copies drifted once already. Fill in the §0 City Worksheet (that is what "pointing the playbook at a city" means), then work Part I in order; §3 is the master checklist and §10 the thread-by-thread build order. Part II preserves the NYC port research (verified July 10, 2026) as a **worked example** — the model of what a completed worksheet, data registry, layer roster, and pipeline plan look like. It is something to imitate, not required reading for any other city.
+**How to use it:** fork (or copy) the Chicago repo into the new city's repo — this file travels with the fork at fork time, but **this copy, `docs/METRO_EXPANSION_PLAYBOOK.md` in the Chicago repo, is the master**: once the port completes, the fork replaces its copy with a pointer stub at `docs/METRO_EXPANSION_PLAYBOOK.md` (all doc stubs live under `docs/`) and lessons are folded back here — two full copies drifted once already. Fill in the §0 City Worksheet (that is what "pointing the playbook at a city" means), then work Part I in order; §3 is the master checklist and §10 the thread-by-thread build order. Part II preserves the NYC port research (verified July 10, 2026) as a **worked example** — the model of what a completed worksheet, data registry, layer roster, and pipeline plan look like. It is something to imitate, not required reading for any other city.
 
 **Part I has survived one full port.** The NYC build (Threads 0–6 plus the first live roster refresh) is complete, and every generalizable lesson its build log recorded as a SURPRISE has been folded back into Part I below — the re-core surgery notes and engine-vocabulary grep (§1), the hover-parity rule (§2), the land-one-real-roster-early rule and two-axis parity audit (§3), the negative ground-truth point (§4), verification lessons §6.9–6.12, and the pipeline lessons in §8. The NYC fork lives at `github.com/ThursdaysFamous/DistrictExplorer-NYC`; its complete thread-by-thread log is preserved here as `docs/archive/METRO_EXPANSION_NYC.md` — evidence, not required reading.
 
@@ -39,7 +39,7 @@ Every city-specific decision the port needs, in one place. Filling it in is Thre
 | Brand | Chicago-flag palette + six-point star | Palette custom properties, favicon SVG, masthead emblem, manifest colors, icons (§1 branding rows). |
 | Offline anchors *(mid-port)* | school-board, il-supreme-court, ccbr | ≥3 static-file layers with stable boundaries and no reliable public API (§4). |
 | Ground truth *(mid-port)* | `41.88250,-87.62850` (Loop) → school-board 12, il-supreme-court 1, ccbr 3; second point `41.99,-87.66` → school-board 4 | A well-known primary point classified against every anchor, plus a second point landing in different districts (§9). Metros with any partial-coverage geography — water, county slivers, enclave municipalities — also pin the §4 negative point (§7). |
-| `EXPECT_LAYERS` *(mid-port)* | 22 | Final registered-layer count, asserted exactly by the smoke test. |
+| `EXPECT_LAYERS` *(mid-port)* | 36 | Final registered-layer count, asserted exactly by the smoke test. |
 
 ## 1. What the fork keeps vs. rewrites
 
@@ -61,7 +61,7 @@ What a new metro rewrites is the **layer modules**: everything between the `THRE
 | Type-ahead geocoder | `photon.komoot.io/api/?q=` | bias `lat=41.88&lon=-87.63`; bbox derives from `CHI_BBOX` | Re-bias to `CENTER`; or replace the whole call if the metro has an authoritative geocoder (§5.3). |
 | POI geocoder viewbox | `nominatim.openstreetmap.org/search?format=jsonv2` | viewbox from `CHI_BBOX`, `bounded=1` | Moves with `BBOX` for free; or replace per §5.3. |
 | Group taxonomy | `var GROUPS =` | political / safety / schools / geography | Usually kept verbatim — the four buckets are city-agnostic. |
-| Z-order ranking | `var LAYER_AREA_RANK =` | all 22 Chicago layer ids, largest→smallest | Rewritten entirely for the new roster — §3 step 4 has the rule. |
+| Z-order ranking | `var LAYER_AREA_RANK =` | all 36 Chicago layer ids, largest→smallest | Rewritten entirely for the new roster — §3 step 4 has the rule. |
 | Portal host + app token | `var SOCRATA_HOST =` and `var SOCRATA_APP_TOKEN =` (METRO config block) — every Socrata code site (`socrataRouteUrls`, `loadSocrataJSON`, `probeGeometryColumn`, `makeSocrataPointLoader`) consumes the constant and applies the token via the fenced `withAppToken()` | `data.cityofchicago.org`, token `""` | **Socrata metro:** swap the host constant; keep the 3-route machinery (§6.3–6.4); set the token if throttled (§5.4). **Non-Socrata metro (§5.1):** the Socrata stack — `socrataRouteUrls`, `loadSocrataGeoJSON`, `makeCachedLoader`, `loadSocrataJSON`, `probeGeometryColumn`, `makeSocrataPointLoader` — is delete-if-unused, same treatment as the ArcGIS wrapper below; keep the generic `tryRoutes` + `makeCached`. (Deleting fenced blocks is a legitimate fork decision — the parity check reports them as missing-in-sibling, which reads as an honest "this fork doesn't use Socrata", not drift.) |
 | ArcGIS org wrapper | `function arcgisServiceUrl` | `services2.arcgis.com/t3tlzCPfmaQzSWAk` (CPD's hosted org) | The metro's hosted-org id(s), or delete if unused; `loadArcGISGeoJSON` itself is generic (`outSR=4326`, `geometryPrecision=6`) — keep it. |
 | TIGERweb state filter | `encodeURIComponent("STATE='17'")` | `STATE='17'` | Worksheet `STATE_FIPS`. Host + layer indices are national and stay. |
@@ -134,7 +134,7 @@ The five rules every module must honor are unchanged and non-negotiable: seq-tag
 7. **Map the pipeline**: for each roster, which scraper/builder pair template applies, which fetch engine (§8's escalation ladder), and the count guards. Don't defer *every* roster to the pipeline thread: land the cheapest real one (a no-scrape public file, congress-legislators-style) during the modules thread itself — real data flushes factory paths that empty placeholders never exercise (see §1's re-core surgery notes).
 8. **Re-derive every gate constant** (§9) and the `sw.js` lists (all three — §1).
 9. **Cross-group parity audit** before calling assembly done: for each field one group's cards render (office address, inline pin, map pin, phone, oversight links), check every other group's cards that *could* carry it. NYC shipped its political cards name-only while the safety and school cards already carried addresses and pins — no gate catches this class of gap; only a deliberate side-by-side pass does. The audit has a **second axis: surfaces, not just groups.** The hover explorer renders every polygon layer too, and it fails *soft* by design (a missed property is a blank row, not an error card) — so also do a **hover sweep**: toggle every polygon layer on, hover each smoke-test ground-truth point, and confirm every row shows a real identity matching its card's headline, not the em-dash fallback. NYC shipped every hover row label-only (fixed in PR #9) because no automated gate exercises the popup.
-10. **Swap deploy, register the fork in the fleet, and prove the localization.** The deploy swap (CNAME, manifest, icons, README, CLAUDE.md, footer attribution) is the visible half. The invisible half is §3.1 — the **day-one fork-registration checklist**, every fleet touchpoint that must name the new fork the day it goes live; each item on it was missed by at least one real port. Then run the §3.2 **localization sweep** — SF shipped a Chicago-biased geocoder and Chicago SEO metadata through five build threads because no gate greps for leftover reference-city content. Replace this playbook with the root pointer stub to the Chicago master and record the final roster in `docs/DATA_LAYER_GUIDEBOOK.md`. The `deploy-pages.yml` rsync exclude list is generic — but confirm nothing city-new (e.g. a large source GeoJSON) slips into the artifact.
+10. **Swap deploy, register the fork in the fleet, and prove the localization.** The deploy swap (CNAME, manifest, icons, README, CLAUDE.md, footer attribution) is the visible half. The invisible half is §3.1 — the **day-one fork-registration checklist**, every fleet touchpoint that must name the new fork the day it goes live; each item on it was missed by at least one real port. Then run the §3.2 **localization sweep** — SF shipped a Chicago-biased geocoder and Chicago SEO metadata through five build threads because no gate greps for leftover reference-city content. Replace this playbook with the `docs/` pointer stub to the Chicago master and record the final roster in `docs/DATA_LAYER_GUIDEBOOK.md`. The `deploy-pages.yml` rsync exclude list is generic — but confirm nothing city-new (e.g. a large source GeoJSON) slips into the artifact.
 
 ### 3.1 Day-one fork registration — the fleet checklist
 
@@ -175,8 +175,16 @@ carries the new `METRO_EXPLORERS` entry to each sibling.
    §5.4, §11).
 10. Replace the PWA icons (`icons/…192/512`) — not the reference city's.
 11. Pointer-stub every CHI-mastered doc (`METRO_EXPANSION_PLAYBOOK.md`,
-    `BUILD_PLAYBOOK_1.md`, `OPTIMIZATION_PLAYBOOK.md`, `REDISTRICTING_RUNBOOK.md`;
-    `ENGINE_SYNC.md` stays — it ships identically in every fork by design).
+    `BUILD_PLAYBOOK_1.md`, `OPTIMIZATION_PLAYBOOK.md`, `REDISTRICTING_RUNBOOK.md`,
+    `MECHANIZATION_PLAYBOOK.md`). **Every stub lives under `docs/`** (standardized
+    2026-07; NYC's original root-level stub was the historical exception and moved).
+    `ENGINE_SYNC.md` stays a full copy — it ships identically in every fork by design.
+    `DATA_LAYER_GUIDEBOOK.md` and the `docs/archive/` records are CHI-master with **no
+    sibling copy at all** (not even a stub — nothing in a fork references them locally).
+    Do not carry the CHI-only fleet machinery into the fork: `metros.json`,
+    `scripts/fleet_status.py`, `fleet-status.yml`, `engine-parity.yml`,
+    `release-engine.yml`, `create-engine-tag.yml`, and `docs/engine-changelog/` run in
+    the Chicago repo only.
 12. Localize `WATCH.md` — it is a per-fork operations calendar, not shared prose.
 13. Re-derive `scripts/validate_sources.py` for the fork's real sources — including
     `SOCRATA_DOMAIN`/`CATALOG_API` (DataSF, for one, is not in the federated

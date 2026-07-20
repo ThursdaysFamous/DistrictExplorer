@@ -1,5 +1,11 @@
 # Chicago District Explorer — Build Playbook
 
+> **Build log — read with its Status entries.** §1–§2 record the *original* build; several
+> details were superseded in later threads and corrected only in the trailing Status log
+> (utilities renamed `pointInPolygon`→`pointInGeometry`, `fetchWithRetry`→`fetchJSONWithRetry`;
+> the §2 CPS/ZIP dataset ids rotated, ZIP moved to TIGERweb; inline-embedded datasets were
+> externalized to `data/app/`). For current contract language, `CLAUDE.md` wins.
+
 The reference-of-truth for building this app in small, cheap, focused threads.
 **Add this file to the Project** so every thread has it via retrieval. Never paste the whole app into a thread — paste only this playbook's contract + the one module being worked on.
 

@@ -60,7 +60,7 @@ survive:** they encode lat/lng, not district ids, so a point permalink still res
 resolves to the NEW district after geometry updates, which is correct behavior. This is confirmed
 against the architecture: permalinks are lat/lng-based, so no permalink migration is needed.
 
-### CHI (22 layers)
+### CHI (36 layers)
 
 | Layer | Exposure class | Enacting authority | What breaks |
 |---|---|---|---|
@@ -75,13 +75,18 @@ against the architecture: permalinks are lat/lng-based, so no permalink migratio
 | Community areas (77) | Never (frozen) | geography | none expected |
 | CPS attendance boundaries | Annual | CPS | dataset id every year |
 | ZIP codes | USPS-driven, not census | USPS | occasional |
+| Will County Board (11) | Decennial-municipal | Will County Board | geometry, roster join |
+| Will judicial subcircuits (12th Cir.) | Statutory, rare | IL General Assembly | geometry |
+| Will fire / park / precinct | Administrative / per-election | districts + county clerk | geometry (precincts redraw with county maps) |
+| County / township / municipality (statewide) | Annexation-driven, rolling | local referenda; TIGERweb vintages | TIGERweb vintage rolls |
+| Statewide school districts (3 TIGERweb layers) | Consolidation-driven | ISBE / referenda | TIGERweb vintage rolls |
 
 IL Supreme Court note: Public Act 102-0011 changed the judicial district boundaries "for the first
 time since they were established in 1964." This layer redistricts almost never — do not assume it
 changes in 2031. That asymmetry is the whole point of the inventory: some layers change every
 decade, some almost never, some every year.
 
-### NYC (24 layers)
+### NYC (27 layers)
 
 | Layer | Exposure class | Enacting authority | What breaks |
 |---|---|---|---|
@@ -98,6 +103,22 @@ NY congressional is the cautionary example: three maps in three years — the 20
 was struck in Harkenrider v. Hochul and replaced by special-master (Cervas) lines for 2022, then
 Hoffmann v. NYIRC forced a redraw and the legislature's new congressional map was signed Feb 28,
 2024. Redistricting is emphatically not only decennial.
+
+### SF (16 layers)
+
+| Layer | Exposure class | Enacting authority | What breaks |
+|---|---|---|---|
+| US Congress (CA) | Decennial + mid-decade (Prop 50 precedent) | CA Citizens Redistricting Commission | geometry (pre-built SF-clip rebuild), roster join |
+| CA Senate / Assembly | Decennial | CA Citizens Redistricting Commission | geometry, roster join |
+| Supervisor districts (11) | Decennial-municipal | SF Redistricting Task Force (charter) | geometry, anchor, roster join |
+| Election precincts | Same cycle as supervisors | SF Dept. of Elections | new Socrata dataset id ("Defined <year>" title) |
+| BART Director districts (9) | Decennial (own cycle) | BART Board | geometry (BART ArcGIS), roster re-verify |
+| SFPD districts (10) | Administrative-rare | SFPD | geometry, anchor |
+| SFUSD attendance areas | Annual | SFUSD | dataset id every school year |
+| Neighborhood / ZIP | Rarely / USPS-driven | DataSF / USPS | occasional |
+
+SF's per-date calendar lives in the SF fork's `WATCH.md` (per-metro file); this master runbook
+holds the response procedure.
 
 ---
 
@@ -251,6 +272,17 @@ metro-worksheet.json and hand-edits fail `--check`.
 | NYPD precincts (78) | NYPD | nyc.gov | 116th Precinct opened Dec 18, 2024 (Rosedale, SE Queens), carved from the 105th/113th — first new precinct since 2013 |
 | Community districts | NYC charter | nyc.gov | Rarely change |
 | School zones | DOE | DOE / open data | Annual |
+
+### SF — layer → authority → next-map source → last enactment/effective
+
+| Layer | Enacting authority | Next map published at | Last enactment / effective |
+|---|---|---|---|
+| Supervisor districts (11) | SF Redistricting Task Force | DataSF (successor to `hcgx-vtsb`) | April 2022 map; next task force ~2032 |
+| Election precincts | SF Dept. of Elections | DataSF (successor to `jg6x-23ig`, "Defined <year>") | 2022 precinct map; redraws with the supervisor cycle |
+| CA Congress / Senate / Assembly | CA Citizens Redistricting Commission | wedrawthelines.ca.gov; TIGER/Line | 2021 maps, effective 2022; watch Prop 50-style mid-decade changes |
+| BART Director districts (9) | BART Board | bart.gov / BART ArcGIS | 2022 Plan E2; holds "until the next round following the 2030 US Census" |
+| SFPD districts (10) | SFPD | DataSF (successor to `d4vc-q76h`) | Last major realignment 2015 |
+| SFUSD attendance areas | SFUSD | DataSF (new `…(20xx-20xx)` dataset id) | New dataset every school year |
 
 Cross-reference: when any of these changes, execute the 14-step response procedure above and update
 the fork's metro-worksheet.json so MECHANIZATION_PLAYBOOK Conversion 2's `--check` gate and

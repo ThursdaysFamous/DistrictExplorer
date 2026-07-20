@@ -1,5 +1,12 @@
 # SF Port — §0 City Worksheet (Thread 0 deliverable)
 
+> **PORT COMPLETE — historical record.** The SF fork launched at sf.chidistricts.com
+> (repo seeded 2026-07-16, live 2026-07-17) and ships **16 layers** as of 2026-07-19,
+> including the BART Director districts this worksheet flagged as a candidate (shipped)
+> and the election precincts (shipped). The 🔎/⏳ status markers and "TBD" values below
+> are frozen pre-build research, kept as the worked example of a completed §0 worksheet.
+> Current SF state: `docs/DATA_LAYER_GUIDEBOOK.md` + the SF repo itself.
+
 Working artifact for porting District Explorer to **San Francisco**, per
 `docs/METRO_EXPANSION_PLAYBOOK.md` Part I §0. This is the parameter block the
 rest of the port refers back to. It lives here on the `next-metro-port` branch

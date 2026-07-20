@@ -62,10 +62,14 @@ correctly for *any* Illinois point right now — a Will County township included
 
 | Layer id | Geometry source | Roster | Statewide today? |
 |---|---|---|---|
-| `congress` | TIGERweb Legislative MapServer layer 0, `STATE='17'` | `congress-roster.json` (all 17 IL seats) | ✅ |
-| `il-senate` | TIGERweb layer 1 (SLDU), `STATE='17'` | `il-senate-members.json` (all 59) | ✅ |
-| `il-house` | TIGERweb layer 2 (SLDL), `STATE='17'` | `il-house-members.json` (all 118) | ✅ |
+| `congress` | pre-built `congress-districts.json` (TIGERweb Legislative layer 0, `STATE='17'`, via `build_legislative_boundaries.py`) | `congress-roster.json` (all 17 IL seats) | ✅ |
+| `il-senate` | pre-built `il-senate-districts.json` (TIGERweb layer 1, SLDU) | `il-senate-members.json` (all 59) | ✅ |
+| `il-house` | pre-built `il-house-districts.json` (TIGERweb layer 2, SLDL) | `il-house-members.json` (all 118) | ✅ |
 | `il-supreme-court` | static `il-supreme-court-districts.json` (PA 102-0011, 5 statewide districts) | static members | ✅ |
+
+*(The three chamber layers originally queried TIGERweb live; they now ship as pre-built
+statewide files — same coverage, offline-capable. Later grep anchors referencing
+`TIGERweb/Legislative` resolve to the provenance comment in `index.html`, not a live loader.)*
 
 The only thing stopping a downstate user from reaching them is the **input shell**, all of which is
 **fork config, not engine**: the Photon type-ahead (grep `photon.komoot.io`) and the Nominatim POI
@@ -316,6 +320,16 @@ identity and accept the mismatch. This is a product call, not a technical blocke
   > - `judicial-circuit` — the DERIVE table (county→circuit, 705 ILCS 35/2) could not be fetched from
   >   an authoritative machine-readable source (ilga.gov 403s the fetch; illinoiscourts.gov is
   >   JS-rendered). Hand-encoding 102 county mappings from memory violates the never-guess rule.
+  >
+  > **STATUS UPDATE (2026-07-18) — the `will-county-board` deferral resolved; first Phase 2 tranche
+  > SHIPPED.** The layer now ships from the county's current 11-district map (Board Approved
+  > 11/2/21) with a weekly-CI roster pair (`will_county_board_scraper.py` +
+  > `update-will-county-board-roster.yml` — human-reviewed PRs, per the roster convention),
+  > alongside `will-county-judicial`, `will-county-fire`, `will-county-park`, and
+  > `will-county-precinct`, all gated by `willCountyCoverage`. `judicial-circuit` remains dropped
+  > (still no authoritative machine-readable county→circuit source). The current registered roster
+  > lives in `docs/DATA_LAYER_GUIDEBOOK.md` — treat the counts and phase framing in this document
+  > as the decision record they are, not current state.
   Land Track 1 (the `mod.coverage`
   hide-only capability) via the engine-release pipeline; declare `coverage` on the 16 Chicago-only + 2
   Cook-only layers (they hide outside their areas) and `emptyLabel` where a null is structural. Add the

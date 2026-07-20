@@ -1,8 +1,9 @@
 # Data Layer Guidebook — the fleet's layer roster, in one place
 
 **This is the master copy, in the Chicago repo (the reference implementation), covering
-every metro fork.** Sibling forks do not carry a copy (the playbook pointer-stub rule,
-`docs/ENGINE_SYNC.md` backlog item 9). It answers, for every civic-district concept the
+every metro fork.** Sibling forks do not carry a copy — not even a stub
+(`docs/METRO_EXPANSION_PLAYBOOK.md` §3.1 item 11 is the authoritative list of what is
+stubbed vs. not carried). It answers, for every civic-district concept the
 fleet has ever considered: which metros ship it, which metros *can't* honestly ship it and
 why (recorded drop rationale), which metros simply haven't yet (parity debt), and what's
 in the researched-but-unbuilt backlog.
@@ -135,7 +136,7 @@ which the never-guess rule excludes as a source.
 | Park district | SHIPPED `will-county-park` (Will only) | n/a | n/a |
 | Post office points | SHIPPED `post-office` (USGS National Map L38 — same national source in every fork) | SHIPPED | SHIPPED |
 | Library points | SHIPPED `library` (CPL) | SHIPPED `library` (NYPL/BPL/QPL) | SHIPPED `library` (SFPL) |
-| Ballot drop boxes | SHIPPED — folded into `early-voting`: Chicago's 50 secured drop boxes (10 ILCS 5/19-6 collection sites, chicagoelections.gov/voting/drop-boxes) *are* the 50 early-voting sites, and the card intro says so | NO HONEST ANALOG — NYC runs no standalone drop-box program; absentee/mail ballots return by mail, at any poll site, or at BOE offices (vote.nyc / RequestBallot), all already covered by `early-voting` + the card's official links | SHIPPED (inside `early-voting`) |
+| Ballot drop boxes | SHIPPED — folded into `early-voting`: Chicago's secured drop boxes (10 ILCS 5/19-6 collection sites, chicagoelections.gov/voting/drop-boxes) are hosted at the early-voting sites themselves — the 50 ward sites in the shipped 52-site file (plus the 2 downtown sites) — and the card intro says so | NO HONEST ANALOG — NYC runs no standalone drop-box program; absentee/mail ballots return by mail, at any poll site, or at BOE offices (vote.nyc / RequestBallot), all already covered by `early-voting` + the card's official links | SHIPPED (inside `early-voting`) |
 
 ---
 
@@ -144,7 +145,7 @@ which the never-guess rule excludes as a source.
 _None open._ The original five debts were cleared in July 2026 — the outcomes now live
 in the matrix above: SF shipped `election-precinct` and `bart-director`; the SF
 police-oversight and NYC ballot-drop-box gaps are recorded NO HONEST ANALOG cells;
-Chicago's drop boxes folded into `early-voting` (same 50 sites); and Chicago-proper CFD
+Chicago's drop boxes folded into `early-voting` (hosted at the same sites); and Chicago-proper CFD
 battalions are a verified-negative drop (see the fire-boundary note). New GAP cells go
 here as rows until shipped or recorded.
 
@@ -152,6 +153,14 @@ here as rows until shipped or recorded.
 
 Every entry cites where it's recorded and the blocker. When one ships, move it into the
 matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnote.
+
+**Fleet-wide**
+- **Card-order conformance audit** — sweep every fork's result cards against the card
+  content-order convention (procedure step 2a: name → identifier → representative(s) →
+  location → contact → link) and against each layer's *source*: where a dataset or roster
+  carries officeholder, address, or contact fields the card doesn't surface yet, either
+  surface them or record the deviation here per layer. Added 2026-07 when the convention
+  was written down; no per-layer sweep has been run yet.
 
 **San Francisco**
 - _(empty — BART Director districts, formerly the strongest unbuilt candidate in the
@@ -293,6 +302,13 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
    inventory table, the concept matrix row (add the row if the concept is new
    fleet-wide), and — if the layer resolves a Parity debt or Backlog entry — move that
    entry accordingly.
+2a. **Card content order (fleet convention):** the result card leads with the layer name
+   (card header), then the district identifier, then — wherever a verifiable source
+   exists — the representative(s)/officeholder(s), the office location, contact info,
+   and a link to more detail, in that order. Deviate only where the concept demands it
+   (nearest-N lists, layers with no elected officer) — and when identity/location/contact
+   data exists in the layer's source but isn't on the card yet, record the gap in the
+   Backlog rather than shipping it silently.
 3. If you decide a concept **won't** ship in a metro, add the NO HONEST ANALOG footnote
    with the rationale and source of truth. Silence is the only wrong answer.
 4. The weekly fleet-status run cross-checks the coverage map against every fork's live

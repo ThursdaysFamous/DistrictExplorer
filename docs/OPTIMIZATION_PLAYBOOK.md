@@ -1,5 +1,12 @@
 # Optimization & Refinement Playbook
 
+> **Historical measurement record.** Every line count, layer count, byte size, and score in
+> this document is a measurement **as of its stated date** (2026-07-09 campaign; 2026-07-16
+> Round 2) — the app has grown since (36 layers as of 2026-07-19) and the repo renamed to
+> `DistrictExplorer-CHI` / deploys to `chidistricts.com`. Current facts live in `CLAUDE.md`
+> and `docs/DATA_LAYER_GUIDEBOOK.md`; new measurements get a new dated section, they don't
+> overwrite old ones.
+
 **Repo:** ThursdaysFamous/DistrictExplorer · **Date:** 2026-07-09 · **Scope:** `index.html` (2,811 lines, 1.30 MB), `sw.js`, `scripts/` pipeline, `.github/workflows/`
 
 > **2026-07-16 · Round 2 re-analysis.** The app was re-measured at **33 layers** through three lenses — a Chrome DevTools-Protocol harness (`scripts/perf_profile.mjs`), the **production PageSpeed Insights mobile** run, and a **production Firefox Profiler capture** — written up in `docs/PERFORMANCE_ANALYSIS_2026-07.md`. The 2026-07-09 campaign below shipped the compute + payload wins and **they hold** (production mobile: TBT 0 ms, CLS 0, A11y/BP/SEO 100, 0 boot long tasks). But production mobile **Performance is 75**, and the entire gap is **FCP 3.3 s + LCP 5.0 s** — *load delivery*, dominated by render-blocking third parties, which this (payload-size-focused, sandboxed) 2026-07-09 analysis never saw. The re-prioritized work — plus **two items rejected below as "unmeasured" (P9, P10) that are now measured** — is **[§6 Round 2](#6-round-2--the-load-delivery-campaign-2026-07-16)** at the end of this doc. Read §6 first for current priorities; §1–§5 are the 2026-07-09 record.

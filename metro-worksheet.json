@@ -105,7 +105,7 @@
       "rank_note": "point marker \u2014 no polygon area, always topmost" }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + will-county-board (per-county, coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) — live-verified 2026-07",
+  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 36 — live-verified 2026-07",
   "anchor_point": { "lat": 41.8825, "lng": -87.6285, "note": "downtown Loop — inside Cook County" },
   "anchors": [
     { "layer": "school-board", "expected": "12" },
