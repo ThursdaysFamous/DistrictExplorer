@@ -190,11 +190,18 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
   (a builder-scope enrichment candidate, below). Cosmetic unfetched-or-unrendered
   fields (SF/NYC `post-office` STATE, NYC `school-site` city/zip, NYC `early-voting`
   county) trimmed or left recorded here.
-- **Congress district-office enrichment** — every fork's `congress-roster.json`
-  carries only the D.C. office because `build_congress_roster.py` reads
-  unitedstates/congress-legislators, which has no district offices. If a verifiable
-  per-member district-office source is adopted, all three forks' congress cards gain
-  a local office row with no app change (the chamber factory already renders it).
+- **Congress district-office enrichment** — **shipped for Chicago (2026-07).**
+  `build_congress_roster.py` now joins unitedstates/congress-legislators'
+  `legislators-district-offices.json` by bioguide id, so `congress-roster.json`
+  carries each rep's primary district office (street + phone) and D.C. office
+  alongside name/party. The CHI congress card was migrated off its bespoke block
+  onto the shared `registerIlgaChamber` factory (new backward-compatible
+  `districtPrefix` opt keeps the "IL-7" header), so it now surfaces a map-pinned
+  District Office + D.C. Office like the ILGA chambers. The factory change ported
+  byte-identical to NYC/SF. **Follow-ups:** migrate the NYC/SF congress cards onto
+  the factory and enrich their builders the same way (their card layout is
+  unchanged until then); and the same source family offers committee assignments
+  and social media (both bioguide-keyed) as further per-member enrichment.
 
 **San Francisco**
 - _(empty — BART Director districts, formerly the strongest unbuilt candidate in the
