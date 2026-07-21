@@ -38,7 +38,8 @@ jobs:
         # empty status then reads as fail.
         continue-on-error: true
         run: |
-          touch parity-report.md status.txt status-sw.txt
+          touch parity-report.md status.txt status-sw.txt status-sf.txt status-sf-sw.txt
+          # --- NYC (index.html seeds parity-report.md; the rest sed-append their sections) ---
           python3 scripts/check_engine_parity.py index.html \
             --against https://nyc.chidistricts.com/ \
             --label nyc \
@@ -49,16 +50,29 @@ jobs:
             --label "nyc sw.js" \
             --report parity-report-sw.md \
             --status-file status-sw.txt || true
-          if [ -f parity-report-sw.md ]; then
-            sed -n '/^## Sibling/,$p' parity-report-sw.md >> parity-report.md
-          fi
-          s1="$(cat status.txt)"; s2="$(cat status-sw.txt)"
-          if [ "$s1" = fail ] || [ "$s2" = fail ] || [ -z "$s1" ] || [ -z "$s2" ]; then
-            echo fail > status.txt
-          elif [ "$s1" = warn ] || [ "$s2" = warn ]; then
-            echo warn > status.txt
-          fi
-          echo "status=$(cat status.txt)" >> "$GITHUB_OUTPUT"
+          # --- SF ---
+          python3 scripts/check_engine_parity.py index.html \
+            --against https://sf.chidistricts.com/ \
+            --label sf \
+            --report parity-report-sf.md \
+            --status-file status-sf.txt || true
+          python3 scripts/check_engine_parity.py sw.js \
+            --against https://sf.chidistricts.com/sw.js \
+            --label "sf sw.js" \
+            --report parity-report-sf-sw.md \
+            --status-file status-sf-sw.txt || true
+          for extra in parity-report-sw.md parity-report-sf.md parity-report-sf-sw.md; do
+            [ -f "$extra" ] && sed -n '/^## Sibling/,$p' "$extra" >> parity-report.md
+          done
+          # Worst-of across every sibling×file status (empty = the run crashed → fail).
+          worst=ok
+          for f in status.txt status-sw.txt status-sf.txt status-sf-sw.txt; do
+            s="$(cat "$f")"
+            if [ "$s" = fail ] || [ -z "$s" ]; then worst=fail; break; fi
+            if [ "$s" = warn ] && [ "$worst" != fail ]; then worst=warn; fi
+          done
+          echo "$worst" > status.txt
+          echo "status=$worst" >> "$GITHUB_OUTPUT"
 
       - name: Open or update tracking issue
         if: steps.parity.outputs.status != 'ok'
