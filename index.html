@@ -3629,6 +3629,7 @@ function initChiExplorer() {
     "commissioner",      // Cook County Commissioner district
     "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
     "will-county-park",  // Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)
+    "dupage-county-park", // DuPage park district (39; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no commissioner/contact fields, so name-only). Ranked beside will-county-park (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -5723,6 +5724,37 @@ function initChiExplorer() {
         return members && members.length ? members.map(function (m) { return m.name; }).join(", ") : null;
       }
     }
+  });
+
+  // DuPage County park districts — partial coverage: park districts don't tile
+  // the whole county, so an in-coverage point outside every park district
+  // honestly reports "No result for this point." Live from DuPage County's own
+  // GIS (Park_Districts_ layer, edited 2026-06; 39 districts). The boundary
+  // carries only the district name — Illinois park districts are independent
+  // bodies with their own elected boards, and the county GIS carries no
+  // commissioner/contact fields, so the card names the district (verbatim from
+  // GIS, never guessed) without a roster. registerPolygonLayer, the same factory
+  // the Will County park / fire layers use; labelled "DuPage Park District" so it
+  // doesn't collide with Will's "Park District" toggle at boot.
+  var loadDupageParks = makeCached(function () {
+    var url = DUPAGE_GIS + "Park_Districts_/FeatureServer/11" +
+      "/query?where=1%3D1&outFields=PARK&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Park Districts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerPolygonLayer({
+    id: "dupage-county-park",
+    group: "geography",
+    label: "DuPage Park District",
+    coverage: dupageCountyCoverage,
+    loader: loadDupageParks,
+    style: { color: "#2E7D46", weight: 1.5, fillColor: "#4FA06A", fillOpacity: 0.05, dashArray: "2 3" },
+    fields: [
+      { name: "name", label: "Park District", keys: ["park"], primary: true }
+    ]
   });
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------

@@ -143,7 +143,7 @@ which the never-guess rule excludes as a source.
 | ZIP code | SHIPPED `zip-code` (ZCTA) | SHIPPED `zip-code` (MODZCTA) | SHIPPED `zip-code` (ZCTA) |
 | County | SHIPPED `county` (statewide IL) | SHIPPED `borough` (= county) | n/a — city and county are coterminous (recorded) |
 | Township / municipality | SHIPPED `township` · `municipality` (statewide IL) | n/a | n/a |
-| Park district | SHIPPED `will-county-park` (Will only) | n/a | n/a |
+| Park district | SHIPPED `will-county-park` (Will) · `dupage-county-park` (DuPage) | n/a | n/a |
 | Post office points | SHIPPED `post-office` (USGS National Map L38 — same national source in every fork) | SHIPPED | SHIPPED |
 | Library points | SHIPPED `library` (CPL) | SHIPPED `library` (NYPL/BPL/QPL) | SHIPPED `library` (SFPL) |
 | Ballot drop boxes | SHIPPED — folded into `early-voting`: Chicago's secured drop boxes (10 ILCS 5/19-6 collection sites, chicagoelections.gov/voting/drop-boxes) are hosted at the early-voting sites themselves — the 50 ward sites in the shipped 52-site file (plus the 2 downtown sites) — and the card intro says so | NO HONEST ANALOG — NYC runs no standalone drop-box program; absentee/mail ballots return by mail, at any poll site, or at BOE offices (vote.nyc / RequestBallot), all already covered by `early-voting` + the card's official links | SHIPPED (inside `early-voting`) |
@@ -233,7 +233,9 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
   Chair, with published @dupagecounty.gov emails. The directory turned out to be
   static server-rendered HTML, so a plain requests+bs4 scrape sufficed — no
   Playwright).
-- Park districts statewide (~350) — no statewide GIS; per-county sources.
+- Park districts statewide (~350) — no statewide GIS; per-county sources. Will +
+  DuPage shipped (`will-county-park`, commissioners in GIS attrs; `dupage-county-park`
+  2026-07, name-only — DuPage's GIS carries no commissioner/contact fields).
 - Cook County GIS layers never wired — library/park/fire/TIF/MWRD/forest-preserve tax
   districts on `gis.cookcountyil.gov` (`politicalBoundary` server), "not evaluated" in
   the original build.
@@ -242,7 +244,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 
 ## Per-fork inventories
 
-### Chicago — 37 layers
+### Chicago — 38 layers
 
 | id | label | group | pattern | source | roster / join | coverage |
 |---|---|---|---|---|---|---|
@@ -263,6 +265,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `commissioner` | Cook County Commissioner District | political | Bespoke | Cook County GIS L9 | live office join (same server) | cookCountyCoverage |
 | `will-county-fire` | Fire Protection District | safety | Polygon | Will County ArcGIS | trustees in GIS attrs | willCountyCoverage |
 | `will-county-park` | Park District | geography | Polygon | Will County ArcGIS | commissioners in GIS attrs | willCountyCoverage |
+| `dupage-county-park` | DuPage Park District | geography | Polygon | DuPage County ArcGIS (`Park_Districts_`) | name-only (GIS carries no commissioner/contact) | dupageCountyCoverage |
 | `school-board` | Elected School Board District | political | Bespoke | pre-built (ERSB SB15 shapefile) | `school-board-members.json` (hand-curated) | chicagoCoverage |
 | `cps-hs-network` | CPS Network (High School) | schools | CpsNetwork | Socrata `aupu-jt2g` | chief in dataset props | chicagoCoverage |
 | `cps-network` | CPS Network (K-8) | schools | CpsNetwork | Socrata `pnta-kuqa` | chief in dataset props | chicagoCoverage |
