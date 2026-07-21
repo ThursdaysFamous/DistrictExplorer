@@ -3624,6 +3624,7 @@ function initChiExplorer() {
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
     "will-county-board", // Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)
+    "dupage-county-board", // DuPage County Board district (6 districts, each electing 3 of 18 members; live from county GIS, coverage-gated to DuPage). Ranked beside will-county-board (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "commissioner",      // Cook County Commissioner district
     "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
@@ -5606,6 +5607,86 @@ function initChiExplorer() {
       }
       var townshipMod = getLayerById("township");
       if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
+    }
+  });
+
+  /* =========================================================================
+   * DUPAGE COUNTY — collar-county board layer (second of the collar-county
+   * rollout, after Will). Coverage-gated like Will: HIDES outside DuPage
+   * (mod.coverage) so a Chicago/downstate click never sees a DuPage toggle.
+   * Coverage is exact containment in a shared same-origin DuPage outline
+   * (data/app/dupage-county-outline.json — one polygon, TIGER-sourced at the
+   * same precision the `county` layer fetches, so coverage agrees with what
+   * that layer resolves).
+   * ======================================================================= */
+  var loadDupageCountyOutline = makeCached(function () {
+    return fetchJSONWithRetry("data/app/dupage-county-outline.json", {}, 2);
+  });
+  function dupageCountyCoverage(point) {
+    return loadDupageCountyOutline().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
+
+  // DuPage County Board districts — the current 6-district map (each district
+  // elects 3 of the 18 members; the Board Chair is elected countywide). Live
+  // from DuPage County's own maintained GIS (County_Board_Dist_new, last edited
+  // 2025-02): a whole-county FeatureServer query at geometryPrecision=5, guarded
+  // by the shared no-usable-geometry check so an Esri 200-with-error-envelope is
+  // never pinned in the session cache — the same loader pattern the Will County
+  // and TIGER layers use. The boundary feature carries the district number and
+  // the official per-district map URL on dupagecounty.gov, but no member names,
+  // so the card links to the official body rather than inventing names (honesty
+  // rule). A per-district member roster is a planned enrichment: DuPage's board
+  // directory is JS-rendered, so it needs a Playwright scrape (the CPD pattern),
+  // after which member rows join here by district with no further app change.
+  var DUPAGE_GIS = "https://services.arcgis.com/neJvtQ4PXvnQ86MJ/arcgis/rest/services/";
+  var loadDupageCountyBoard = makeCached(function () {
+    var url = DUPAGE_GIS + "County_Board_Dist_new/FeatureServer/0" +
+      "/query?where=1%3D1&outFields=District,URL&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage County Board returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerLayer({
+    id: "dupage-county-board",
+    group: "political",
+    label: "DuPage County Board District",
+    coverage: dupageCountyCoverage,
+    hoverName: function (feature) {
+      return findPropCI(feature.properties || {}, ["district"]) || null;
+    },
+    overlay: {
+      load: loadDupageCountyBoard,
+      style: { color: "#2E7D32", weight: 2, fillColor: "#66BB6A", fillOpacity: 0.05, dashArray: "9 3 3 3" }
+    },
+    query: function (point, seq) {
+      return loadDupageCountyBoard().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        return { seq: seq, district: findPropCI(props, ["district"]), props: props };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "District", value: result.district ? String(result.district) : "Unknown" }];
+      // Official per-district map link carried on the boundary feature itself.
+      var mapUrl = safeHttpUrl(findPropCI(result.props, ["url"]));
+      if (mapUrl && result.district) {
+        fields.push({
+          label: "District map",
+          html: '<a href="' + sanitize(mapUrl) + '" target="_blank" rel="noopener">DuPage County Board District ' + sanitize(String(result.district)) + ' — map (official)</a>'
+        });
+      }
+      // Three County Board members represent each district; the boundary carries
+      // no names, so link the official directory instead of guessing.
+      fields.push({
+        label: "Board members",
+        html: '<a href="https://www.dupagecounty.gov/government/county_board/county_board_members/" target="_blank" rel="noopener">DuPage County Board members (official directory)</a>'
+      });
+      return renderFieldList(fields);
     }
   });
 

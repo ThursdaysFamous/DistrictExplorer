@@ -88,13 +88,13 @@ EXPECT_LAYER_IDS = [
     "il-supreme-court", "congress", "il-senate", "il-house", "county",
     "school-district-secondary", "school-district-unified",
     "school-district-elementary", "township", "municipality",
-    "will-county-judicial", "will-county-board", "ccbr", "commissioner",
-    "will-county-fire", "will-county-park", "school-board", "cps-hs-network",
-    "cps-network", "ward", "ward-precinct", "police-district", "police-beat",
-    "ccpsa-district-council", "community-area", "zip-code", "cps-high",
-    "cps-middle", "will-county-precinct", "cps-elementary", "school-site",
-    "police-station", "fire-station", "post-office", "library",
-    "early-voting",
+    "will-county-judicial", "will-county-board", "dupage-county-board",
+    "ccbr", "commissioner", "will-county-fire", "will-county-park",
+    "school-board", "cps-hs-network", "cps-network", "ward", "ward-precinct",
+    "police-district", "police-beat", "ccpsa-district-council",
+    "community-area", "zip-code", "cps-high", "cps-middle",
+    "will-county-precinct", "cps-elementary", "school-site", "police-station",
+    "fire-station", "post-office", "library", "early-voting",
 ]
 
 # file -> (min features, max features) for the boundary layers fetched by the app.
@@ -106,6 +106,7 @@ GEOMETRY_FILES = {
     "congress-districts.json": (18, 18),  # 17 IL U.S. House districts + a ZZ water pseudo-district; pre-built from TIGERweb by scripts/build_legislative_boundaries.py (R2-2)
     "il-senate-districts.json": (60, 60),  # 59 IL Senate districts + ZZ; pre-built from TIGERweb layer 1
     "il-house-districts.json": (119, 119),  # 118 IL House districts + ZZ; pre-built from TIGERweb layer 2
+    "dupage-county-outline.json": (1, 1),
 }
 
 # file -> minimum key count (officeholder rosters).
