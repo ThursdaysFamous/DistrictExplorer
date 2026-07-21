@@ -38,7 +38,7 @@ const POINT = "41.88250,-87.62850"; // downtown Loop — inside Cook County
 const OFFLINE = ["school-board", "il-supreme-court", "ccbr"];
 const EXPECT_DISTRICT = { "school-board": "12", "il-supreme-court": "1", "ccbr": "3" };
 const NEGATIVE_POINT = "41.70000,-87.10000"; // Lake Michigan, Indiana waters — outside all three anchor layers
-const EXPECT_LAYERS = 36; // 18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 36 — live-verified 2026-07
+const EXPECT_LAYERS = 37; // 18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 1 DuPage County layer (board — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 37 — live-verified 2026-07
 // ==== GENERATED:END smoke-config ====
 // Anchor layers that declare a location-relevance test (mod.coverage) HIDE at
 // an out-of-coverage point instead of reporting an empty card — this list
