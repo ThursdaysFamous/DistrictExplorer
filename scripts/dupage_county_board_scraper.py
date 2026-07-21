@@ -8,15 +8,15 @@ directory (dupagecounty.gov, a Revize CMS "business directory") is plain
 server-rendered HTML with no JS challenge, so requests + BeautifulSoup suffice.
 
 Each member is a <div class="rz-business-block"> carrying an <h2> name, an
-inline "District N" field, term dates, and a "More about <name>" link to the
-member's detail page; the detail page carries a member-specific mailto: address
-when the county publishes one. The Board Chair is elected countywide (no
-district) and is emitted with district=null, role="Chair".
+inline "District N" field, term dates, a member-specific tel: phone and mailto:
+email, and a "More about <name>" link to the member's detail page. Everything
+the card needs is on this one list page, so a single fetch suffices. The Board
+Chair is elected countywide (no district) and is emitted with district=null,
+role="Chair".
 
-Names and emails are read verbatim from the county's own pages — never guessed.
-Phone is deliberately omitted: the detail pages show the general County Board
-office line (630-407-6500) on every member, so a scraped "phone" would be
-boilerplate, not the member's own — an honest null beats a misleading number.
+Names, phones, and emails are read verbatim from the county's own directory —
+never guessed. The per-member tel: link is the member's own published number
+(distinct from the general 630-407-6500 board-office line).
 
 Usage:
     python3 dupage_county_board_scraper.py [output.json]   # default: stdout
@@ -25,7 +25,6 @@ Usage:
 import json
 import re
 import sys
-import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -52,16 +51,33 @@ def abs_url(href):
     return BASE + "/" + href.lstrip("/")
 
 
-def member_email(html):
+def format_phone(raw):
+    """Normalize a tel: value to XXX-XXX-XXXX; leave anything unexpected as-is."""
+    d = re.sub(r"\D", "", raw or "")
+    if len(d) == 11 and d[0] == "1":
+        d = d[1:]
+    if len(d) == 10:
+        return "%s-%s-%s" % (d[:3], d[3:6], d[6:])
+    return (raw or "").strip() or None
+
+
+def block_email(block):
     """The member's own @dupagecounty.gov address from a mailto: link, if any."""
-    soup = BeautifulSoup(html, "html.parser")
-    for a in soup.find_all("a", href=True):
+    for a in block.find_all("a", href=True):
         h = a["href"].strip()
         if h.lower().startswith("mailto:"):
             addr = h[7:].split("?")[0].strip()
-            low = addr.lower()
-            if low.endswith("@dupagecounty.gov") and not low.startswith(BOILERPLATE_EMAIL):
+            if addr.lower().endswith("@dupagecounty.gov") and not addr.lower().startswith(BOILERPLATE_EMAIL):
                 return addr
+    return None
+
+
+def block_phone(block):
+    """The member's own published number from the block's tel: link."""
+    for a in block.find_all("a", href=True):
+        h = a["href"].strip()
+        if h.lower().startswith("tel:"):
+            return format_phone(h[4:])
     return None
 
 
@@ -82,16 +98,13 @@ def scrape():
         dm = re.search(r"District\s+([1-6])\b", text)
         district = int(dm.group(1)) if (dm and not is_chair) else None
         link = b.find("a", href=re.compile(r"/[A-Za-z]+\.php", re.I))
-        url = abs_url(link["href"]) if link else None
-        email = None
-        if url:
-            try:
-                email = member_email(fetch(url))
-                time.sleep(0.5)  # be polite to the county's server
-            except requests.RequestException as e:
-                print("WARN: detail fetch failed for %s (%s)" % (name, e), file=sys.stderr)
         rec = {"name": name, "district": district,
-               "role": "Chair" if is_chair else "Member", "url": url}
+               "role": "Chair" if is_chair else "Member",
+               "url": abs_url(link["href"]) if link else None}
+        phone = block_phone(b)
+        email = block_email(b)
+        if phone:
+            rec["phone"] = phone
         if email:
             rec["email"] = email
         records.append(rec)
@@ -103,8 +116,9 @@ def main():
     n_dist = sum(1 for r in records if r["district"] is not None)
     n_chair = sum(1 for r in records if r["role"] == "Chair")
     n_email = sum(1 for r in records if r.get("email"))
-    print("scraped %d records (%d district members, %d chair, %d emails)"
-          % (len(records), n_dist, n_chair, n_email), file=sys.stderr)
+    n_phone = sum(1 for r in records if r.get("phone"))
+    print("scraped %d records (%d district members, %d chair, %d phones, %d emails)"
+          % (len(records), n_dist, n_chair, n_phone, n_email), file=sys.stderr)
     out = json.dumps(records, ensure_ascii=False, indent=2) + "\n"
     if len(sys.argv) >= 2:
         with open(sys.argv[1], "w") as f:

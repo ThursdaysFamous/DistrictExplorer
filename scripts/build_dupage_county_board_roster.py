@@ -28,10 +28,12 @@ SOURCE_URL = "https://www.dupagecounty.gov/government/county_board/county_board_
 # wiping good data — the safety net every roster builder carries.
 MIN_DISTRICTS = 6
 MIN_MEMBERS = 18
-# Emails are the enrichment this roster adds over the boundary (which carries no
-# names at all). Most members publish a @dupagecounty.gov address; guard the
-# count so a markup change that drops the mailto: links fails loudly.
+# Contact is the enrichment this roster adds over the boundary (which carries no
+# names at all). Every member publishes a tel: and a @dupagecounty.gov mailto:
+# in the directory; guard both counts so a markup change that drops the links
+# fails loudly rather than silently shipping a contactless roster.
 MIN_EMAILS = 12
+MIN_PHONES = 12
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUT_DIR = os.path.join(REPO_ROOT, "data", "app")
@@ -42,7 +44,7 @@ def member_obj(rec):
     # "Member" is the default role and needn't be stored; a real "Chair" does.
     if rec.get("role") and rec["role"] != "Member":
         m["role"] = rec["role"]
-    for k in ("email", "url"):
+    for k in ("phone", "email", "url"):
         if rec.get(k):
             m[k] = rec[k]
     return m
@@ -80,8 +82,11 @@ def main():
     districts = [k for k in roster if k != "chair"]
     total_members = sum(len(roster[d]["members"]) for d in districts)
     total_emails = sum(1 for d in districts for m in roster[d]["members"] if m.get("email"))
+    total_phones = sum(1 for d in districts for m in roster[d]["members"] if m.get("phone"))
     if roster.get("chair", {}).get("email"):
         total_emails += 1
+    if roster.get("chair", {}).get("phone"):
+        total_phones += 1
 
     if len(districts) < MIN_DISTRICTS:
         print(f"WARNING: resolved only {len(districts)}/{MIN_DISTRICTS} districts — refusing "
@@ -93,6 +98,10 @@ def main():
         sys.exit(1)
     if total_emails < MIN_EMAILS:
         print(f"WARNING: only {total_emails}/{MIN_EMAILS}+ member emails — the directory "
+              "markup likely changed; refusing to overwrite", file=sys.stderr)
+        sys.exit(1)
+    if total_phones < MIN_PHONES:
+        print(f"WARNING: only {total_phones}/{MIN_PHONES}+ member phones — the directory "
               "markup likely changed; refusing to overwrite", file=sys.stderr)
         sys.exit(1)
 
@@ -108,7 +117,8 @@ def main():
         f.write("\n")
 
     print(f"Wrote {out_path}: {len(districts)} districts, {total_members} members, "
-          f"{total_emails} emails{', +chair' if 'chair' in roster else ''}", file=sys.stderr)
+          f"{total_phones} phones, {total_emails} emails{', +chair' if 'chair' in roster else ''}",
+          file=sys.stderr)
 
 
 if __name__ == "__main__":

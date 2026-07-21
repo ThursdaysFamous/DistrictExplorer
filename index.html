@@ -5634,15 +5634,15 @@ function initChiExplorer() {
   // 2025-02): a whole-county FeatureServer query at geometryPrecision=5, guarded
   // by the shared no-usable-geometry check so an Esri 200-with-error-envelope is
   // never pinned in the session cache — the same loader pattern the Will County
-  // and TIGER layers use. The boundary feature carries the district number and
-  // the official per-district map URL on dupagecounty.gov, but no member names,
-  // so names come from the weekly-scraped roster joined below (never guessed);
-  // where the roster is absent the card still shows the district + official
-  // links. The Board Chair, elected countywide, appears on every district card.
+  // and TIGER layers use. The boundary feature carries only the district number
+  // (no member names), so the members — name, phone, email — come from the
+  // weekly-scraped roster joined below (never guessed); where the roster is
+  // absent the card still shows the district + the official directory link. The
+  // Board Chair, elected countywide, appears on every district card.
   var DUPAGE_GIS = "https://services.arcgis.com/neJvtQ4PXvnQ86MJ/arcgis/rest/services/";
   var loadDupageCountyBoard = makeCached(function () {
     var url = DUPAGE_GIS + "County_Board_Dist_new/FeatureServer/0" +
-      "/query?where=1%3D1&outFields=District,URL&outSR=4326&f=geojson&geometryPrecision=5";
+      "/query?where=1%3D1&outFields=District&outSR=4326&f=geojson&geometryPrecision=5";
     return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
       .then(function (geojson) {
         if (!hasUsableGeometry(geojson)) throw new Error("DuPage County Board returned no usable geometry");
@@ -5692,6 +5692,7 @@ function initChiExplorer() {
       function personRow(label, m) {
         var lines = ["<strong>" + sanitize(m.name) + "</strong>" + (m.role ? " — " + sanitize(m.role) : "")];
         var link = [];
+        if (m.phone) link.push(sanitize(m.phone));
         if (m.email) link.push('<a href="mailto:' + sanitize(m.email) + '">' + sanitize(m.email) + "</a>");
         var prof = safeHttpUrl(m.url);
         if (prof) link.push('<a href="' + sanitize(prof) + '" target="_blank" rel="noopener">profile</a>');
@@ -5705,14 +5706,6 @@ function initChiExplorer() {
       // The Board Chair is elected countywide, so she represents every DuPage
       // resident — surface her on every district's card.
       if (result.chair && result.chair.name) personRow("Board Chair (countywide)", result.chair);
-      // Official per-district map link carried on the boundary feature itself.
-      var mapUrl = safeHttpUrl(findPropCI(result.props, ["url"]));
-      if (mapUrl && result.district) {
-        fields.push({
-          label: "District map",
-          html: '<a href="' + sanitize(mapUrl) + '" target="_blank" rel="noopener">DuPage County Board District ' + sanitize(String(result.district)) + ' — map (official)</a>'
-        });
-      }
       fields.push({
         label: "Official directory",
         html: '<a href="https://www.dupagecounty.gov/government/county_board/county_board_members/" target="_blank" rel="noopener">DuPage County Board members (official)</a>'

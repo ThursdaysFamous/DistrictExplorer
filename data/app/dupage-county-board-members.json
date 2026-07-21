@@ -3,16 +3,19 @@
     "members": [
       {
         "name": "Cindy Cronin Cahill",
+        "phone": "630-407-6051",
         "email": "Cindy.CroninCahill@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/cahill.php"
       },
       {
         "name": "Michael Childress",
+        "phone": "630-407-6052",
         "email": "Michael.Childress@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/childress.php"
       },
       {
         "name": "Sam Tornatore",
+        "phone": "630-539-7100",
         "email": "sam.tornatore@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/tornatore.php"
       }
@@ -23,14 +26,18 @@
     "members": [
       {
         "name": "Paula Deacon Garcia",
+        "phone": "630-921-9874",
         "email": "paula.deacongarcia@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/garcia.php"
       },
       {
-        "name": "Andrew Honig"
+        "name": "Andrew Honig",
+        "phone": "630-407-6032",
+        "email": "andrew.honig@dupagecounty.gov"
       },
       {
         "name": "Yeena Yoo",
+        "phone": "630-407-6053",
         "email": "Yeena.Yoo@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/yoo.php"
       }
@@ -41,16 +48,19 @@
     "members": [
       {
         "name": "Lucy Chang Evans",
+        "phone": "630-407-6054",
         "email": "Lucy.Evans@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/evans.php"
       },
       {
         "name": "Kari Galassi",
+        "phone": "630-407-6055",
         "email": "kari.galassi@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/galassi.php"
       },
       {
         "name": "Brian Krajewski",
+        "phone": "630-697-5420",
         "email": "brian.krajewski@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/krajewski.php"
       }
@@ -61,16 +71,19 @@
     "members": [
       {
         "name": "Grant Eckhoff",
+        "phone": "630-407-6023",
         "email": "grant.eckhoff@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/eckhoff.php"
       },
       {
         "name": "Lynn LaPlante",
+        "phone": "630-407-6046",
         "email": "lynn.laplante@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/laplante.php"
       },
       {
         "name": "Mary FitzGerald Ozog",
+        "phone": "630-790-2426",
         "email": "mary.ozog@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/ozog.php"
       }
@@ -81,16 +94,20 @@
     "members": [
       {
         "name": "Sadia Covert",
+        "phone": "630-407-6023",
         "email": "sadia.covert@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/covert.php"
       },
       {
         "name": "Dawn DeSart",
+        "phone": "312-804-8688",
         "email": "dawn.desart@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/desart.php"
       },
       {
-        "name": "Saba Haider"
+        "name": "Saba Haider",
+        "phone": "630-407-6031",
+        "email": "saba.haider@dupagecounty.gov"
       }
     ],
     "sourceUrl": "https://www.dupagecounty.gov/government/county_board/county_board_members/"
@@ -99,16 +116,19 @@
     "members": [
       {
         "name": "Melissa Martinez",
+        "phone": "630-407-6089",
         "email": "melissa.martinez@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/martinez.php"
       },
       {
         "name": "Greg Schwarze",
+        "phone": "630-407-6057",
         "email": "greg.schwarze@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/schwarze.php"
       },
       {
         "name": "James Zay",
+        "phone": "630-407-6058",
         "email": "james.zay@dupagecounty.gov",
         "url": "https://www.dupagecounty.gov/government/county_board/zay.php"
       }
@@ -118,6 +138,7 @@
   "chair": {
     "name": "Deborah Conroy",
     "role": "Chair",
+    "phone": "630-407-6060",
     "email": "chair@dupagecounty.gov",
     "url": "https://www.dupagecounty.gov/government/county_board/conroy.php"
   }
