@@ -130,25 +130,28 @@ def district_office_lines(office):
     """Address lines for a single local (in-district) office, rendered as
     districtOffice. Street (+ suite / building) first, then city/state/ZIP, then
     phone — the order officeAddressForGeocode expects (it drops the phone line
-    and geocodes the rest to drop the map pin)."""
+    and geocodes the rest to drop the map pin). Fields are coerced to str: the
+    source occasionally types suite/zip as a bare number."""
+    def s(v):
+        return "" if v is None else str(v)
     lines = []
-    street = office.get("address")
+    street = s(office.get("address"))
     if street:
         if office.get("suite"):
-            street += ", " + office["suite"]
+            street += ", " + s(office.get("suite"))
         lines.append(street)
     if office.get("building"):
-        lines.append(office["building"])
+        lines.append(s(office.get("building")))
     # city/state/zip as "City, ST ZIP"
     if office.get("city") and office.get("state"):
-        line = office["city"] + ", " + office["state"]
+        line = s(office.get("city")) + ", " + s(office.get("state"))
         if office.get("zip"):
-            line += " " + office["zip"]
+            line += " " + s(office.get("zip"))
         lines.append(line)
     elif office.get("zip"):
-        lines.append(office["zip"])
+        lines.append(s(office.get("zip")))
     if office.get("phone"):
-        lines.append("Phone: " + office["phone"])
+        lines.append("Phone: " + s(office.get("phone")))
     return lines
 
 
