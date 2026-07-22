@@ -3683,11 +3683,14 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
+    "dupage-county-judicial", // DuPage judicial subcircuit (7; PA 102-0693, the 18th Judicial Circuit's subcircuits, live from county GIS, coverage-gated to DuPage). Ranked beside will-county-judicial (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "will-county-board", // Will County Board district (11, current Board-Approved-11/2/21 map; live from county GIS, coverage-gated to Will County)
     "dupage-county-board", // DuPage County Board district (6 districts, each electing 3 of 18 members; live from county GIS, coverage-gated to DuPage). Ranked beside will-county-board (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "commissioner",      // Cook County Commissioner district
     "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
+    "dupage-county-fire", // DuPage fire protection district (30; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no trustee/contact fields, so name-only). Ranked beside will-county-fire (the analogous collar-county layer); the two never co-render, being gated to different counties.
+    "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
     "will-county-park",  // Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)
     "dupage-county-park", // DuPage park district (39; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no commissioner/contact fields, so name-only). Ranked beside will-county-park (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "school-board",      // Elected School Board district (10, citywide)
@@ -3713,6 +3716,10 @@ function initChiExplorer() {
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
     "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
+    // Smallest DuPage layer, so it renders on top of Township and County
+    // (smallest-on-top); turning it on drops both to outline-only, framing the
+    // precinct fills from underneath.
+    "dupage-county-precinct", // DuPage voting precinct (600; current 2024 consolidated map Precincts_2024, coverage-gated to DuPage). Ranked beside will-county-precinct (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5786,6 +5793,120 @@ function initChiExplorer() {
     }
   });
 
+  // DuPage County judicial subcircuits — the 7 subcircuits of the 18th Judicial
+  // Circuit (DuPage County), created by PA 102-0693 (the same act that drew
+  // Will's) and first used at the 2024 election. Identity only; judges aren't in
+  // the data, so the card links to the county's own 18th Circuit Court. Live
+  // from DuPage County's own maintained GIS (Judicial_Subcircuits, edited
+  // 2026-04; field DISTRICT = the subcircuit number 1-7), the same loader
+  // pattern as the other DuPage layers. The DuPage analog of
+  // will-county-judicial (Will = 12th Circuit, 5 subcircuits); the two never
+  // co-render, being gated to different counties.
+  var loadDupageJudicial = makeCached(function () {
+    var url = DUPAGE_GIS + "Judicial_Subcircuits/FeatureServer/0" +
+      "/query?where=1%3D1&outFields=DISTRICT&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Judicial Subcircuits returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerPolygonLayer({
+    id: "dupage-county-judicial",
+    group: "political",
+    label: "Judicial Subcircuit (18th Circuit)",
+    coverage: dupageCountyCoverage,
+    loader: loadDupageJudicial,
+    style: { color: "#6B4FA0", weight: 2, fillColor: "#8A6FBF", fillOpacity: 0.05, dashArray: "6 3" },
+    fields: [
+      { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
+      { label: "Court", value: "18th Judicial Circuit (DuPage County)" },
+      { label: "Judges",
+        html: '<a href="https://www.dupagecourts.gov/" target="_blank" rel="noopener">18th Judicial Circuit Court (official)</a>' }
+    ]
+  });
+
+  // DuPage County fire protection districts — the DuPage analog of the Will
+  // County fire layer, and DuPage's first Public Safety layer. Partial coverage:
+  // fire protection districts are the suburban *taxing* bodies that serve
+  // (mostly unincorporated) areas outside the municipal fire departments, so
+  // they don't tile the whole county — an in-DuPage point with no fire
+  // protection district honestly reports "No result for this point." Live from
+  // DuPage County's own GIS (Fire_Protection_Districts_ layer, edited 2026-06;
+  // 30 districts), the same loader pattern as the board/park layers. The
+  // boundary carries only the district name (field FIRE) — Illinois fire
+  // protection districts are independent bodies with their own elected trustees,
+  // and the county GIS carries no trustee/contact fields (verified across all
+  // three DuPage fire services 2026-07), so the card names the district
+  // (verbatim from GIS, never guessed) without a roster — the same honest
+  // name-only shape as dupage-county-park. registerPolygonLayer, the factory the
+  // Will County fire / park layers use; labelled "DuPage Fire Protection
+  // District" so it doesn't collide with Will's "Fire Protection District"
+  // toggle at boot.
+  var loadDupageFire = makeCached(function () {
+    var url = DUPAGE_GIS + "Fire_Protection_Districts_/FeatureServer/3" +
+      "/query?where=1%3D1&outFields=FIRE&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Fire Protection Districts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerPolygonLayer({
+    id: "dupage-county-fire",
+    group: "safety",
+    label: "DuPage Fire Protection District",
+    coverage: dupageCountyCoverage,
+    loader: loadDupageFire,
+    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
+    fields: [
+      { name: "name", label: "Fire District", keys: ["fire"], primary: true }
+    ]
+  });
+
+  // DuPage County special police districts — DuPage's second Public Safety
+  // layer, and a genuinely different concept from a police department. A
+  // "special police district" is a township property-tax district covering the
+  // township's *unincorporated* area, whose levy funds supplemental DuPage
+  // County Sheriff patrol of that area (Illinois township law, 60 ILCS 1/30-160
+  // family; only unincorporated parcels are taxed — Milton Township's, by 1987
+  // referendum, funds three additional Sheriff deputies and squad cars). 4 of
+  // DuPage's 9 townships have declared one (Bloomingdale / Milton / Wayne /
+  // York). Live from DuPage County's own GIS (Special_Police_Districts_ layer
+  // 13, described by the county as "Real Estate Tax Code polygons", edited
+  // 2026-06; 4 features). The polygons are the carved-out unincorporated pockets
+  // — incorporated municipalities are excluded (verified 2026-07: incorporated
+  // points fall in none) — so coverage is partial and thin; most DuPage points
+  // honestly report "No result for this point." The GIS carries only the
+  // township name (field SPECIAL_POLICE), so the card names the district,
+  // explains that it is a tax district (not a police force), and links the
+  // elected DuPage County Sheriff — the actual law-enforcement authority for
+  // these unincorporated areas — rather than inventing an officer.
+  // registerPolygonLayer, in the app's blue "safety" family; labelled "DuPage
+  // Special Police District" (its own concept — no Will County analog).
+  var loadDupageSpecialPolice = makeCached(function () {
+    var url = DUPAGE_GIS + "Special_Police_Districts_/FeatureServer/13" +
+      "/query?where=1%3D1&outFields=SPECIAL_POLICE&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Special Police Districts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerPolygonLayer({
+    id: "dupage-county-special-police",
+    group: "safety",
+    label: "DuPage Special Police District",
+    coverage: dupageCountyCoverage,
+    loader: loadDupageSpecialPolice,
+    style: { color: "#3949AB", weight: 1.5, fillColor: "#5C6BC0", fillOpacity: 0.06, dashArray: "4 3" },
+    fields: [
+      { name: "name", label: "Township", keys: ["special_police"], primary: true },
+      { label: "About", value: "A township property-tax district funding supplemental DuPage County Sheriff patrol of this unincorporated area; only unincorporated parcels are taxed." },
+      { label: "Law enforcement", html: '<a href="https://www.dupagesheriff.org" target="_blank" rel="noopener">DuPage County Sheriff\'s Office (official)</a>' }
+    ]
+  });
+
   // DuPage County park districts — partial coverage: park districts don't tile
   // the whole county, so an in-coverage point outside every park district
   // honestly reports "No result for this point." Live from DuPage County's own
@@ -5815,6 +5936,103 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "Park District", keys: ["park"], primary: true }
     ]
+  });
+
+  // DuPage County voting precincts — the current 2024 consolidated map (600
+  // precincts; DuPage cut ~930 precincts down to 600 for 2024, so the county's
+  // misleadingly-named "Precincts_Current" service is the OLD map — Precincts_2024
+  // is the live one, edited 2026-02). Precincts are numbered within their
+  // TOWNSHIP ("Bloomingdale 60", "Lisle 87"), so this nests under Township
+  // exactly as Ward Precinct nests under Ward and will-county-precinct nests
+  // under its township: subOf "township", framed by the township outline, itself
+  // framed by County. The Illinois Election Code also sites each precinct within
+  // a single County Board district (10 ILCS 5/11-2), but the precinct data
+  // carries no board-district field — so that identity is resolved by a spatial
+  // join against the DuPage County Board boundary the app already loads and
+  // reported as a card row, not a nest. The sub-precinct committeeperson isn't in
+  // this data, so the card links to the DuPage County Clerk's Election Division
+  // (registration + polling-place/precinct lookup). The DuPage analog of
+  // will-county-precinct; the two never co-render, being gated to different
+  // counties.
+  var loadDupagePrecincts = makeCached(function () {
+    var url = DUPAGE_GIS + "Precincts_2024/FeatureServer/0" +
+      "/query?where=1%3D1&outFields=PrecinctName,TownshipName&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Voting Precincts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerLayer({
+    id: "dupage-county-precinct",
+    group: "geography",
+    subOf: "township",
+    label: "Voting Precinct",
+    coverage: dupageCountyCoverage,
+    hoverName: function (feature) {
+      var v = findPropCI(feature.properties || {}, ["precinctname"]);
+      return (v == null || v === "") ? null : String(v);
+    },
+    overlay: {
+      load: loadDupagePrecincts,
+      // solid thin outline + visible fill: with the township dropped to
+      // outline-only, the precincts carry the interior fill. Same brown family
+      // as the township, a shade deeper so the two read as related.
+      style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null }
+    },
+    query: function (point, seq) {
+      // Join the containing County Board district — a spatial lookup, since the
+      // precinct feature carries no board-district field. Best-effort: a
+      // board-boundary failure drops just that row, never the precinct card.
+      return Promise.all([
+        loadDupagePrecincts(),
+        loadDupageCountyBoard().catch(function () { return null; })
+      ]).then(function (results) {
+        var geojson = results[0], boardGeo = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var boardDistrict = null;
+        if (boardGeo) {
+          var bf = findFeatureContaining(boardGeo, point);
+          if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
+        }
+        return {
+          seq: seq,
+          name: findPropCI(props, ["precinctname"]),
+          township: findPropCI(props, ["townshipname"]),
+          boardDistrict: boardDistrict
+        };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+      if (result.township) fields.push({ label: "Township", value: String(result.township) });
+      if (result.boardDistrict != null && result.boardDistrict !== "") {
+        fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+      }
+      fields.push({ label: "Registration & polling place",
+        html: '<a href="https://www.dupagecounty.gov/elections/" target="_blank" rel="noopener">DuPage County Clerk — Elections (official)</a>' });
+      return renderFieldList(fields);
+    },
+    // Precinct sits at the bottom of the County > Township > Precinct nest:
+    // turning it on brings Township on (which itself brings County on), and
+    // drops Township to outline-only so the precinct fills read as its interior
+    // subdivision.
+    onToggle: function (on) {
+      var townshipRt = layerRuntime["township"];
+      if (on) {
+        if (!state.layersOn["township"]) {
+          var tbox = document.getElementById("toggle-township");
+          if (tbox && !tbox.checked) tbox.click();
+        }
+        townshipRt.outlineOnly = true;
+      } else {
+        townshipRt.outlineOnly = false;
+      }
+      var townshipMod = getLayerById("township");
+      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
+    }
   });
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------

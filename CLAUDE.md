@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Chicago District Explorer: a single-file, dependency-light web app. Click a point in Chicago (or search an address) and it reports every civic district containing that point and who represents you there — wards, county/state/federal legislative districts, police districts/beats, school zones, and more. Layers are location-aware: city layers hide outside Chicago, Cook/Will county layers appear only in their counties, and the statewide layers (county, township, municipality, school district, ZIP) work anywhere in Illinois. Deployed as a static site to `chidistricts.com` (see `CNAME`).
+Chicago District Explorer: a single-file, dependency-light web app. Click a point in Chicago (or search an address) and it reports every civic district containing that point and who represents you there — wards, county/state/federal legislative districts, police districts/beats, school zones, and more. Layers are location-aware: city layers hide outside Chicago, Cook/Will/DuPage county layers appear only in their counties, and the statewide layers (county, township, municipality, school district, ZIP) work anywhere in Illinois. Deployed as a static site to `chidistricts.com` (see `CNAME`).
 
 **There is no build step, no framework, and no server-side code.** The entire app — styles, core, and all layer modules — lives inline in `index.html` (~8,000 lines). `sw.js` is the service worker; `data/app/*.json` are runtime-fetched data files. Everything else is data pipeline, scrapers, or CI.
 
@@ -15,7 +15,7 @@ Chicago District Explorer: a single-file, dependency-light web app. Click a poin
 - Metro: Chicago (`chicago`) — https://chidistricts.com/
 - Geocoders: address Photon (Chicago-bounded type-ahead); unbounded Photon (whole-coverage, sibling-metro lookup); POI Nominatim (office-address pin lookup, serial >=1s queue)
 - Ground truth: 41.88250,-87.62850 (downtown Loop — inside Cook County) → school-board 12; il-supreme-court 1; ccbr 3. Negative point 41.70000,-87.10000 (Lake Michigan, Indiana waters — outside all three anchor layers).
-- Layers: 38 registered (political 13, safety 6, schools 9, geography 10); `registerLayer(` floor 15. Debug namespace `window.ChiExplorer`.
+- Layers: 42 registered (political 14, safety 8, schools 9, geography 11); `registerLayer(` floor 15. Debug namespace `window.ChiExplorer`.
 - Scheduled workflows: `update-ilga-roster.yml` (Mon 13:00 UTC); `update-congress-roster.yml` (Mon 13:00 UTC); `update-cpd-roster.yml` (Tue 13:00 UTC); `update-ccpsa-roster.yml` (Wed 13:00 UTC); `update-will-county-board-roster.yml` (Thu 13:00 UTC); `update-ccbr-roster.yml` (Fri 13:00 UTC); `update-county-clerk-roster.yml` (Sat 13:00 UTC); `update-dupage-county-board-roster.yml` (Sun 13:00 UTC); `validate-sources.yml` (1st of month 14:00 UTC).
 - Source registry: `scripts/validate_sources.py` (machine-checked monthly)
 <!-- ==== GENERATED:END metro-facts ==== -->
