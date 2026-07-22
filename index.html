@@ -3694,14 +3694,14 @@ function initChiExplorer() {
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
+    "ward",              // City Ward (50)
     // Smaller than its parent ward, so it renders on top (smallest-on-top); turning it
     // on drops the ward to outline-only, framing the precinct fills from underneath.
     "ward-precinct",     // Ward Precinct (sub-selection of City Ward)
-    "ward",              // City Ward (50)
+    "police-district",   // Police District (22)
     // Smaller than its parent district, so it renders on top (smallest-on-top);
     // turning it on drops the district to outline-only, framing the beat fills from underneath.
     "police-beat",       // Police Beat (~277)
-    "police-district",   // Police District (22)
     // CCPSA District Council shares the police-district geometry exactly (22,
     // one council per district); place it just after so its outline draws on
     // top when both are on and its distinct teal dash stays legible.
@@ -7840,8 +7840,14 @@ function initChiExplorer() {
     // and stamped dxCounty so hover dispatches per feature. A county whose
     // source is down drops out of the drawing while the others still render;
     // only if every county fails does the load reject (overlay error + Retry).
-    // Deliberately not makeCached: the per-county loaders underneath already
-    // cache, and a re-toggle should retry a previously-failed county.
+    // Deliberately not makeCached, so the total-failure path stays retryable:
+    // a rejection is never pinned — Retry re-invokes this and the per-county
+    // loaders underneath (which do cache successes) re-attempt. A PARTIAL
+    // union, by contrast, resolves and is then session-cached by the engine
+    // (rt.geojson, P11) — the recorded tradeoff in
+    // docs/COUNTY_LAYER_CONSOLIDATION.md: the missing county's boundaries
+    // stay off the overlay until reload, while its card/query path (fetched
+    // per query, below) keeps working and keeps its own Retry.
     function loadUnion() {
       return Promise.all(entries.map(function (entry) {
         return entry.loadGeometry().then(function (geojson) {
@@ -7913,13 +7919,19 @@ function initChiExplorer() {
         return entry && entry.pointOfInterest ? entry.pointOfInterest(result) : null;
       },
       hoverOfficial: anyHoverOfficial ? {
-        // composite prefetch: every county's officeholder data, best-effort,
-        // keyed by county for the per-feature dispatch in name()
+        // composite prefetch: every county's officeholder data, keyed by
+        // county for the per-feature dispatch in name(). All-or-retry ON
+        // PURPOSE: the engine caches a resolved roster for the session
+        // (rt.roster — prefetchHoverRoster never refetches a truthy value),
+        // so resolving with a failed county's slot null would pin that gap
+        // until reload. Rejecting instead leaves rt.roster unset — the engine
+        // swallows the rejection and the next toggle-on retries, with the
+        // already-succeeded counties' cached loaders resolving instantly.
+        // Hover simply omits names until every county's data is in; the click
+        // cards fetch per query and are unaffected either way.
         load: function () {
           return Promise.all(entries.map(function (entry) {
-            if (!entry.hoverOfficial) return Promise.resolve(null);
-            return entry.hoverOfficial.load().then(function (data) { return data; },
-                                                   function () { return null; });
+            return entry.hoverOfficial ? entry.hoverOfficial.load() : Promise.resolve(null);
           })).then(function (results) {
             var byCounty = {};
             entries.forEach(function (entry, idx) { byCounty[entry.key] = results[idx]; });

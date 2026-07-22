@@ -91,11 +91,11 @@ EXPECT_LAYER_IDS = [
     "will-county-judicial", "dupage-county-judicial", "county-board", "ccbr",
     "will-county-fire", "dupage-county-fire", "dupage-county-special-police",
     "will-county-park", "dupage-county-park", "school-board",
-    "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat",
-    "police-district", "ccpsa-district-council", "community-area", "zip-code",
-    "cps-high", "cps-middle", "will-county-precinct",
-    "dupage-county-precinct", "cps-elementary", "school-site",
-    "police-station", "fire-station", "post-office", "library",
+    "cps-hs-network", "cps-network", "ward", "ward-precinct",
+    "police-district", "police-beat", "ccpsa-district-council",
+    "community-area", "zip-code", "cps-high", "cps-middle",
+    "will-county-precinct", "dupage-county-precinct", "cps-elementary",
+    "school-site", "police-station", "fire-station", "post-office", "library",
     "early-voting",
 ]
 

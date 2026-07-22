@@ -61,6 +61,13 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
   `rt.geojson` for the session (P11), so a partial union persists until reload — same class
   as the recorded relevance-hiding carve-outs, and the query path (which refetches per
   county with Retry) is unaffected.
+- **Hover-roster prefetch is all-or-retry.** The engine caches a *resolved* hover roster
+  for the session (`rt.roster` is never refetched once truthy), so the composite
+  `hoverOfficial.load` deliberately **rejects when any county's load fails** rather than
+  resolving with a permanent hole: the engine swallows the rejection and the next
+  toggle-on retries, the already-succeeded counties resolving instantly from their cached
+  loaders. Until all counties load, hover omits officeholder names (district identity
+  still shows); click cards fetch per query and are unaffected.
 - **One style per concept layer** (a concept has one legend identity), and a **generic
   toggle label** ("County Board District"). County identity moves into the card: a `Body`
   row right after the district number ("Cook County Board of Commissioners" / "Will County

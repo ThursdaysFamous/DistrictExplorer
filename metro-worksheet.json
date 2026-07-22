@@ -268,10 +268,17 @@
       "rank_note": "CPS K-8 Network (admin grouping)"
     },
     {
+      "id": "ward",
+      "label": "City Ward",
+      "group": "political",
+      "area_rank": 23,
+      "rank_note": "City Ward (50)"
+    },
+    {
       "id": "ward-precinct",
       "label": "Ward Precinct",
       "group": "political",
-      "area_rank": 23,
+      "area_rank": 24,
       "rank_note": "Ward Precinct (sub-selection of City Ward)",
       "rank_comment": [
         "Smaller than its parent ward, so it renders on top (smallest-on-top); turning it",
@@ -279,29 +286,22 @@
       ]
     },
     {
-      "id": "ward",
-      "label": "City Ward",
-      "group": "political",
-      "area_rank": 24,
-      "rank_note": "City Ward (50)"
+      "id": "police-district",
+      "label": "Police District",
+      "group": "safety",
+      "area_rank": 25,
+      "rank_note": "Police District (22)"
     },
     {
       "id": "police-beat",
       "label": "Police Beat",
       "group": "safety",
-      "area_rank": 25,
+      "area_rank": 26,
       "rank_note": "Police Beat (~277)",
       "rank_comment": [
         "Smaller than its parent district, so it renders on top (smallest-on-top);",
         "turning it on drops the district to outline-only, framing the beat fills from underneath."
       ]
-    },
-    {
-      "id": "police-district",
-      "label": "Police District",
-      "group": "safety",
-      "area_rank": 26,
-      "rank_note": "Police District (22)"
     },
     {
       "id": "ccpsa-district-council",
