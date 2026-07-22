@@ -3688,6 +3688,7 @@ function initChiExplorer() {
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "commissioner",      // Cook County Commissioner district
     "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
+    "dupage-county-fire", // DuPage fire protection district (30; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no trustee/contact fields, so name-only). Ranked beside will-county-fire (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "will-county-park",  // Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)
     "dupage-county-park", // DuPage park district (39; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no commissioner/contact fields, so name-only). Ranked beside will-county-park (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "school-board",      // Elected School Board district (10, citywide)
@@ -5784,6 +5785,44 @@ function initChiExplorer() {
         return members && members.length ? members.map(function (m) { return m.name; }).join(", ") : null;
       }
     }
+  });
+
+  // DuPage County fire protection districts — the DuPage analog of the Will
+  // County fire layer, and DuPage's first Public Safety layer. Partial coverage:
+  // fire protection districts are the suburban *taxing* bodies that serve
+  // (mostly unincorporated) areas outside the municipal fire departments, so
+  // they don't tile the whole county — an in-DuPage point with no fire
+  // protection district honestly reports "No result for this point." Live from
+  // DuPage County's own GIS (Fire_Protection_Districts_ layer, edited 2026-06;
+  // 30 districts), the same loader pattern as the board/park layers. The
+  // boundary carries only the district name (field FIRE) — Illinois fire
+  // protection districts are independent bodies with their own elected trustees,
+  // and the county GIS carries no trustee/contact fields (verified across all
+  // three DuPage fire services 2026-07), so the card names the district
+  // (verbatim from GIS, never guessed) without a roster — the same honest
+  // name-only shape as dupage-county-park. registerPolygonLayer, the factory the
+  // Will County fire / park layers use; labelled "DuPage Fire Protection
+  // District" so it doesn't collide with Will's "Fire Protection District"
+  // toggle at boot.
+  var loadDupageFire = makeCached(function () {
+    var url = DUPAGE_GIS + "Fire_Protection_Districts_/FeatureServer/3" +
+      "/query?where=1%3D1&outFields=FIRE&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Fire Protection Districts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerPolygonLayer({
+    id: "dupage-county-fire",
+    group: "safety",
+    label: "DuPage Fire Protection District",
+    coverage: dupageCountyCoverage,
+    loader: loadDupageFire,
+    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
+    fields: [
+      { name: "name", label: "Fire District", keys: ["fire"], primary: true }
+    ]
   });
 
   // DuPage County park districts — partial coverage: park districts don't tile

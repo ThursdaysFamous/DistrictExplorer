@@ -226,45 +226,52 @@
       "rank_note": "Will County fire protection district (37; trustees live from county GIS, coverage-gated)"
     },
     {
+      "id": "dupage-county-fire",
+      "label": "DuPage Fire Protection District",
+      "group": "safety",
+      "area_rank": 17,
+      "rank_note": "DuPage fire protection district (30; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no trustee/contact fields, so name-only). Ranked beside will-county-fire (the analogous collar-county layer); the two never co-render, being gated to different counties."
+    },
+    {
       "id": "will-county-park",
       "label": "Park District",
       "group": "geography",
-      "area_rank": 17,
+      "area_rank": 18,
       "rank_note": "Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)"
     },
     {
       "id": "dupage-county-park",
       "label": "DuPage Park District",
       "group": "geography",
-      "area_rank": 18,
+      "area_rank": 19,
       "rank_note": "DuPage park district (39; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no commissioner/contact fields, so name-only). Ranked beside will-county-park (the analogous collar-county layer); the two never co-render, being gated to different counties."
     },
     {
       "id": "school-board",
       "label": "Elected School Board District",
       "group": "political",
-      "area_rank": 19,
+      "area_rank": 20,
       "rank_note": "Elected School Board district (10, citywide)"
     },
     {
       "id": "cps-hs-network",
       "label": "CPS Network (High School, admin office)",
       "group": "schools",
-      "area_rank": 20,
+      "area_rank": 21,
       "rank_note": "CPS High School Network (admin grouping)"
     },
     {
       "id": "cps-network",
       "label": "CPS Network (K-8, admin office)",
       "group": "schools",
-      "area_rank": 21,
+      "area_rank": 22,
       "rank_note": "CPS K-8 Network (admin grouping)"
     },
     {
       "id": "ward-precinct",
       "label": "Ward Precinct",
       "group": "political",
-      "area_rank": 23,
+      "area_rank": 24,
       "rank_note": "Ward Precinct (sub-selection of City Ward)",
       "rank_comment": [
         "Smaller than its parent ward, so it renders on top (smallest-on-top); turning it",
@@ -275,14 +282,14 @@
       "id": "ward",
       "label": "City Ward",
       "group": "political",
-      "area_rank": 22,
+      "area_rank": 23,
       "rank_note": "City Ward (50)"
     },
     {
       "id": "police-beat",
       "label": "Police Beat",
       "group": "safety",
-      "area_rank": 25,
+      "area_rank": 26,
       "rank_note": "Police Beat (~277)",
       "rank_comment": [
         "Smaller than its parent district, so it renders on top (smallest-on-top);",
@@ -293,14 +300,14 @@
       "id": "police-district",
       "label": "Police District",
       "group": "safety",
-      "area_rank": 24,
+      "area_rank": 25,
       "rank_note": "Police District (22)"
     },
     {
       "id": "ccpsa-district-council",
       "label": "CCPSA District Council",
       "group": "safety",
-      "area_rank": 26,
+      "area_rank": 27,
       "rank_comment": [
         "CCPSA District Council shares the police-district geometry exactly (22,",
         "one council per district); place it just after so its outline draws on",
@@ -311,35 +318,35 @@
       "id": "community-area",
       "label": "Community Area",
       "group": "geography",
-      "area_rank": 27,
+      "area_rank": 28,
       "rank_note": "Community Area (77)"
     },
     {
       "id": "zip-code",
       "label": "ZIP Code",
       "group": "geography",
-      "area_rank": 28,
+      "area_rank": 29,
       "rank_note": "ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)"
     },
     {
       "id": "cps-high",
       "label": "CPS High School Zone",
       "group": "schools",
-      "area_rank": 29,
+      "area_rank": 30,
       "rank_note": "High School attendance zone"
     },
     {
       "id": "cps-middle",
       "label": "CPS Middle School Zone",
       "group": "schools",
-      "area_rank": 30,
+      "area_rank": 31,
       "rank_note": "Middle School attendance zone"
     },
     {
       "id": "will-county-precinct",
       "label": "Voting Precinct",
       "group": "geography",
-      "area_rank": 31,
+      "area_rank": 32,
       "rank_note": "Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)",
       "rank_comment": [
         "Smallest Will County layer, so it renders on top of Township and County",
@@ -351,54 +358,54 @@
       "id": "cps-elementary",
       "label": "CPS Elementary School Zone",
       "group": "schools",
-      "area_rank": 32,
+      "area_rank": 33,
       "rank_note": "Elementary School attendance zone — smallest polygon layer"
     },
     {
       "id": "school-site",
       "label": "School Location (all, incl. private, nearest N)",
       "group": "schools",
-      "area_rank": 33,
+      "area_rank": 34,
       "rank_note": "individual school-campus footprints — smallest polygons, above the zones"
     },
     {
       "id": "police-station",
       "label": "Police Station",
       "group": "safety",
-      "area_rank": 34,
+      "area_rank": 35,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "fire-station",
       "label": "Fire Station",
       "group": "safety",
-      "area_rank": 35,
+      "area_rank": 36,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "post-office",
       "label": "Post Office",
       "group": "geography",
-      "area_rank": 36,
+      "area_rank": 37,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "library",
       "label": "Library",
       "group": "geography",
-      "area_rank": 37,
+      "area_rank": 38,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "early-voting",
       "label": "Early Voting Site",
       "group": "political",
-      "area_rank": 38,
+      "area_rank": 39,
       "rank_note": "point marker — no polygon area, always topmost"
     }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 2 DuPage County layers (board, park — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 38 — live-verified 2026-07",
+  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 3 DuPage County layers (board, park, fire — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 39 — live-verified 2026-07",
   "anchor_point": {
     "lat": 41.8825,
     "lng": -87.6285,
