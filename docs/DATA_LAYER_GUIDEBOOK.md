@@ -29,7 +29,7 @@ in the researched-but-unbuilt backlog.
 <!-- ==== GUIDEBOOK:BEGIN coverage-map ==== -->
 ```json
 {
-  "chicago": ["il-supreme-court", "congress", "il-senate", "il-house", "county", "school-district-secondary", "school-district-unified", "school-district-elementary", "township", "municipality", "will-county-judicial", "dupage-county-judicial", "will-county-board", "dupage-county-board", "ccbr", "commissioner", "will-county-fire", "dupage-county-fire", "dupage-county-special-police", "will-county-park", "dupage-county-park", "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat", "police-district", "ccpsa-district-council", "community-area", "zip-code", "cps-high", "cps-middle", "will-county-precinct", "cps-elementary", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
+  "chicago": ["il-supreme-court", "congress", "il-senate", "il-house", "county", "school-district-secondary", "school-district-unified", "school-district-elementary", "township", "municipality", "will-county-judicial", "dupage-county-judicial", "will-county-board", "dupage-county-board", "ccbr", "commissioner", "will-county-fire", "dupage-county-fire", "dupage-county-special-police", "will-county-park", "dupage-county-park", "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat", "police-district", "ccpsa-district-council", "community-area", "zip-code", "cps-high", "cps-middle", "will-county-precinct", "dupage-county-precinct", "cps-elementary", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
   "nyc": ["borough", "judicial-district", "borough-president", "district-attorney", "congress", "municipal-court", "state-senate", "school-district", "cec", "fire-battalion", "council", "community-district", "election-district", "state-assembly", "police-sector", "police-precinct", "zip-code", "neighborhood", "hs-zone", "ms-zone", "es-zone", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
   "sf": ["congress", "ca-senate", "ca-assembly", "bart-director", "election-precinct", "supervisor-district", "police-district", "zip-code", "neighborhood", "elementary-attendance-area", "police-station", "fire-station", "school-site", "post-office", "library", "early-voting"]
 }
@@ -55,7 +55,7 @@ Pattern legend (which engine factory a layer uses): **Polygon** `registerPolygon
 `registerNearestPointLayer` (nearest-3 haversine; hover identity built in as of engine
 v1.0.6).
 
-Fleet totals: **Chicago 41 · NYC 27 · SF 16** layers.
+Fleet totals: **Chicago 42 · NYC 27 · SF 16** layers.
 
 ---
 
@@ -69,7 +69,7 @@ Fleet totals: **Chicago 41 · NYC 27 · SF 16** layers.
 | State upper chamber | SHIPPED `il-senate` | SHIPPED `state-senate` | SHIPPED `ca-senate` |
 | State lower chamber | SHIPPED `il-house` | SHIPPED `state-assembly` | SHIPPED `ca-assembly` |
 | City council district | SHIPPED `ward` (50) | SHIPPED `council` (51) | SHIPPED `supervisor-district` (11; doubles as the county board — consolidated city-county) |
-| Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `will-county-precinct` | SHIPPED `election-district` (~4,200) | SHIPPED `election-precinct` (`jg6x-23ig`, 2022 map; subOf `supervisor-district`, polling-place lookup link) |
+| Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `will-county-precinct` + `dupage-county-precinct` | SHIPPED `election-district` (~4,200) | SHIPPED `election-precinct` (`jg6x-23ig`, 2022 map; subOf `supervisor-district`, polling-place lookup link) |
 | County legislature / commissioner | SHIPPED `commissioner` (Cook) + `will-county-board` | NO HONEST ANALOG¹ | NO HONEST ANALOG (folded into `supervisor-district`) |
 | County property-tax appeals board (elected) | SHIPPED `ccbr` (commissioner roster scraped weekly from the Board's own site) | NO HONEST ANALOG² | NO HONEST ANALOG⁵ |
 | State high-court electoral district | SHIPPED `il-supreme-court` | SHIPPED `judicial-district` (NY Supreme is trial-level, elected by district) | NO HONEST ANALOG⁶ |
@@ -245,7 +245,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 
 ## Per-fork inventories
 
-### Chicago — 41 layers
+### Chicago — 42 layers
 
 | id | label | group | pattern | source | roster / join | coverage |
 |---|---|---|---|---|---|---|
@@ -283,6 +283,7 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `cps-high` | CPS High School Zone | schools | SchoolZone | Socrata `xg7c-d8rm` (year-versioned) | zoned-school POI | chicagoCoverage |
 | `cps-middle` | CPS Middle School Zone | schools | SchoolZone | Socrata `fyff-53xy` (year-versioned) | zoned-school POI | chicagoCoverage |
 | `will-county-precinct` | Voting Precinct | geography | Bespoke | Will County ArcGIS `Precincts_2022` | — | willCountyCoverage (subOf `township`) |
+| `dupage-county-precinct` | Voting Precinct | geography | Bespoke | DuPage County ArcGIS `Precincts_2024` (current 600-precinct map) | County Board district via spatial join; Clerk elections link | dupageCountyCoverage (subOf `township`) |
 | `cps-elementary` | CPS Elementary School Zone | schools | SchoolZone | Socrata `x72b-38qv` (year-versioned) | zoned-school POI | chicagoCoverage |
 | `school-site` | School Location (nearest N) | schools | Bespoke nearest | CPD-org ArcGIS `Schools` | — | chicagoCoverage |
 | `police-station` | Police Station | safety | NearestPt | CPD ArcGIS stations | — | chicagoCoverage |

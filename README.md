@@ -12,7 +12,7 @@ This is the reference implementation of a small fleet of sibling metro forks ([n
 
 ## What it answers
 
-Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 41 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, the two Cook layers hide outside Cook County, the Will and DuPage county layers appear only inside their respective counties, and the statewide layers work anywhere in Illinois.
+Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 42 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, the two Cook layers hide outside Cook County, the Will and DuPage county layers appear only inside their respective counties, and the statewide layers work anywhere in Illinois.
 
 | Group | Layer | What you get |
 |---|---|---|
@@ -131,7 +131,7 @@ WATCH.md                            the redistricting watch calendar (when to lo
 Gates that run in CI:
 
 - **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered (36 ids), no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts, the Will County roster, the early-voting list). A bad data regeneration can't reach `main` unreviewed.
-- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 41 layers, classifies a known downtown point against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
+- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 42 layers, classifies a known downtown point against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 - **Drift + freshness gates**: `generate_metro_files.py --check` (GENERATED regions match the worksheet), `check_engine_parity.py` (engine fences intact), monthly `validate_sources.py` (upstream datasets haven't gone stale — WARN/FAIL opens a tracking issue rather than editing anything), and the weekly `fleet_status.py` run, which also diffs every fork's layer roster against `docs/DATA_LAYER_GUIDEBOOK.md`.
 
 ## Not for legal or official use

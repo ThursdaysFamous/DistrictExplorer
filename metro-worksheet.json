@@ -369,57 +369,69 @@
       ]
     },
     {
+      "id": "dupage-county-precinct",
+      "label": "Voting Precinct",
+      "group": "geography",
+      "area_rank": 35,
+      "rank_note": "DuPage voting precinct (600; current 2024 consolidated map Precincts_2024, coverage-gated to DuPage). Ranked beside will-county-precinct (the analogous collar-county layer); the two never co-render, being gated to different counties.",
+      "rank_comment": [
+        "Smallest DuPage layer, so it renders on top of Township and County",
+        "(smallest-on-top); turning it on drops both to outline-only, framing the",
+        "precinct fills from underneath."
+      ]
+    },
+    {
       "id": "cps-elementary",
       "label": "CPS Elementary School Zone",
       "group": "schools",
-      "area_rank": 35,
+      "area_rank": 36,
       "rank_note": "Elementary School attendance zone — smallest polygon layer"
     },
     {
       "id": "school-site",
       "label": "School Location (all, incl. private, nearest N)",
       "group": "schools",
-      "area_rank": 36,
+      "area_rank": 37,
       "rank_note": "individual school-campus footprints — smallest polygons, above the zones"
     },
     {
       "id": "police-station",
       "label": "Police Station",
       "group": "safety",
-      "area_rank": 37,
+      "area_rank": 38,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "fire-station",
       "label": "Fire Station",
       "group": "safety",
-      "area_rank": 38,
+      "area_rank": 39,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "post-office",
       "label": "Post Office",
       "group": "geography",
-      "area_rank": 39,
+      "area_rank": 40,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "library",
       "label": "Library",
       "group": "geography",
-      "area_rank": 40,
+      "area_rank": 41,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "early-voting",
       "label": "Early Voting Site",
       "group": "political",
-      "area_rank": 41,
+      "area_rank": 42,
       "rank_note": "point marker — no polygon area, always topmost"
     }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 5 DuPage County layers (board, judicial, park, fire, special-police — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 41 — live-verified 2026-07",
+  "layer_count_note": "18 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 Will County layers (board, judicial, fire, park, precinct — coverage-gated) + 6 DuPage County layers (board, judicial, park, fire, special-police, precinct — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 42 — live-verified 2026-07",
   "anchor_point": {
     "lat": 41.8825,
     "lng": -87.6285,

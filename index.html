@@ -3716,6 +3716,10 @@ function initChiExplorer() {
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
     "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
+    // Smallest DuPage layer, so it renders on top of Township and County
+    // (smallest-on-top); turning it on drops both to outline-only, framing the
+    // precinct fills from underneath.
+    "dupage-county-precinct", // DuPage voting precinct (600; current 2024 consolidated map Precincts_2024, coverage-gated to DuPage). Ranked beside will-county-precinct (the analogous collar-county layer); the two never co-render, being gated to different counties.
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5932,6 +5936,103 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "Park District", keys: ["park"], primary: true }
     ]
+  });
+
+  // DuPage County voting precincts — the current 2024 consolidated map (600
+  // precincts; DuPage cut ~930 precincts down to 600 for 2024, so the county's
+  // misleadingly-named "Precincts_Current" service is the OLD map — Precincts_2024
+  // is the live one, edited 2026-02). Precincts are numbered within their
+  // TOWNSHIP ("Bloomingdale 60", "Lisle 87"), so this nests under Township
+  // exactly as Ward Precinct nests under Ward and will-county-precinct nests
+  // under its township: subOf "township", framed by the township outline, itself
+  // framed by County. The Illinois Election Code also sites each precinct within
+  // a single County Board district (10 ILCS 5/11-2), but the precinct data
+  // carries no board-district field — so that identity is resolved by a spatial
+  // join against the DuPage County Board boundary the app already loads and
+  // reported as a card row, not a nest. The sub-precinct committeeperson isn't in
+  // this data, so the card links to the DuPage County Clerk's Election Division
+  // (registration + polling-place/precinct lookup). The DuPage analog of
+  // will-county-precinct; the two never co-render, being gated to different
+  // counties.
+  var loadDupagePrecincts = makeCached(function () {
+    var url = DUPAGE_GIS + "Precincts_2024/FeatureServer/0" +
+      "/query?where=1%3D1&outFields=PrecinctName,TownshipName&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("DuPage Voting Precincts returned no usable geometry");
+        return geojson;
+      });
+  });
+  registerLayer({
+    id: "dupage-county-precinct",
+    group: "geography",
+    subOf: "township",
+    label: "Voting Precinct",
+    coverage: dupageCountyCoverage,
+    hoverName: function (feature) {
+      var v = findPropCI(feature.properties || {}, ["precinctname"]);
+      return (v == null || v === "") ? null : String(v);
+    },
+    overlay: {
+      load: loadDupagePrecincts,
+      // solid thin outline + visible fill: with the township dropped to
+      // outline-only, the precincts carry the interior fill. Same brown family
+      // as the township, a shade deeper so the two read as related.
+      style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null }
+    },
+    query: function (point, seq) {
+      // Join the containing County Board district — a spatial lookup, since the
+      // precinct feature carries no board-district field. Best-effort: a
+      // board-boundary failure drops just that row, never the precinct card.
+      return Promise.all([
+        loadDupagePrecincts(),
+        loadDupageCountyBoard().catch(function () { return null; })
+      ]).then(function (results) {
+        var geojson = results[0], boardGeo = results[1];
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        var boardDistrict = null;
+        if (boardGeo) {
+          var bf = findFeatureContaining(boardGeo, point);
+          if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
+        }
+        return {
+          seq: seq,
+          name: findPropCI(props, ["precinctname"]),
+          township: findPropCI(props, ["townshipname"]),
+          boardDistrict: boardDistrict
+        };
+      });
+    },
+    render: function (result) {
+      var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+      if (result.township) fields.push({ label: "Township", value: String(result.township) });
+      if (result.boardDistrict != null && result.boardDistrict !== "") {
+        fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+      }
+      fields.push({ label: "Registration & polling place",
+        html: '<a href="https://www.dupagecounty.gov/elections/" target="_blank" rel="noopener">DuPage County Clerk — Elections (official)</a>' });
+      return renderFieldList(fields);
+    },
+    // Precinct sits at the bottom of the County > Township > Precinct nest:
+    // turning it on brings Township on (which itself brings County on), and
+    // drops Township to outline-only so the precinct fills read as its interior
+    // subdivision.
+    onToggle: function (on) {
+      var townshipRt = layerRuntime["township"];
+      if (on) {
+        if (!state.layersOn["township"]) {
+          var tbox = document.getElementById("toggle-township");
+          if (tbox && !tbox.checked) tbox.click();
+        }
+        townshipRt.outlineOnly = true;
+      } else {
+        townshipRt.outlineOnly = false;
+      }
+      var townshipMod = getLayerById("township");
+      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
+    }
   });
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------
