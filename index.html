@@ -2884,6 +2884,39 @@ function initChiExplorer() {
     }).catch(function () { /* coverage test failed — keep the star */ });
   }
 
+  /* ---------- "Embed this Explorer" snippet (fork feature) ------------------
+   * Builds an <iframe> that loads this same app at the current point + layers,
+   * so any view can be dropped into another site. It reuses syncUrlHash() — the
+   * one source of truth for the #point=…&layers=… permalink format — and points
+   * at the fork's canonical URL (from METRO_EXPLORERS), so a snippet grabbed
+   * from a preview/localhost still embeds production. Same-origin, our own
+   * content: nothing external enters the markup (coords are numeric, layer ids
+   * come from our own registry, the title is the configured metro name), so the
+   * code is safe to hand out verbatim. Kept OUT of the ENGINE permalink fence so
+   * it can ship Chicago-first; promotable to the shared engine later (that would
+   * need an engine release to stay byte-identical across the NYC/SF forks).
+   * Surfaced via the point chip's "Embed" button below. */
+  function embedBaseUrl() {
+    for (var i = 0; i < METRO_EXPLORERS.length; i++) {
+      if (METRO_EXPLORERS[i].id === THIS_METRO) return METRO_EXPLORERS[i].url;
+    }
+    return location.origin + location.pathname; // preview/localhost fallback
+  }
+
+  function buildEmbedCode() {
+    syncUrlHash(); // reflect the very latest point/layers in location.hash first
+    var url = embedBaseUrl().replace(/#.*$/, "") + location.hash;
+    // Every attribute value is trusted (canonical URL + numeric-coord/registry-id
+    // hash + configured METRO_NAME); nothing external is interpolated, so this
+    // string is safe as-is. width:100% + max-width keeps it responsive;
+    // loading=lazy so it never blocks the host page; allow=geolocation keeps the
+    // "locate me" button working inside the embed.
+    return '<iframe src="' + url + '" width="100%" height="600" ' +
+      'style="border:0;max-width:100%" loading="lazy" ' +
+      'title="' + METRO_NAME + ' District Explorer" ' +
+      'allow="geolocation" referrerpolicy="no-referrer-when-downgrade"></iframe>';
+  }
+
   function setSelectedPoint(lat, lng, opts) {
     opts = opts || {};
     state.selectedPoint = { lat: lat, lng: lng };
@@ -2918,6 +2951,26 @@ function initChiExplorer() {
       }
     });
     pointChip.appendChild(copyBtn);
+
+    var embedBtn = document.createElement("button");
+    embedBtn.type = "button";
+    embedBtn.className = "copy-link-btn"; // same pill style as Copy link
+    embedBtn.textContent = "Embed";
+    embedBtn.title = "Copy an <iframe> embed of this view for your own site";
+    embedBtn.addEventListener("click", function () {
+      trackEvent("embed-iframe");
+      var code = buildEmbedCode();
+      function done(ok) {
+        embedBtn.textContent = ok ? "Copied!" : "Copy failed";
+        setTimeout(function () { embedBtn.textContent = "Embed"; }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function () { done(true); }, function () { done(false); });
+      } else {
+        done(false); // clipboard API unavailable (e.g. some file:// contexts) — no auto-copy here
+      }
+    });
+    pointChip.appendChild(embedBtn);
 
     document.getElementById("empty-state").hidden = true;
     document.getElementById("groups-root").hidden = false;
