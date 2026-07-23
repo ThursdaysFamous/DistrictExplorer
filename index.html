@@ -3682,15 +3682,12 @@ function initChiExplorer() {
     "school-district-elementary", // IL elementary school district (371 statewide)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
-    "will-county-judicial", // Will County judicial subcircuit (5; PA 102-0693 Judicial_Districts_2022, coverage-gated)
-    "dupage-county-judicial", // DuPage judicial subcircuit (7; PA 102-0693, the 18th Judicial Circuit's subcircuits, live from county GIS, coverage-gated to DuPage). Ranked beside will-county-judicial (the analogous collar-county layer); the two never co-render, being gated to different counties.
+    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Will 12th-Circuit (5) + DuPage 18th-Circuit (7) subcircuits, both PA 102-0693, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
     "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
-    "will-county-fire",  // Will County fire protection district (37; trustees live from county GIS, coverage-gated)
-    "dupage-county-fire", // DuPage fire protection district (30; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no trustee/contact fields, so name-only). Ranked beside will-county-fire (the analogous collar-county layer); the two never co-render, being gated to different counties.
+    "fire-district",     // Consolidated fire-protection-district layer — Will (37, trustees in GIS attrs) + DuPage (30, name-only), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
-    "will-county-park",  // Will County park district (22; partial coverage, commissioners from county GIS, coverage-gated)
-    "dupage-county-park", // DuPage park district (39; partial coverage, live from county GIS, coverage-gated to DuPage; GIS carries no commissioner/contact fields, so name-only). Ranked beside will-county-park (the analogous collar-county layer); the two never co-render, being gated to different counties.
+    "park-district",     // Consolidated park-district layer — Will (22, commissioners in GIS attrs) + DuPage (39, name-only), county-dispatched; partial coverage inside each county
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -3710,14 +3707,10 @@ function initChiExplorer() {
     "zip-code",          // ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)
     "cps-high",          // High School attendance zone
     "cps-middle",        // Middle School attendance zone
-    // Smallest Will County layer, so it renders on top of Township and County
+    // Smallest county-scoped layer, so it renders on top of Township and County
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
-    "will-county-precinct", // Will County voting precinct (310; current 2022 map Precincts_2022, coverage-gated)
-    // Smallest DuPage layer, so it renders on top of Township and County
-    // (smallest-on-top); turning it on drops both to outline-only, framing the
-    // precinct fills from underneath.
-    "dupage-county-precinct", // DuPage voting precinct (600; current 2024 consolidated map Precincts_2024, coverage-gated to DuPage). Ranked beside will-county-precinct (the analogous collar-county layer); the two never co-render, being gated to different counties.
+    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600), county-dispatched; subOf township
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5467,20 +5460,8 @@ function initChiExplorer() {
   var loadWillJudicial = makeCached(function () {
     return loadWillFeatureServer("Judicial_Districts_2022", 0, "SUBDISTRICT", "judicial subcircuits");
   });
-  registerPolygonLayer({
-    id: "will-county-judicial",
-    group: "political",
-    label: "Judicial Subcircuit (12th Circuit)",
-    coverage: willCountyCoverage,
-    loader: loadWillJudicial,
-    style: { color: "#6B4FA0", weight: 2, fillColor: "#8A6FBF", fillOpacity: 0.05, dashArray: "6 3" },
-    fields: [
-      { name: "subcircuit", label: "Subcircuit", keys: ["subdistrict"], primary: true },
-      { label: "Court", value: "12th Judicial Circuit (Will County)" },
-      { label: "Judges",
-        html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
-    ]
-  });
+  // (Card/query/hover live as the "will" entry of the consolidated
+  // `judicial-subcircuit` layer — grep registerCountyLayer.)
 
   // Will County fire protection districts — trustees live from county GIS
   // (falsy trustee slots are dropped by the factory; a real "Office is vacant"
@@ -5488,22 +5469,8 @@ function initChiExplorer() {
   var loadWillFire = makeCached(function () {
     return loadWillFeatureServer("Fire_District", 0, "DISTRICTNAME,FULLNAME,Trustee,Trustee2,Trustee3,Trustee4,Trustee5", "fire districts");
   });
-  registerPolygonLayer({
-    id: "will-county-fire",
-    group: "safety",
-    label: "Fire Protection District",
-    coverage: willCountyCoverage,
-    loader: loadWillFire,
-    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
-    fields: [
-      { name: "name", label: "Fire District", keys: ["districtname", "fullname"], primary: true },
-      { name: "t1", label: "Trustee", keys: ["trustee"] },
-      { name: "t2", label: "Trustee", keys: ["trustee2"] },
-      { name: "t3", label: "Trustee", keys: ["trustee3"] },
-      { name: "t4", label: "Trustee", keys: ["trustee4"] },
-      { name: "t5", label: "Trustee", keys: ["trustee5"] }
-    ]
-  });
+  // (Card/query/hover live as the "will" entry of the consolidated
+  // `fire-district` layer — grep registerCountyLayer.)
 
   // Will County park districts — partial coverage: park districts don't tile
   // the whole county, so an in-coverage point with no park district honestly
@@ -5511,21 +5478,8 @@ function initChiExplorer() {
   var loadWillParks = makeCached(function () {
     return loadWillFeatureServer("Park_District", 0, "DISTRICTNAME,NAME,Commissioner,Commissioner2,Commissioner3,Commissioner4", "park districts");
   });
-  registerPolygonLayer({
-    id: "will-county-park",
-    group: "geography",
-    label: "Park District",
-    coverage: willCountyCoverage,
-    loader: loadWillParks,
-    style: { color: "#2E7D46", weight: 1.5, fillColor: "#4FA06A", fillOpacity: 0.05, dashArray: "2 3" },
-    fields: [
-      { name: "name", label: "Park District", keys: ["districtname", "name"], primary: true },
-      { name: "c1", label: "Commissioner", keys: ["commissioner"] },
-      { name: "c2", label: "Commissioner", keys: ["commissioner2"] },
-      { name: "c3", label: "Commissioner", keys: ["commissioner3"] },
-      { name: "c4", label: "Commissioner", keys: ["commissioner4"] }
-    ]
-  });
+  // (Card/query/hover live as the "will" entry of the consolidated
+  // `park-district` layer — grep registerCountyLayer.)
 
   // Will County voting precincts — the current 2022 map (310 precincts).
   // Precincts are numbered within their TOWNSHIP (the parent unit — "Homer 1",
@@ -5541,77 +5495,8 @@ function initChiExplorer() {
   var loadWillPrecincts = makeCached(function () {
     return loadWillFeatureServer("Precincts_2022", 1, "NAME,TWP_NAME,PRECINCT_NO", "precincts");
   });
-  registerLayer({
-    id: "will-county-precinct",
-    group: "geography",
-    subOf: "township",
-    label: "Voting Precinct",
-    coverage: willCountyCoverage,
-    hoverName: function (feature) {
-      var v = findPropCI(feature.properties || {}, ["name"]);
-      return (v == null || v === "") ? null : String(v);
-    },
-    overlay: {
-      load: loadWillPrecincts,
-      // solid thin outline + visible fill: with the township dropped to
-      // outline-only, the precincts carry the interior fill. Same brown family
-      // as the township, a shade deeper so the two read as related.
-      style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null }
-    },
-    query: function (point, seq) {
-      // Join the containing County Board district — a spatial lookup, since the
-      // precinct feature carries no board-district field. Best-effort: a
-      // board-boundary failure drops just that row, never the precinct card.
-      return Promise.all([
-        loadWillPrecincts(),
-        loadWillCountyBoard().catch(function () { return null; })
-      ]).then(function (results) {
-        var geojson = results[0], boardGeo = results[1];
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var props = feature.properties || {};
-        var boardDistrict = null;
-        if (boardGeo) {
-          var bf = findFeatureContaining(boardGeo, point);
-          if (bf) boardDistrict = findPropCI(bf.properties || {}, ["cty_brd_number"]);
-        }
-        return {
-          seq: seq,
-          name: findPropCI(props, ["name"]),
-          township: findPropCI(props, ["twp_name"]),
-          boardDistrict: boardDistrict
-        };
-      });
-    },
-    render: function (result) {
-      var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
-      if (result.township) fields.push({ label: "Township", value: String(result.township) });
-      if (result.boardDistrict != null && result.boardDistrict !== "") {
-        fields.push({ label: "County Board District", value: String(result.boardDistrict) });
-      }
-      fields.push({ label: "Registration & polling place",
-        html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' });
-      return renderFieldList(fields);
-    },
-    // Precinct sits at the bottom of the County > Township > Precinct nest:
-    // turning it on brings Township on (which itself brings County on), and
-    // drops Township to outline-only so the precinct fills read as its
-    // interior subdivision.
-    onToggle: function (on) {
-      var townshipRt = layerRuntime["township"];
-      if (on) {
-        if (!state.layersOn["township"]) {
-          var tbox = document.getElementById("toggle-township");
-          if (tbox && !tbox.checked) tbox.click();
-        }
-        townshipRt.outlineOnly = true;
-      } else {
-        townshipRt.outlineOnly = false;
-      }
-      var townshipMod = getLayerById("township");
-      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
-    }
-  });
+  // (Card/query/hover live as the "will" entry of the consolidated
+  // `county-precinct` layer — grep registerCountyLayer.)
 
   /* =========================================================================
    * DUPAGE COUNTY — collar-county board layer (second of the collar-county
@@ -5686,20 +5571,8 @@ function initChiExplorer() {
         return geojson;
       });
   });
-  registerPolygonLayer({
-    id: "dupage-county-judicial",
-    group: "political",
-    label: "Judicial Subcircuit (18th Circuit)",
-    coverage: dupageCountyCoverage,
-    loader: loadDupageJudicial,
-    style: { color: "#6B4FA0", weight: 2, fillColor: "#8A6FBF", fillOpacity: 0.05, dashArray: "6 3" },
-    fields: [
-      { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
-      { label: "Court", value: "18th Judicial Circuit (DuPage County)" },
-      { label: "Judges",
-        html: '<a href="https://www.dupagecourts.gov/" target="_blank" rel="noopener">18th Judicial Circuit Court (official)</a>' }
-    ]
-  });
+  // (Card/query/hover live as the "dupage" entry of the consolidated
+  // `judicial-subcircuit` layer — grep registerCountyLayer.)
 
   // DuPage County fire protection districts — the DuPage analog of the Will
   // County fire layer, and DuPage's first Public Safety layer. Partial coverage:
@@ -5727,17 +5600,10 @@ function initChiExplorer() {
         return geojson;
       });
   });
-  registerPolygonLayer({
-    id: "dupage-county-fire",
-    group: "safety",
-    label: "DuPage Fire Protection District",
-    coverage: dupageCountyCoverage,
-    loader: loadDupageFire,
-    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
-    fields: [
-      { name: "name", label: "Fire District", keys: ["fire"], primary: true }
-    ]
-  });
+  // (Card/query/hover live as the "dupage" entry of the consolidated
+  // `fire-district` layer — grep registerCountyLayer. The old
+  // "DuPage "-prefixed toggle label existed only to dodge a boot-time name
+  // collision with Will's toggle; the consolidated single toggle ends that.)
 
   // DuPage County special police districts — DuPage's second Public Safety
   // layer, and a genuinely different concept from a police department. A
@@ -5801,17 +5667,8 @@ function initChiExplorer() {
         return geojson;
       });
   });
-  registerPolygonLayer({
-    id: "dupage-county-park",
-    group: "geography",
-    label: "DuPage Park District",
-    coverage: dupageCountyCoverage,
-    loader: loadDupageParks,
-    style: { color: "#2E7D46", weight: 1.5, fillColor: "#4FA06A", fillOpacity: 0.05, dashArray: "2 3" },
-    fields: [
-      { name: "name", label: "Park District", keys: ["park"], primary: true }
-    ]
-  });
+  // (Card/query/hover live as the "dupage" entry of the consolidated
+  // `park-district` layer — grep registerCountyLayer.)
 
   // DuPage County voting precincts — the current 2024 consolidated map (600
   // precincts; DuPage cut ~930 precincts down to 600 for 2024, so the county's
@@ -5838,77 +5695,8 @@ function initChiExplorer() {
         return geojson;
       });
   });
-  registerLayer({
-    id: "dupage-county-precinct",
-    group: "geography",
-    subOf: "township",
-    label: "Voting Precinct",
-    coverage: dupageCountyCoverage,
-    hoverName: function (feature) {
-      var v = findPropCI(feature.properties || {}, ["precinctname"]);
-      return (v == null || v === "") ? null : String(v);
-    },
-    overlay: {
-      load: loadDupagePrecincts,
-      // solid thin outline + visible fill: with the township dropped to
-      // outline-only, the precincts carry the interior fill. Same brown family
-      // as the township, a shade deeper so the two read as related.
-      style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null }
-    },
-    query: function (point, seq) {
-      // Join the containing County Board district — a spatial lookup, since the
-      // precinct feature carries no board-district field. Best-effort: a
-      // board-boundary failure drops just that row, never the precinct card.
-      return Promise.all([
-        loadDupagePrecincts(),
-        loadDupageCountyBoard().catch(function () { return null; })
-      ]).then(function (results) {
-        var geojson = results[0], boardGeo = results[1];
-        var feature = findFeatureContaining(geojson, point);
-        if (!feature) return null;
-        var props = feature.properties || {};
-        var boardDistrict = null;
-        if (boardGeo) {
-          var bf = findFeatureContaining(boardGeo, point);
-          if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
-        }
-        return {
-          seq: seq,
-          name: findPropCI(props, ["precinctname"]),
-          township: findPropCI(props, ["townshipname"]),
-          boardDistrict: boardDistrict
-        };
-      });
-    },
-    render: function (result) {
-      var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
-      if (result.township) fields.push({ label: "Township", value: String(result.township) });
-      if (result.boardDistrict != null && result.boardDistrict !== "") {
-        fields.push({ label: "County Board District", value: String(result.boardDistrict) });
-      }
-      fields.push({ label: "Registration & polling place",
-        html: '<a href="https://www.dupagecounty.gov/elections/" target="_blank" rel="noopener">DuPage County Clerk — Elections (official)</a>' });
-      return renderFieldList(fields);
-    },
-    // Precinct sits at the bottom of the County > Township > Precinct nest:
-    // turning it on brings Township on (which itself brings County on), and
-    // drops Township to outline-only so the precinct fills read as its interior
-    // subdivision.
-    onToggle: function (on) {
-      var townshipRt = layerRuntime["township"];
-      if (on) {
-        if (!state.layersOn["township"]) {
-          var tbox = document.getElementById("toggle-township");
-          if (tbox && !tbox.checked) tbox.click();
-        }
-        townshipRt.outlineOnly = true;
-      } else {
-        townshipRt.outlineOnly = false;
-      }
-      var townshipMod = getLayerById("township");
-      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
-    }
-  });
+  // (Card/query/hover live as the "dupage" entry of the consolidated
+  // `county-precinct` layer — grep registerCountyLayer.)
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------
    * Every Socrata layer below fetches from the City of Chicago Data Portal at
@@ -7918,6 +7706,11 @@ function initChiExplorer() {
         var entry = byKey[result.dxCounty];
         return entry && entry.pointOfInterest ? entry.pointOfInterest(result) : null;
       },
+      // concept-level (not per-county) nesting + toggle hook, passed through
+      // verbatim — county-precinct nests under township in every county, with
+      // the same outline-only handoff its per-county predecessors declared
+      subOf: opts.subOf,
+      onToggle: opts.onToggle,
       hoverOfficial: anyHoverOfficial ? {
         // composite prefetch: every county's officeholder data, keyed by
         // county for the per-feature dispatch in name(). All-or-retry ON
@@ -7945,6 +7738,51 @@ function initChiExplorer() {
         }
       } : undefined
     });
+  }
+
+  // Adapter: a registerPolygonLayer-style spec (loader + declarative fields)
+  // as a county dispatch entry — the same query/render/hoverName semantics the
+  // factory would generate (primary row always shown with "Unknown" fallback,
+  // keyed rows dropped when empty, static value/html rows, `when` guards),
+  // so a polygon layer consolidates without rewriting its card.
+  function polygonCountyEntry(opts) {
+    var keyedFields = opts.fields.filter(function (f) { return f.keys; });
+    var primaryField = keyedFields.filter(function (f) { return f.primary; })[0] || null;
+    return {
+      key: opts.key,
+      coverage: opts.coverage,
+      loadGeometry: opts.loader,
+      hoverName: primaryField ? function (feature) {
+        var v = findPropCI(feature.properties || {}, primaryField.keys);
+        return (v == null || v === "") ? null : String(v);
+      } : undefined,
+      query: function (point, seq) {
+        return opts.loader().then(function (geojson) {
+          var feature = findFeatureContaining(geojson, point);
+          if (!feature) return null;
+          var props = feature.properties || {};
+          var result = { seq: seq };
+          keyedFields.forEach(function (f) { result[f.name] = findPropCI(props, f.keys); });
+          return result;
+        });
+      },
+      render: function (result) {
+        var rows = [];
+        opts.fields.forEach(function (f) {
+          if (f.when && !f.when(result)) return;
+          if (f.keys) {
+            var val = result[f.name];
+            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown" });
+            else if (val) rows.push({ label: f.label, value: String(val) });
+          } else if (f.html !== undefined) {
+            rows.push({ label: f.label, html: f.html });
+          } else {
+            rows.push({ label: f.label, value: f.value });
+          }
+        });
+        return renderFieldList(rows);
+      }
+    };
   }
 
   /* ---------- County Board District — the consolidated county-legislature
@@ -8171,6 +8009,246 @@ function initChiExplorer() {
     ]
   });
 
+  /* ---------- Judicial Subcircuit — consolidated: Will's 12th-Circuit
+   * subcircuits (5) + DuPage's 18th-Circuit subcircuits (7), both drawn by PA
+   * 102-0693. Identity only in both counties — judges aren't in either
+   * dataset — so each card links its circuit's official court, and the Court
+   * row names the circuit AND county so the generic toggle label never
+   * obscures which court a subcircuit belongs to. ---------- */
+  registerCountyLayer({
+    id: "judicial-subcircuit",
+    group: "political",
+    label: "Judicial Subcircuit",
+    style: { color: "#6B4FA0", weight: 2, fillColor: "#8A6FBF", fillOpacity: 0.05, dashArray: "6 3" },
+    counties: [
+      polygonCountyEntry({
+        key: "will",
+        coverage: willCountyCoverage,
+        loader: loadWillJudicial,
+        fields: [
+          { name: "subcircuit", label: "Subcircuit", keys: ["subdistrict"], primary: true },
+          { label: "Court", value: "12th Judicial Circuit (Will County)" },
+          { label: "Judges",
+            html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
+        ]
+      }),
+      polygonCountyEntry({
+        key: "dupage",
+        coverage: dupageCountyCoverage,
+        loader: loadDupageJudicial,
+        fields: [
+          { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
+          { label: "Court", value: "18th Judicial Circuit (DuPage County)" },
+          { label: "Judges",
+            html: '<a href="https://www.dupagecourts.gov/" target="_blank" rel="noopener">18th Judicial Circuit Court (official)</a>' }
+        ]
+      })
+    ]
+  });
+
+  /* ---------- Fire Protection District — consolidated: Will (37 districts,
+   * trustees in GIS attrs — falsy slots dropped by the field semantics, a
+   * real "Office is vacant" string shown as-is) + DuPage (30, name-only — its
+   * GIS carries no trustee/contact fields). Partial coverage in both
+   * counties: fire protection districts are the suburban taxing bodies
+   * serving areas outside the municipal fire departments, so an in-county
+   * point with none honestly reports "No result for this point." A County
+   * row keeps each card's origin legible under the generic label. ---------- */
+  registerCountyLayer({
+    id: "fire-district",
+    group: "safety",
+    label: "Fire Protection District",
+    style: { color: "#B0342A", weight: 1.5, fillColor: "#D0564C", fillOpacity: 0.05, dashArray: "5 3" },
+    counties: [
+      polygonCountyEntry({
+        key: "will",
+        coverage: willCountyCoverage,
+        loader: loadWillFire,
+        fields: [
+          { name: "name", label: "Fire District", keys: ["districtname", "fullname"], primary: true },
+          { label: "County", value: "Will County" },
+          { name: "t1", label: "Trustee", keys: ["trustee"] },
+          { name: "t2", label: "Trustee", keys: ["trustee2"] },
+          { name: "t3", label: "Trustee", keys: ["trustee3"] },
+          { name: "t4", label: "Trustee", keys: ["trustee4"] },
+          { name: "t5", label: "Trustee", keys: ["trustee5"] }
+        ]
+      }),
+      polygonCountyEntry({
+        key: "dupage",
+        coverage: dupageCountyCoverage,
+        loader: loadDupageFire,
+        fields: [
+          { name: "name", label: "Fire District", keys: ["fire"], primary: true },
+          { label: "County", value: "DuPage County" }
+        ]
+      })
+    ]
+  });
+
+  /* ---------- Park District — consolidated: Will (22, commissioners in GIS
+   * attrs) + DuPage (39, name-only — its GIS carries no commissioner/contact
+   * fields). Partial coverage in both counties — park districts don't tile
+   * either county, so an in-county point outside every district honestly
+   * reports "No result for this point." ---------- */
+  registerCountyLayer({
+    id: "park-district",
+    group: "geography",
+    label: "Park District",
+    style: { color: "#2E7D46", weight: 1.5, fillColor: "#4FA06A", fillOpacity: 0.05, dashArray: "2 3" },
+    counties: [
+      polygonCountyEntry({
+        key: "will",
+        coverage: willCountyCoverage,
+        loader: loadWillParks,
+        fields: [
+          { name: "name", label: "Park District", keys: ["districtname", "name"], primary: true },
+          { label: "County", value: "Will County" },
+          { name: "c1", label: "Commissioner", keys: ["commissioner"] },
+          { name: "c2", label: "Commissioner", keys: ["commissioner2"] },
+          { name: "c3", label: "Commissioner", keys: ["commissioner3"] },
+          { name: "c4", label: "Commissioner", keys: ["commissioner4"] }
+        ]
+      }),
+      polygonCountyEntry({
+        key: "dupage",
+        coverage: dupageCountyCoverage,
+        loader: loadDupageParks,
+        fields: [
+          { name: "name", label: "Park District", keys: ["park"], primary: true },
+          { label: "County", value: "DuPage County" }
+        ]
+      })
+    ]
+  });
+
+  /* ---------- Voting Precinct — consolidated: Will's current 2022 map (310
+   * precincts, numbered within their township — "Homer 1") + DuPage's current
+   * 2024 consolidated map (600 — "Milton 25"; the DuPage service literally
+   * named Precincts_Current is the superseded 930-precinct 2021 map). In both
+   * counties precincts nest under Township exactly as Ward Precinct nests
+   * under Ward — subOf "township" at the CONCEPT level, with the same
+   * outline-only handoff — and the Illinois Election Code sites each precinct
+   * in a single County Board district (10 ILCS 5/11-2) the precinct data
+   * doesn't carry, so that row comes from a best-effort spatial join against
+   * the county's own board boundary (shared with county-board's cache): a
+   * board failure drops just that row, never the precinct card. The
+   * sub-precinct committeeperson isn't published in either dataset, so each
+   * card links its county clerk's registration/polling-place lookup — which
+   * also names the card's county. ---------- */
+  registerCountyLayer({
+    id: "county-precinct",
+    group: "geography",
+    subOf: "township",
+    label: "Voting Precinct",
+    // solid thin outline + visible fill: with the township dropped to
+    // outline-only, the precincts carry the interior fill. Same brown family
+    // as the township, a shade deeper so the two read as related.
+    style: { color: "#8A6D3B", weight: 1, fillColor: "#C0A060", fillOpacity: 0.14, dashArray: null },
+    counties: [
+      {
+        key: "will",
+        coverage: willCountyCoverage,
+        loadGeometry: loadWillPrecincts,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["name"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadWillPrecincts(),
+            loadWillCountyBoard().catch(function () { return null; })
+          ]).then(function (results) {
+            var geojson = results[0], boardGeo = results[1];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var boardDistrict = null;
+            if (boardGeo) {
+              var bf = findFeatureContaining(boardGeo, point);
+              if (bf) boardDistrict = findPropCI(bf.properties || {}, ["cty_brd_number"]);
+            }
+            return {
+              seq: seq,
+              name: findPropCI(props, ["name"]),
+              township: findPropCI(props, ["twp_name"]),
+              boardDistrict: boardDistrict
+            };
+          });
+        },
+        render: function (result) {
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.township) fields.push({ label: "Township", value: String(result.township) });
+          if (result.boardDistrict != null && result.boardDistrict !== "") {
+            fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+          }
+          fields.push({ label: "Registration & polling place",
+            html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' });
+          return renderFieldList(fields);
+        }
+      },
+      {
+        key: "dupage",
+        coverage: dupageCountyCoverage,
+        loadGeometry: loadDupagePrecincts,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["precinctname"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadDupagePrecincts(),
+            loadDupageCountyBoard().catch(function () { return null; })
+          ]).then(function (results) {
+            var geojson = results[0], boardGeo = results[1];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var boardDistrict = null;
+            if (boardGeo) {
+              var bf = findFeatureContaining(boardGeo, point);
+              if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
+            }
+            return {
+              seq: seq,
+              name: findPropCI(props, ["precinctname"]),
+              township: findPropCI(props, ["townshipname"]),
+              boardDistrict: boardDistrict
+            };
+          });
+        },
+        render: function (result) {
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.township) fields.push({ label: "Township", value: String(result.township) });
+          if (result.boardDistrict != null && result.boardDistrict !== "") {
+            fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+          }
+          fields.push({ label: "Registration & polling place",
+            html: '<a href="https://www.dupagecounty.gov/elections/" target="_blank" rel="noopener">DuPage County Clerk — Elections (official)</a>' });
+          return renderFieldList(fields);
+        }
+      }
+    ],
+    // Precinct sits at the bottom of the County > Township > Precinct nest:
+    // turning it on brings Township on (which itself brings County on), and
+    // drops Township to outline-only so the precinct fills read as its
+    // interior subdivision.
+    onToggle: function (on) {
+      var townshipRt = layerRuntime["township"];
+      if (on) {
+        if (!state.layersOn["township"]) {
+          var tbox = document.getElementById("toggle-township");
+          if (tbox && !tbox.checked) tbox.click();
+        }
+        townshipRt.outlineOnly = true;
+      } else {
+        townshipRt.outlineOnly = false;
+      }
+      var townshipMod = getLayerById("township");
+      if (townshipMod && townshipRt.overlayLayer) updateLayerHighlight(townshipMod);
+    }
+  });
+
   // Permalink compatibility for consolidated layers: pre-consolidation ids in
   // a shared #layers= list are rewritten to the consolidated id BEFORE the
   // boot-time applyStateFromHash parse reads the hash (unknown ids there are
@@ -8179,7 +8257,15 @@ function initChiExplorer() {
   var CONSOLIDATED_LAYER_ALIASES = {
     "commissioner": "county-board",
     "will-county-board": "county-board",
-    "dupage-county-board": "county-board"
+    "dupage-county-board": "county-board",
+    "will-county-judicial": "judicial-subcircuit",
+    "dupage-county-judicial": "judicial-subcircuit",
+    "will-county-fire": "fire-district",
+    "dupage-county-fire": "fire-district",
+    "will-county-park": "park-district",
+    "dupage-county-park": "park-district",
+    "will-county-precinct": "county-precinct",
+    "dupage-county-precinct": "county-precinct"
   };
   (function rewriteAliasedPermalink() {
     var raw = location.hash.replace(/^#/, "");

@@ -88,15 +88,13 @@ EXPECT_LAYER_IDS = [
     "il-supreme-court", "congress", "il-senate", "il-house", "county",
     "school-district-secondary", "school-district-unified",
     "school-district-elementary", "township", "municipality",
-    "will-county-judicial", "dupage-county-judicial", "county-board", "ccbr",
-    "will-county-fire", "dupage-county-fire", "dupage-county-special-police",
-    "will-county-park", "dupage-county-park", "school-board",
+    "judicial-subcircuit", "county-board", "ccbr", "fire-district",
+    "dupage-county-special-police", "park-district", "school-board",
     "cps-hs-network", "cps-network", "ward", "ward-precinct",
     "police-district", "police-beat", "ccpsa-district-council",
-    "community-area", "zip-code", "cps-high", "cps-middle",
-    "will-county-precinct", "dupage-county-precinct", "cps-elementary",
-    "school-site", "police-station", "fire-station", "post-office", "library",
-    "early-voting",
+    "community-area", "zip-code", "cps-high", "cps-middle", "county-precinct",
+    "cps-elementary", "school-site", "police-station", "fire-station",
+    "post-office", "library", "early-voting",
 ]
 
 # file -> (min features, max features) for the boundary layers fetched by the app.

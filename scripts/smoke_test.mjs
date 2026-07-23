@@ -38,7 +38,7 @@ const POINT = "41.88250,-87.62850"; // downtown Loop — inside Cook County
 const OFFLINE = ["school-board", "il-supreme-court", "ccbr"];
 const EXPECT_DISTRICT = { "school-board": "12", "il-supreme-court": "1", "ccbr": "3" };
 const NEGATIVE_POINT = "41.70000,-87.10000"; // Lake Michigan, Indiana waters — outside all three anchor layers
-const EXPECT_LAYERS = 40; // 17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 1 consolidated county-board (Cook commissioner + Will + DuPage, county-dispatched) + 4 Will County layers (judicial, fire, park, precinct — coverage-gated) + 5 DuPage County layers (judicial, fire, special-police, park, precinct — coverage-gated) + 3 amenity nearest-point layers (post-office, library, early-voting) = 40 — live-verified 2026-07
+const EXPECT_LAYERS = 36; // 17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 consolidated county-dispatched layers (county-board, judicial-subcircuit, fire-district, park-district, county-precinct — Cook/Will/DuPage entries; docs/COUNTY_LAYER_CONSOLIDATION.md) + 1 DuPage-only layer (dupage-county-special-police) + 3 amenity nearest-point layers (post-office, library, early-voting) = 36 — live-verified 2026-07
 // ==== GENERATED:END smoke-config ====
 // Anchor layers that declare a location-relevance test (mod.coverage) HIDE at
 // an out-of-coverage point instead of reporting an empty card — this list
@@ -261,31 +261,33 @@ try {
     await context.close();
   }
 
-  // 2c. Consolidated-layer permalink compatibility: a pre-consolidation shared
-  //     link (#layers=commissioner / will-county-board / dupage-county-board)
-  //     must light the consolidated county-board toggle — the fork's alias
-  //     shim rewrites those ids before the boot parse reads the hash, where
-  //     unknown ids are otherwise dropped silently. Duplicate-producing lists
-  //     (two old ids aliasing to the same layer) must collapse to one id.
+  // 2c. Consolidated-layer permalink compatibility: pre-consolidation ids in a
+  //     shared link (#layers=commissioner / will-county-board / will-county-fire
+  //     / …) must light the consolidated toggles — the fork's alias shim
+  //     rewrites those ids before the boot parse reads the hash, where unknown
+  //     ids are otherwise dropped silently. Duplicate-producing lists (two old
+  //     ids aliasing to the same layer) must collapse to one id.
   //     See docs/COUNTY_LAYER_CONSOLIDATION.md.
   {
     const context = await browser.newContext({ serviceWorkers: "block" });
-    const page = await booted(context, `${BASE}#layers=commissioner,will-county-board`);
+    const page = await booted(context, `${BASE}#layers=commissioner,will-county-board,will-county-fire`);
     const res = await page.evaluate(() => {
-      const box = document.getElementById("toggle-county-board");
+      const board = document.getElementById("toggle-county-board");
+      const fire = document.getElementById("toggle-fire-district");
       const hash = location.hash;
       return {
-        boxChecked: !!(box && box.checked),
-        layerOn: window.ChiExplorer.state.layersOn["county-board"] === true,
-        hashRewritten: hash.indexOf("county-board") !== -1 &&
-          hash.indexOf("commissioner") === -1 && hash.indexOf("will-county-board") === -1,
+        boardOn: !!(board && board.checked) && window.ChiExplorer.state.layersOn["county-board"] === true,
+        fireOn: !!(fire && fire.checked) && window.ChiExplorer.state.layersOn["fire-district"] === true,
+        hashRewritten: hash.indexOf("county-board") !== -1 && hash.indexOf("fire-district") !== -1 &&
+          hash.indexOf("commissioner") === -1 && hash.indexOf("will-county-board") === -1 &&
+          hash.indexOf("will-county-fire") === -1,
         oneCopy: hash.split("county-board").length === 2,
       };
     });
     check(
-      "old county-board permalink ids alias to the consolidated layer",
-      res.boxChecked && res.layerOn && res.hashRewritten && res.oneCopy,
-      `checked=${res.boxChecked} layersOn=${res.layerOn} hashRewritten=${res.hashRewritten} deduped=${res.oneCopy}`
+      "old permalink ids alias to the consolidated layers",
+      res.boardOn && res.fireOn && res.hashRewritten && res.oneCopy,
+      `board=${res.boardOn} fire=${res.fireOn} hashRewritten=${res.hashRewritten} deduped=${res.oneCopy}`
     );
     await context.close();
   }

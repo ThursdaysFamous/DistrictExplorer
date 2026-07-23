@@ -60,7 +60,7 @@ survive:** they encode lat/lng, not district ids, so a point permalink still res
 resolves to the NEW district after geometry updates, which is correct behavior. This is confirmed
 against the architecture: permalinks are lat/lng-based, so no permalink migration is needed.
 
-### CHI (40 layers)
+### CHI (36 layers)
 
 | Layer | Exposure class | Enacting authority | What breaks |
 |---|---|---|---|

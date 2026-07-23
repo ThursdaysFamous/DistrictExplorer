@@ -12,7 +12,7 @@ This is the reference implementation of a small fleet of sibling metro forks ([n
 
 ## What it answers
 
-Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 40 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, county-scoped layers appear only inside their counties (the consolidated County Board layer spans Cook, Will, and DuPage and picks the right board by county), and the statewide layers work anywhere in Illinois.
+Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 36 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, county-scoped layers appear only inside their counties (five consolidated layers — County Board, Judicial Subcircuit, Fire Protection District, Park District, Voting Precinct — span Cook/Will/DuPage and pick the right county's data automatically), and the statewide layers work anywhere in Illinois.
 
 | Group | Layer | What you get |
 |---|---|---|
@@ -26,13 +26,13 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | IL Supreme Court District | District under PA 102-0011 (District 1 = Cook County) |
 | | Cook County Board of Review District | District under PA 102-0012 (property-tax appeals) |
 | | Early Voting Site (nearest 3) | Official early-voting sites for the current cycle — site, ward, address, distance (hand-curated per election from chicagoelections.gov; each site also hosts a secured ballot drop box) |
-| | Judicial Subcircuit (Will / DuPage) | 12th- or 18th-Circuit judicial subcircuit, for points in Will or DuPage County |
+| | Judicial Subcircuit | 12th-Circuit (Will) or 18th-Circuit (DuPage) judicial subcircuit, picked by county; each card links its circuit's court |
 | **Public Safety** | Police District | CPD district number and name, commander, CAPS unit phone/email, station address + phone, district map link |
 | | Police Beat | Beat number (a sub-selection of Police District — turning it on drops the district to an outline and fills it with its beats) |
 | | CCPSA District Council | The three elected District Councilors for that police district (name + role) and links to each Councilor's profile + the council page |
 | | Police Station (nearest 3) | Station name, address, phone, straight-line distance |
 | | Fire Station (nearest 3) | Firehouse + engine designation, distance |
-| | Fire Protection District (Will / DuPage) | Suburban fire *protection* (taxing) district — trustees in Will (from county GIS), name-only in DuPage (its GIS carries no trustees) |
+| | Fire Protection District | Suburban fire *protection* (taxing) district, picked by county — trustees in Will (from county GIS), name-only in DuPage (its GIS carries no trustees) |
 | | DuPage Special Police District | Township police-tax district funding supplemental DuPage County Sheriff patrol of unincorporated areas, with the Sheriff linked |
 | **Schools** | Elementary / Middle / High School Zone | CPS attendance-boundary school, grades, address, profile link, map pin |
 | | CPS Network (K-8 / High School) | Network, chief, phone, office address |
@@ -43,8 +43,8 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | County | County name + seal, anywhere in Illinois |
 | | Township / County Subdivision | Township (a sub-selection of County) |
 | | Municipality | Incorporated place name, anywhere in Illinois |
-| | Park District (Will / DuPage) | Park district — commissioners in Will (from county GIS), name-only in DuPage |
-| | Voting Precinct (Will / DuPage) | County voting precinct (a sub-selection of Township), with the containing County Board district and the county clerk's election lookup |
+| | Park District | Park district, picked by county — commissioners in Will (from county GIS), name-only in DuPage |
+| | Voting Precinct | County voting precinct (a sub-selection of Township), picked by county, with the containing County Board district and the county clerk's election lookup |
 | | Post Office (nearest 3) | Post office name, address, distance (USGS National Map structures) |
 | | Library (nearest 3) | Chicago Public Library location, address, phone, distance |
 
@@ -132,8 +132,8 @@ WATCH.md                            the redistricting watch calendar (when to lo
 
 Gates that run in CI:
 
-- **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered (40 ids), no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts, the Will and DuPage county-board rosters, the early-voting list). A bad data regeneration can't reach `main` unreviewed.
-- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 40 layers, classifies a known downtown point against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
+- **Static gate** (`scripts/validate_index.py`, wired into the weekly roster workflows between regeneration and the PR): the inline script passes `node --check`, every layer is still registered (36 ids), no dataset is embedded inline, and every `data/app/` file is present and complete (20 school-board districts, 59 + 118 IL legislators, 17 U.S. House reps, 5 + 3 court/board districts, the Will and DuPage county-board rosters, the early-voting list). A bad data regeneration can't reach `main` unreviewed.
+- **Behaviour gate** (`scripts/smoke_test.mjs`, run on every pull request by `.github/workflows/smoke-test.yml`): a real Chromium boot via Playwright asserts the app comes up, registers all 36 layers, classifies a known downtown point against known ground truth (school board 12, IL Supreme Court 1, Board of Review 3) including the school-board member-roster join, and degrades to an isolated error card + Retry when a data source fails.
 - **Drift + freshness gates**: `generate_metro_files.py --check` (GENERATED regions match the worksheet), `check_engine_parity.py` (engine fences intact), monthly `validate_sources.py` (upstream datasets haven't gone stale — WARN/FAIL opens a tracking issue rather than editing anything), and the weekly `fleet_status.py` run, which also diffs every fork's layer roster against `docs/DATA_LAYER_GUIDEBOOK.md`.
 
 ## Not for legal or official use

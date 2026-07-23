@@ -1,6 +1,8 @@
 # County-Layer Consolidation — one concept layer per district type, dispatched by county
 
-Status: **decided + prototyped (county-board, this change); remaining migrations staged.**
+Status: **decided + fully migrated (July 2026): `county-board`, then `judicial-subcircuit`,
+`fire-district`, `park-district`, `county-precinct` — every multi-county concept now
+county-dispatched; 42 → 36 layers.**
 Owner: CHI (fork-level — no engine change). Cross-refs: `docs/STATEWIDE_EXPANSION_PLAYBOOK.md`
 (the relevance-hiding capability this builds on, §3; the collar-first rollout, §7),
 `docs/DATA_LAYER_GUIDEBOOK.md` (the inventory this reshapes), `docs/ENGINE_SYNC.md` (why
@@ -92,16 +94,25 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
 
 ## Migration plan
 
-1. **`county-board`** (this change — the prototype): absorbs `commissioner` (Cook, live
+1. **`county-board`** (DONE — the prototype): absorbs `commissioner` (Cook, live
    GIS office join), `will-county-board` (weekly-scraped roster), `dupage-county-board`
    (weekly-scraped roster + countywide Chair). Card content per county is preserved
    verbatim, plus the new `Body` row. Roster scrapers, builders, CI workflows, and
    `data/app/` files are untouched.
-2. **`county-precinct`** next (Will + DuPage; both already `subOf township` with identical
-   onToggle nesting), then **fire / park / judicial** — mechanical repeats of step 1.
+2. **`judicial-subcircuit` / `fire-district` / `park-district` / `county-precinct`**
+   (DONE — second pass): the three polygon-factory pairs consolidate via the
+   `polygonCountyEntry` adapter (a registerPolygonLayer-style spec — loader + declarative
+   fields — as a dispatch entry, so their cards moved without rewriting); the precinct
+   pair's bespoke entries carry their board-district spatial join and county-clerk links,
+   with `subOf`/`onToggle` passed through at the CONCEPT level (the township outline-only
+   handoff is identical in every county). Every consolidated card names its county
+   somewhere fixed: Body row (board), Court row (judicial), County row (fire/park), the
+   clerk link (precinct). The retired "DuPage …"-prefixed labels are gone with the
+   toggle-collision that motivated them.
 3. **Future counties (Lake, Kane, McHenry, Kendall)**: ship as dispatch entries into the
    consolidated layers from day one; a county-specific layer is only ever created for a
-   concept no consolidated layer covers yet.
+   concept no consolidated layer covers yet (as `dupage-county-special-police` remains
+   today).
 
 ## Verification
 
