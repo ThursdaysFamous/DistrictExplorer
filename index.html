@@ -1629,20 +1629,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
     cursor: pointer;
   }
 
-  .result-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
-  .result-row dt { color: var(--slate); font-size: 12px; flex: none; }
-  .result-row dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: break-word; }
-  .result-row dd .field-pin { display: inline-block; vertical-align: -2px; margin-right: 5px; line-height: 0; }
-  dl.result-fields { margin: 0; }
+  /* .result-row/.result-fields (the legacy renderFieldList dt/dd table) were
+     retired in engine-v1.0.13 — see the render-helper tombstone. */
 
   /* ==== ENGINE:END styles-app ==== */
   /* ==== ENGINE:BEGIN styles-card-v2 ==== */
   /* ---- Card-system redesign (docs/CARD_RENDER_API.md; design refs in
      docs/design_handoff_county_board_card/ + docs/design_handoff_card_system/).
-     Additive overrides on top of styles-app: the legacy .result-row rules
-     above keep serving unmigrated renderFieldList cards inside this chrome
-     until the fleet-wide retirement release. Palette is scoped to the cards —
-     the rest of the app keeps the existing token set. ---- */
+     The card vocabulary is the whole card surface now — the legacy
+     renderFieldList dt/dd table was retired in engine-v1.0.13. Palette is
+     scoped to the cards — the rest of the app keeps the existing token set. ---- */
   .layer-block {
     --card-accent: #1d5fd6;
     --card-link: #1a56c4;
@@ -1728,9 +1724,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .spinner { width: 16px; height: 16px; border-color: var(--card-btn-border); border-top-color: var(--card-accent); }
 
-  /* Migrated render() output: one wrapper with class card-flush; rows carry
-     their own padding, so the body's falls away. Legacy renderFieldList
-     bodies (no marker) keep the padded layout above. */
+  /* Card render() output: one wrapper with class card-flush; rows carry their
+     own padding, so the body's own padding falls away. (A body with no
+     card-flush marker — loading/error/empty states — keeps the padded layout
+     above.) */
   .layer-card-body:has(> .card-flush) { padding: 0; }
   .card-flush > .card-row-b { border-bottom: 1px solid var(--card-row-border); }
   .card-flush > .card-row-b:last-child,
@@ -4846,7 +4843,7 @@ function initChiExplorer() {
   // without it setCardError renders the generic message. Metro-agnostic: every
   // city-specific string (the provider name, the official-lookup URL/label)
   // comes from the layer's own declaration, so this block stays byte-identical
-  // across forks. Reuses the shared renderFieldList + sanitize helpers and the
+  // across forks. Reuses the shared renderLinkRow + sanitize helpers and the
   // same onLayerToggled-based Retry as the generic error card.
   function renderSourceUnavailable(mod, body) {
     var ds = mod.dataSource || {};
@@ -5072,44 +5069,14 @@ function initChiExplorer() {
   /* ==== ENGINE:END overlay-cards ==== */
 
   /* ==== ENGINE:BEGIN render-helper ==== */
-  /* ---------- small render helper shared by modules ---------- */
-  function renderFieldList(fields) {
-    // fields: [{label, value}] — value is sanitized here, once, in the shared helper
-    var dl = document.createElement("dl");
-    dl.className = "result-fields";
-    fields.forEach(function (f) {
-      var row = document.createElement("div");
-      row.className = "result-row";
-      var dt = document.createElement("dt");
-      dt.textContent = f.label;
-      var dd = document.createElement("dd");
-      if (f.pin) {
-        // a small copy of the layer's map pin, so an address in the card reads
-        // as the point that's pinned on the map. f.pin is the layer theme color.
-        var pin = document.createElement("span");
-        pin.className = "field-pin";
-        pin.setAttribute("aria-hidden", "true");
-        pin.innerHTML = poiPinInlineSvg(f.pin);
-        dd.appendChild(pin);
-        if (f.html) {
-          var pinnedVal = document.createElement("span");
-          pinnedVal.innerHTML = f.html; // caller certifies this html was built with sanitize()
-          dd.appendChild(pinnedVal);
-        } else {
-          dd.appendChild(document.createTextNode(f.value));
-        }
-      } else if (f.html) {
-        dd.innerHTML = f.html; // caller certifies this html was built with sanitize()
-      } else {
-        dd.textContent = f.value;
-      }
-      row.appendChild(dt);
-      row.appendChild(dd);
-      dl.appendChild(row);
-    });
-    return dl;
-  }
-
+  /* ---------- renderFieldList (the legacy dt/dd row builder) was RETIRED in
+   * engine-v1.0.13. Every fleet-wide call site migrated to the card-helpers
+   * vocabulary (docs/CARD_RENDER_API.md); the factory legacy branches, the
+   * .result-row/.result-fields CSS, and the debug-namespace export were all
+   * removed in the same release. This fence is kept as a documented tombstone
+   * rather than deleted outright: the artifact builder rejects an empty fence
+   * pair, and removing the fence would force a cross-fork fence-set change
+   * (sibling pre-clean PRs) for no functional gain. ---------- */
   /* ==== ENGINE:END render-helper ==== */
   /* ==== ENGINE:BEGIN card-helpers ==== */
   /* ---------- card-system row vocabulary (docs/CARD_RENDER_API.md) ----------
@@ -5117,17 +5084,15 @@ function initChiExplorer() {
    * docs/design_handoff_county_board_card/ + docs/design_handoff_card_system/).
    * The contract is enforced here so call sites can't regress it:
    *   - callers pass DATA, never markup — no html fields exist on this
-   *     surface; every string lands via textContent (renderFieldList's
-   *     caller-certified f.html escape hatch does not carry over);
+   *     surface; every string lands via textContent;
    *   - every external URL is scheme-checked through safeHttpUrl before it
    *     becomes an href (a failed check drops the link, never renders it);
    *   - mailto:/tel: hrefs are built HERE from a raw address/number — an
    *     email address is never printed (the "Email" label is the link), and
    *     a phone number displays with non-breaking hyphens while its tel:
    *     href keeps only dialable characters.
-   * A migrated render() returns one wrapper element with class "card-flush";
-   * the styles-card-v2 rules key row padding/borders off that marker while
-   * legacy renderFieldList cards keep the padded-body layout. */
+   * A render() returns one wrapper element with class "card-flush"; the
+   * styles-card-v2 rules key row padding/borders off that marker. */
   function cardEl(tag, className, text) {
     var el = document.createElement(tag);
     if (className) el.className = className;
@@ -5630,17 +5595,11 @@ function initChiExplorer() {
             // (cardIdentifier below), not as a body row
             if (f.primary) { if (opts.pill !== true) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true }); }
             else if (val) rows.push({ label: f.label, value: String(val) });
-          } else if (f.html !== undefined) {
-            rows.push({ label: f.label, html: f.html });
           } else {
             rows.push({ label: f.label, value: f.value });
           }
         });
-        // A spec still carrying html fields (caller-certified markup) keeps
-        // the legacy dt/dd card — the redesigned stack is data-only, so the
-        // new look arrives when a fork moves its links to opts.primaryLink.
-        var hasHtml = rows.some(function (r) { return r.html !== undefined; });
-        return hasHtml ? renderFieldList(rows) : renderFieldStack(rows);
+        return renderFieldStack(rows);
       },
       pointOfInterest: opts.pointOfInterest,
       coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
@@ -7660,12 +7619,13 @@ function initChiExplorer() {
     // One point-in-polygon attendance-zone layer per school level. City-specific
     // dataset schemas and policies stay in opts: { id, label, datasetId, style,
     // nameKeys, idKeys, districtKeys?, gradeKeys?, addressKeys?, requireId?,
-    // emptyNote?, moreHtml?, profileHtml? }. requireId treats a feature without
-    // an id as "no zoned school" (choice-based catchments carry placeholder
-    // polygons); emptyNote renders that honest empty state (with moreHtml as an
-    // application link) instead of a bare no-result. profileHtml(id) is the
-    // fork's sanitized school-profile link builder — profile URLs are only ever
-    // built from a dataset-supplied id, never guessed from a name.
+    // emptyNote?, titleCaseData?, profileLink?, moreLink? }. requireId treats a
+    // feature without an id as "no zoned school" (choice-based catchments carry
+    // placeholder polygons); emptyNote renders that honest empty state (with
+    // moreLink as an application link in the footer) instead of a bare
+    // no-result. profileLink(id) -> {label, url} is the fork's school-profile
+    // link builder — profile URLs are only ever built from a dataset-supplied
+    // id, never guessed from a name.
     var loadZones = makeCachedLoader(opts.datasetId);
     function zoneField(props, keys) {
       return props && keys ? findPropCI(props, keys) : null;
@@ -7705,34 +7665,13 @@ function initChiExplorer() {
         });
       },
       render: function (result) {
-        // A fork still supplying the html-string opts (profileHtml/moreHtml)
-        // keeps the legacy dt/dd card; the data-only opts (profileLink(id) ->
-        // {label,url}, moreLink: {label,url}) get the redesigned card with
-        // the link in the footer (primaryLink below).
-        var legacyHtml = (opts.profileHtml || opts.moreHtml) && !(opts.profileLink || opts.moreLink);
         if (result.none) {
-          if (legacyHtml) {
-            var f = [{ label: "Zoned school", value: "None" }];
-            if (result.district) f.push({ label: "School district", value: String(result.district) });
-            f.push({ label: "Why", value: opts.emptyNote });
-            if (opts.moreHtml) f.push({ label: "Apply", html: opts.moreHtml });
-            return renderFieldList(f);
-          }
           var noneWrap = cardEl("div", "card-flush");
           noneWrap.appendChild(renderBodyIntro({
             title: "No zoned school",
             note: opts.emptyNote + (result.district ? " (district " + String(result.district) + ")" : "")
           }));
           return noneWrap;
-        }
-        if (legacyHtml) {
-          var fields = [{ label: "Zoned school", value: result.name ? String(result.name) : "Unknown" }];
-          if (result.district) fields.push({ label: "School district", value: String(result.district) });
-          if (result.grades) fields.push({ label: "Grades", value: String(result.grades) });
-          if (result.address) fields.push({ label: "Address", value: String(result.address), pin: opts.style.color });
-          var profileHtml = opts.profileHtml ? opts.profileHtml(result.schoolId) : null;
-          if (profileHtml) fields.push({ label: "Profile", html: profileHtml });
-          return renderFieldList(fields);
         }
         // Handoff 3 §6a: title-cased name/address (opts.titleCaseData for
         // ALL-CAPS feeds), grades collapsed to a range and moved to the
@@ -9348,17 +9287,11 @@ function initChiExplorer() {
             // (cardIdentifier below), not as a body row
             if (f.primary) { if (opts.pill !== true) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true }); }
             else if (val) rows.push({ label: f.label, value: String(val) });
-          } else if (f.html !== undefined) {
-            rows.push({ label: f.label, html: f.html });
           } else {
             rows.push({ label: f.label, value: f.value });
           }
         });
-        // same seam as registerPolygonLayer: a spec still carrying html
-        // fields keeps the legacy card; data-only specs get the stack, with
-        // the entry's link in opts.primaryLink (dispatched to the footer)
-        var hasHtml = rows.some(function (r) { return r.html !== undefined; });
-        return hasHtml ? renderFieldList(rows) : renderFieldStack(rows);
+        return renderFieldStack(rows);
       },
       cardIdentifier: (opts.pill === true && primaryField) ? function (result) {
         var v = result[primaryField.name];
@@ -11318,7 +11251,6 @@ function initChiExplorer() {
     pointInGeometry: pointInGeometry,
     fetchJSONWithRetry: fetchJSONWithRetry,
     probeGeometryColumn: probeGeometryColumn,
-    renderFieldList: renderFieldList,
     cleanPoiAddress: cleanPoiAddress // exposed so the smoke test can regression-guard the office-pin address cleaner (a recurring break point) without any network call
   };
   /* ==== ENGINE:END exports ==== */

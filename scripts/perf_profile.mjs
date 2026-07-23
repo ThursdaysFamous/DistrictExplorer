@@ -115,7 +115,7 @@ const INIT = `
     set: function (v) { if (window.__readyTs === null) window.__readyTs = performance.now(); _chi = v; } }); })();
   window.__waitCards = async function (ids) {
     var done = function () { return ids.every(function (id) { var el = document.getElementById("card-" + id);
-      return el && !el.querySelector(".loading-row") && (el.querySelector(".result-fields") || el.querySelector(".state-empty") ||
+      return el && !el.querySelector(".loading-row") && (el.querySelector(".card-flush") || el.querySelector(".state-empty") ||
         el.classList.contains("state-empty") || el.classList.contains("state-error") || el.querySelector(".state-error")); }); };
     var t0 = performance.now();
     for (var i = 0; i < 300; i++) { if (done()) break; await new Promise(function (r) { setTimeout(r, 20); }); }

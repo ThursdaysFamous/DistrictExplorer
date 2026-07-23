@@ -19,8 +19,14 @@ gained a `note` line. **The fleet is at zero `renderFieldList` call sites** — 
 (polygon-factory, polygonCountyEntry, school-zone ×2) are the sibling-
 compat legacy branches, now dead code: no spec anywhere still carries
 caller-HTML opts. `school-site` keeps its bespoke filter card by
-design. The retirement release (delete `render-helper` + the `.result-row`
-CSS + the legacy branches) stays gated on a fleet-wide zero grep.
+design. **The retirement shipped as engine-v1.0.13** (once the grep hit
+zero): `renderFieldList`, its `.result-row` CSS, the factories' legacy
+caller-HTML branches, and the debug-namespace export are all gone. The
+`render-helper` fence is kept as a tombstone comment rather than deleted —
+the pipeline rejects an empty fence and a cross-fork fence-set change would
+force sibling pre-clean PRs for no functional gain (see
+`docs/ENGINE_SYNC.md` item 13; that tombstone-not-delete rule is now the
+fleet convention for retiring a shared helper).
 **Handoff 3** (`docs/design_handoff_fixes_and_schools/`, ids 5a–5d/6a/8a–8b)
 extended the surface again: `<details>` expanders default **closed**
 everywhere (§5d — `detailsOpen`/`open` remain as explicit opt-ins no caller
@@ -256,9 +262,15 @@ in behavior to today.
    immediately; fork-local cards keep `dt`/`dd` bodies inside the new chrome.
 2. **Per-fork migration:** each fork moves its local `render` functions to the
    helpers at its own pace (Chicago in the same change-set that ships N).
-3. **Engine release N+1 (retirement):** when a fleet-wide grep shows zero
-   `renderFieldList` call sites (the ENGINE_SYNC "definition of done" gate),
-   delete the `render-helper` fence and the `.result-row`/`.result-fields` CSS.
+3. **Engine release N+1 (retirement) — shipped as engine-v1.0.13:** once a
+   fleet-wide grep showed zero `renderFieldList` call sites (the ENGINE_SYNC
+   "definition of done" gate), the `renderFieldList` body, the
+   `.result-row`/`.result-fields` CSS, the factories' legacy caller-HTML
+   branches, and the debug-namespace export were removed. The `render-helper`
+   fence itself is **emptied to a tombstone comment, not deleted** — the
+   artifact builder rejects an empty fence and a fence-set change would force
+   sibling pre-clean PRs; see `docs/ENGINE_SYNC.md` item 13 for why this is the
+   fleet convention.
 
 **Gates, all local:** `python3 scripts/check_engine_parity.py index.html`
 (fence lint; also runs inside `validate_index.py`), `validate_index.py`

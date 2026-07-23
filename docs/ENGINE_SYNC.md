@@ -173,9 +173,10 @@ adding the two card blocks — the previous list said 45 but had drifted,
 missing `map-chrome-classes`, `map-pan-filter`, and `styles-markers`.)
 
 (`card-helpers` + `styles-card-v2` are the card-system redesign surface —
-docs/CARD_RENDER_API.md. Both are additive on top of `render-helper` /
-`styles-app`: `renderFieldList` and the `.result-row` CSS keep serving
-unmigrated call sites until the fleet-wide retirement release deletes them.)
+docs/CARD_RENDER_API.md. `renderFieldList` and its `.result-row` CSS were
+retired in engine-v1.0.13 once the fleet-wide grep hit zero call sites;
+`render-helper` is kept as an empty tombstone-comment fence rather than
+deleted — see the retirement note under the sequencing section below.)
 
 (`geocoder-shell`/`geocoder-search`/`poi-geocode` fence the geocoder UI —
 search-shell expander, result rendering, submit/debounce wiring, the
@@ -338,10 +339,7 @@ directions, so reconciling means merging features, not overwriting:
    (July 2026):** NYC (#68) and SF (#34) migrated their fork-local cards
    onto the helper vocabulary the same week (CHI PRs #172/#173 were the
    reference), taking the fleet-wide `renderFieldList` grep to zero call
-   sites. The retirement release — deleting `render-helper`, the
-   `.result-row` CSS, and the factories' legacy caller-HTML branches — is
-   now unblocked; it ships as a normal `engine-v*` cut when an operator
-   chooses (no urgency: the legacy branches are dead code, not drift).
+   sites. The retirement release shipped as `engine-v1.0.13` (item 13).
 12. **Design-review polish + Handoff 3 (engine-v1.0.11 + v1.0.12, July
    2026)** — two follow-on releases from a design review of the redesign's
    first pass, both **changed-blocks-only** (no new fences, so no sibling
@@ -364,3 +362,22 @@ directions, so reconciling means merging features, not overwriting:
    `cardText` gained compact value/meta reading for the now-compact
    neighborhood). Recorded in `docs/engine-changelog/v1.0.11.md` and
    `v1.0.12.md`.
+13. **`renderFieldList` retirement (engine-v1.0.13, July 2026)** — the last
+   step of the redesign, once the fleet-wide grep hit zero call sites (item
+   11). Changed blocks only (`render-helper`, `styles-app`,
+   `polygon-factory`, `polygonCountyEntry`, `school-zone-factory`,
+   `exports`); **no new fences, no fence-set change, no sibling seeding or
+   pre-clean.** `renderFieldList`, its `.result-row`/`.result-fields` CSS,
+   the factories' legacy caller-HTML branches, and the debug-namespace
+   export are all gone. **Tombstone, not deletion:** the `render-helper`
+   fence is kept as an ~8-line comment rather than removed, because
+   `build_engine_artifact.py` rejects an empty fence pair and `apply_engine.py`
+   fails a fork carrying a fence the manifest lacks — so a true deletion
+   would force a pre-clean PR in every sibling (the mirror of v1.0.10's
+   seeding) plus a transient window where the fork's export references an
+   undefined function. Tombstoning keeps the block set stable so the release
+   fans out atomically like any changed-blocks cut. **This is the fleet's
+   convention for retiring a shared engine helper:** empty its fence to a
+   tombstone comment, never delete the fence. Recorded in
+   `docs/engine-changelog/v1.0.13.md`. Fanned out to NYC/SF and merged clean;
+   block count unchanged at **52 (50 index.html + 2 sw.js)**.

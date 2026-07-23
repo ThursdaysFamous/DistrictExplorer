@@ -88,7 +88,7 @@ async function cardText(page, id) {
       (cid) => {
         const el = document.getElementById("card-" + cid);
         return el && !el.querySelector(".loading-row") &&
-          (el.querySelector(".result-fields") || el.querySelector(".card-flush") ||
+          (el.querySelector(".card-flush") ||
            el.querySelector(".state-empty") ||
            el.classList.contains("state-empty") || el.classList.contains("state-error") || el.querySelector(".state-error"));
       },
