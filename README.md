@@ -18,7 +18,7 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 |---|---|---|
 | **Political** | City Ward | Ward number, alderman, office phone + address |
 | | Ward Precinct | Precinct number (a sub-selection of City Ward — turning it on drops the ward to an outline and fills it with its precincts) |
-| | County Board District | Your county-legislature seat, picked by county: Cook Commissioner district (live officeholder join, office pin), Will or DuPage County Board district (weekly-scraped rosters + DuPage's countywide Chair), Lake County Board district (member + contact carried on the county's own GIS), Kane County Board district (member names on the county's own GIS), Kendall County Board district (the 5 members incl. the Chairman with phone/email, weekly-scraped from the county's own directory), or a McHenry County Board district (district geometry only — the card links the county's official member directory) |
+| | County Board District | Your county-legislature seat, picked by county: Cook Commissioner district (live officeholder join, office pin), Will or DuPage County Board district (weekly-scraped rosters + DuPage's countywide Chair), Lake County Board district (member + contact carried on the county's own GIS), Kane County Board district (member names on the county's own GIS), Kendall County Board district (the 5 members incl. the Chairman with phone/email, weekly-scraped from the county's own directory), or a McHenry County Board district (the district's 2 members plus the countywide-elected Board Chairman with phone/email, weekly-scraped from the county's own directory) |
 | | U.S. House District | District (IL-N), representative, party, D.C. phone, website |
 | | IL State Senate District | Senator, party, Springfield + district offices, ILGA page |
 | | IL State House District | State representative, party, offices, ILGA page |
@@ -96,6 +96,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 | Kendall County ArcGIS Enterprise (`maps.co.kendall.il.us/server`) | Board districts, fire/park/library tax-code tilings, voting precincts + polling places, townships |
 | [willcountyillinois.gov](https://willcountyillinois.gov) (scraped weekly by CI) | Will County Board member roster (`data/app/will-county-board-members.json`) |
 | [kendallcountyil.gov](https://www.kendallcountyil.gov/county-board/board-members) (scraped weekly by CI) | Kendall County Board member roster (`data/app/kendall-county-board-members.json`) |
+| [mchenrycountyil.gov](https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members) (scraped weekly by CI) | McHenry County Board member roster incl. the countywide Chairman (`data/app/mchenry-county-board-members.json`) |
 | [dupagecounty.gov](https://www.dupagecounty.gov) (scraped weekly by CI) | DuPage County Board member roster + countywide Chair (`data/app/dupage-county-board-members.json`) |
 | [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) (rebuilt weekly by CI) | U.S. House roster — IL's 17 reps only, `data/app/congress-roster.json` |
 | [ilga.gov](https://www.ilga.gov) (scraped weekly by CI) | IL Senate/House member rosters (`data/app/il-{senate,house}-members.json`) |

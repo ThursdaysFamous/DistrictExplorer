@@ -144,6 +144,13 @@ PROVENANCE = [
              "pages (kendall_county_board_scraper.py). The site is Akamai-fronted "
              "and 403s non-browser clients, so a reachability WARN here is "
              "expected, not drift — the scraper's Playwright engine handles it."},
+    {"layer": "McHenry County Board members (roster)",
+     "app_file": "mchenry-county-board-members.json",
+     "source_url": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members",
+     "note": "Scraped weekly from the county's own member directory + per-member "
+             "pages (mchenry_county_board_scraper.py), incl. the countywide-elected "
+             "Chairman. The site 403s non-browser clients, so a reachability WARN "
+             "here is expected, not drift — the scraper's Playwright engine handles it."},
     {"layer": "Illinois county clerks (roster)",
      "app_file": "il-county-clerks.json",
      "source_url": "https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx",

@@ -1,0 +1,142 @@
+{
+  "1": {
+    "members": [
+      {
+        "name": "Matt Kunkle",
+        "phone": "847-815-5537",
+        "email": "MMKunkle@mchenrycountyil.gov"
+      },
+      {
+        "name": "Patrick Sullivan",
+        "phone": "847-804-5034",
+        "email": "PBSullivan@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "2": {
+    "members": [
+      {
+        "name": "Gloria Van Hof",
+        "phone": "815-342-7744",
+        "email": "GJVanHof@mchenrycountyil.gov"
+      },
+      {
+        "name": "John Collins",
+        "phone": "815-861-3908",
+        "email": "JKCollins@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "3": {
+    "members": [
+      {
+        "name": "Carolyn Campbell",
+        "phone": "815-345-9429",
+        "email": "CMCampbell@mchenrycountyil.gov"
+      },
+      {
+        "name": "Eric Hendricks",
+        "email": "ECHendricks@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "4": {
+    "members": [
+      {
+        "name": "Joseph Gottemoller",
+        "phone": "(815)382-9940",
+        "email": "jxgottemoller@mchenrycountyil.gov"
+      },
+      {
+        "name": "Mike Shorten",
+        "phone": "815-893-9772",
+        "email": "MTShorten@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "5": {
+    "members": [
+      {
+        "name": "Terri Greeno",
+        "phone": "847-274-6395",
+        "email": "TWGreeno@mchenrycountyil.gov"
+      },
+      {
+        "name": "Deena Krieger",
+        "phone": "815-322-9845",
+        "email": "DNKrieger@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "6": {
+    "members": [
+      {
+        "name": "Pamela Althoff",
+        "phone": "815-482-4567",
+        "email": "pjalthoff@mchenrycountyil.gov"
+      },
+      {
+        "name": "Carl Kamienski",
+        "phone": "815-790-8292",
+        "email": "CLKamienski@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "7": {
+    "members": [
+      {
+        "name": "Brian Sager",
+        "phone": "815-690-2737",
+        "email": "BPSager@mchenrycountyil.gov"
+      },
+      {
+        "name": "Paul Thomas",
+        "phone": "815-271-0900",
+        "email": "PCThomas@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "8": {
+    "members": [
+      {
+        "name": "Larry Smith",
+        "phone": "(815) 353-8043",
+        "email": "lwsmith@mchenrycountyil.gov"
+      },
+      {
+        "name": "Tracie Von Bergen",
+        "phone": "815-790-9002",
+        "email": "TLVonBergen@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "9": {
+    "members": [
+      {
+        "name": "Michael Skala",
+        "phone": "815-337-5550",
+        "email": "mjskala@mchenrycountyil.gov"
+      },
+      {
+        "name": "Jim Kearns",
+        "phone": "847-875-4852",
+        "email": "jakearns@mchenrycountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members"
+  },
+  "chair": {
+    "name": "Michael Buehler",
+    "role": "Chairman",
+    "phone": "815-334-4224",
+    "email": "MJBuehler@mchenrycountyil.gov"
+  }
+}

@@ -193,9 +193,10 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
      Akamai-fronted sites alike.
    - **No verifiable source**: the card links the official body and the
      guidebook records the gap — the honesty floor, never the default.
-   McHenry predates this rule and is the recorded retro-debt: its board
-   card links the member directory a scraper should be reading
-   (docs/DATA_LAYER_GUIDEBOOK.md backlog).
+   McHenry predated this rule as the recorded retro-debt and was resolved
+   the same month: its board card now joins a weekly-scraped roster (18
+   members + the countywide-elected Chairman — the DuPage chair shape) via
+   mchenry_county_board_scraper.py. No deferred-scraper debt remains.
 
 ## Verification
 
