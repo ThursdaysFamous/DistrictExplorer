@@ -131,6 +131,12 @@ PROVENANCE = [
      "note": "PA 102-0693 enacted-subcircuits shapefile ZIP (archived in "
              "data/source/raw/). Redrawn ~once a decade; the county's own "
              "services are permission-locked, hence the shapefile route."},
+    {"layer": "McHenry 22nd-Circuit judicial subcircuits",
+     "app_file": "mchenry-judicial-subcircuits.json",
+     "source_url": "https://www.ilsenateredistricting.com/",
+     "note": "Same PA 102-0693 enacted-subcircuits shapefile ZIP as Kane "
+             "(archived in data/source/raw/). Redrawn ~once a decade; the "
+             "county publishes no subcircuit service at all."},
     {"layer": "Illinois county clerks (roster)",
      "app_file": "il-county-clerks.json",
      "source_url": "https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx",
@@ -199,6 +205,8 @@ ENDPOINTS = [
      "url": "https://services3.arcgis.com/HESxeTbDliKKvec2/arcgis/rest/services/LakeCounty_PoliticalBoundaries/FeatureServer/0?f=json"},
     {"layer": "Kane County Board districts (24 members carried on the county GIS)",
      "url": "https://services1.arcgis.com/oRKmdBXD6EbdmVgJ/arcgis/rest/services/KaneCo_IL_County_Board/FeatureServer/1?f=json"},
+    {"layer": "McHenry County Board districts (9, district-number-only on the county GIS)",
+     "url": "https://services1.arcgis.com/6iYC5AXXYapRVNzl/arcgis/rest/services/McHenry_County_Board_Districts/FeatureServer/0?f=json"},
 ]
 
 FAIL, WARN, OK = "FAIL", "WARN", "OK"

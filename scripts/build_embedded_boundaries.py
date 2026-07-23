@@ -92,6 +92,16 @@ LAYERS = {
         "precision": "0.000001",
         "key_prop": "DISTRICT",
     },
+    # McHenry's 22nd-Circuit judicial subcircuits — same enacted PA 102-0693
+    # shapefile ZIP and schema as kane-judicial (the county publishes no
+    # subcircuit service at all).
+    "mchenry-judicial": {
+        "source": "data/mchenry-judicial-subcircuits.geojson",
+        "out": "mchenry-judicial-subcircuits.json",
+        "simplify": "12%",
+        "precision": "0.000001",
+        "key_prop": "DISTRICT",
+    },
 }
 
 
