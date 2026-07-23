@@ -75,7 +75,7 @@ against the architecture: permalinks are lat/lng-based, so no permalink migratio
 | Community areas (77) | Never (frozen) | geography | none expected |
 | CPS attendance boundaries | Annual | CPS | dataset id every year |
 | ZIP codes | USPS-driven, not census | USPS | occasional |
-| Cook / Will / DuPage / Lake judicial subcircuits (Cook 20 + 12th / 18th / 19th Cir.) | Statutory, rare | IL General Assembly | geometry |
+| Cook / Will / DuPage / Lake / Kane judicial subcircuits (Cook 20 + 12th / 18th / 19th / 16th Cir.) | Statutory, rare | IL General Assembly | geometry (Kane is pre-built — rebuild via build_embedded_boundaries.py on redraw) |
 | Will / DuPage / Lake / Kane fire / park / library / precinct (+ DuPage special-police; + Cook fire/park/library tilings) | Administrative / per-election | districts + county clerks | geometry (precincts redraw with county maps; DuPage's current map is the 2024 consolidation) |
 | County / township / municipality (statewide) | Annexation-driven, rolling | local referenda; TIGERweb vintages | TIGERweb vintage rolls |
 | Statewide school districts (3 TIGERweb layers) | Consolidation-driven | ISBE / referenda | TIGERweb vintage rolls |

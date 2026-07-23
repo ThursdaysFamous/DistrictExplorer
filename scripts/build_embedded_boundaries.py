@@ -79,6 +79,19 @@ LAYERS = {
         "precision": "0.000001",
         "key_prop": "DISTRICT",
     },
+    # Kane's 16th-Circuit judicial subcircuits (PA 102-0693). Same enacted-map
+    # family and attribute schema (ID/DISTRICT/DISTRICTN) as il-supreme-court,
+    # converted from the ilsenateredistricting.com shapefile ZIP archived at
+    # data/source/raw/Enacted_Judicial_Sub_Circiuts.zip (the county's own GIS
+    # publishes subcircuits only behind permission-locked proxies, hence the
+    # shapefile route — docs/DATA_LAYER_GUIDEBOOK.md backlog).
+    "kane-judicial": {
+        "source": "data/kane-judicial-subcircuits.geojson",
+        "out": "kane-judicial-subcircuits.json",
+        "simplify": "12%",
+        "precision": "0.000001",
+        "key_prop": "DISTRICT",
+    },
 }
 
 
