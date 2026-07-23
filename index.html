@@ -3682,13 +3682,13 @@ function initChiExplorer() {
     "school-district-elementary", // IL elementary school district (371 statewide)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
-    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile; Kendall's 23rd Circuit received NO subcircuits under the act — structurally n/a, the layer hides there), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; district-number-only, cards link the member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
-    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts), county-dispatched; partial coverage inside each county
+    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts) + Kendall (10 FPDs on the county's parcel-derived tax-code tiling, name-only — the municipal Joliet row excluded), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
-    "park-district",     // Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs) + Kane (11, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county
-    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs) + McHenry (13, name-only after the county's own Z_None-filler + municipal-row exclusions), county-dispatched; partial coverage inside each county
+    "park-district",     // Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs) + Kane (11, board president + office contact in GIS attrs) + Kendall (5 genuine districts on the county's tax-code tiling, name-only; McHenry remains the one sourced county with no entry — it publishes park facilities, not district boundaries), county-dispatched; partial coverage inside each county
+    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs) + McHenry (13, name-only after the county's own Z_None-filler + municipal-row exclusions) + Kendall (9 library taxing bodies on the county's complete tax-code tiling — municipal city-library funds included, the Cook-style shape), county-dispatched; partial coverage inside each county
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -3711,7 +3711,7 @@ function initChiExplorer() {
     // Smallest county-scoped layer, so it renders on top of Township and County
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
-    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features) + McHenry current map (223), county-dispatched; subOf township
+    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features) + McHenry current map (223) + Kendall current map (78, township names derived from the county's own layers + per-precinct polling place joined by GlobalID), county-dispatched; subOf township
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5979,6 +5979,128 @@ function initChiExplorer() {
     return fetchJSONWithRetry("data/app/mchenry-judicial-subcircuits.json", {}, 2);
   });
 
+  /* =========================================================================
+   * KENDALL COUNTY — sixth collar county, dispatch entries only; completes
+   * the recorded collar rollout. Coverage mirrors the siblings: exact
+   * containment in a TIGER-sourced outline (data/app/kendall-county-outline
+   * .json, FIPS 17093). Every entry loads from the county's own ArcGIS
+   * Enterprise (maps.co.kendall.il.us/server, Hosted folder). The board
+   * entry serves the County_Board_2010 service deliberately: Kendall keeps
+   * a TWO-district board (10 members), and the post-2020-census
+   * reapportionment kept the line — "The line dividing District 1 and
+   * District 2 will remain the same" (Dec 2021 reapportionment hearing,
+   * WSPY News) — so the 2010-vintage service IS the current map and the
+   * county publishes no newer board service. Fire/park/library are the
+   * county's parcel-derived tax-code tilings (each polygon is a tax code
+   * stamped with its district name): finer-grained than the sibling
+   * counties' agency polygons, with hairline gaps at unparceled slivers
+   * (water, road right-of-way, the odd village-core block — Newark's
+   * crossroads is one) where cards honestly report no result. Judicial
+   * subcircuits are structurally n/a here: the 23rd Circuit (Kendall)
+   * received NO subcircuits under PA 102-0693 (docs/DATA_LAYER_GUIDEBOOK.md).
+   * ======================================================================= */
+  var loadKendallCountyOutline = makeCached(function () {
+    return fetchJSONWithRetry("data/app/kendall-county-outline.json", {}, 2);
+  });
+  function kendallCountyCoverage(point) {
+    return loadKendallCountyOutline().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
+
+  var KENDALL_GIS = "https://maps.co.kendall.il.us/server/rest/services/Hosted/";
+  function loadKendallLayer(service, layerIndex, where, outFields, label) {
+    var url = KENDALL_GIS + service + "/FeatureServer/" + layerIndex +
+      "/query?where=" + encodeURIComponent(where) + "&outFields=" + outFields +
+      "&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("Kendall County " + label + " returned no usable geometry");
+        return geojson;
+      });
+  }
+  var loadKendallCountyBoard = makeCached(function () {
+    return loadKendallLayer("County_Board_2010", 0, "1=1", "district", "Board");
+  });
+  var loadKendallTownships = makeCached(function () {
+    return loadKendallLayer("Kendall_County_Political_Townships", 0, "1=1", "township", "townships");
+  });
+  // The fire tiling records the Kendall sliver of Joliet as "CITY OF JOLIET
+  // FIRE DISTRICT" — municipal fire, not a fire protection district — so it
+  // is excluded exactly like McHenry's Crystal Lake city row (10 real FPDs
+  // remain). The LIBRARY tiling keeps its municipal rows (Joliet Public
+  // Library, Yorkville Library): unlike McHenry's lone one-off city row,
+  // Kendall's tiling systematically records EVERY library taxing body,
+  // city library funds included — the same complete fund+district shape as
+  // Cook's Clerk tilings — so dropping them would hide real taxing bodies.
+  var loadKendallFire = makeCached(function () {
+    return loadKendallLayer("Fire_Protection_Districts", 0,
+      "fire <> 'CITY OF JOLIET FIRE DISTRICT'", "fire", "fire districts");
+  });
+  var loadKendallParks = makeCached(function () {
+    return loadKendallLayer("Park_Districts", 0, "1=1", "park", "park districts");
+  });
+  var loadKendallLibraries = makeCached(function () {
+    return loadKendallLayer("Library_Districts", 0, "1=1", "library", "library districts");
+  });
+  var loadKendallPollingPlaces = makeCached(function () {
+    return loadKendallLayer("Voting_Precincts_and_Polling_Places", 0, "1=1",
+      "name,address,globalid", "polling places");
+  });
+  // Interior representative point for a polygon feature (ring-vertex average,
+  // falling back toward ring vertices when the average lands outside a
+  // concave ring). Used only to derive Kendall's township code->name map.
+  function interiorPointOf(geometry) {
+    var ring = !geometry ? null
+      : geometry.type === "Polygon" ? geometry.coordinates[0]
+      : geometry.type === "MultiPolygon" ? geometry.coordinates[0][0] : null;
+    if (!ring || !ring.length) return null;
+    var cx = 0, cy = 0, i;
+    for (i = 0; i < ring.length; i++) { cx += ring[i][0]; cy += ring[i][1]; }
+    var cand = { lng: cx / ring.length, lat: cy / ring.length };
+    if (pointInGeometry(cand, geometry)) return cand;
+    var step = Math.max(1, Math.floor(ring.length / 17));
+    for (i = 0; i < ring.length; i += step) {
+      var mid = { lng: (cand.lng + ring[i][0]) / 2, lat: (cand.lat + ring[i][1]) / 2 };
+      if (pointInGeometry(mid, geometry)) return mid;
+    }
+    return null;
+  }
+  // Kendall precincts carry a township CODE ("03") plus a per-township
+  // number, so "Precinct 2" repeats across the nine townships and the
+  // compound identity ("OSWEGO 11") needs the township name. The code->name
+  // map is DERIVED at load time from the county's own two published layers
+  // (an interior point of a precinct per code, located in the county's own
+  // township polygons) — published data joined to published data, never a
+  // hand-made table (contrast Kane, whose prefix-to-name mapping would have
+  // been a guess and was skipped). A code that fails to resolve falls back
+  // to "Precinct N". The enrichment mutates only this loader's private
+  // fetch, cached here — no shared cache is touched.
+  var loadKendallPrecincts = makeCached(function () {
+    return Promise.all([
+      loadKendallLayer("Voting_Precincts_and_Polling_Places", 1, "status='A'",
+        "precinct_number,township,polling_place_guid", "voting precincts"),
+      loadKendallTownships()
+    ]).then(function (results) {
+      var precincts = results[0], townships = results[1];
+      var codeToName = {};
+      precincts.features.forEach(function (f) {
+        var code = findPropCI(f.properties || {}, ["township"]);
+        if (code == null || codeToName[code] !== undefined) return;
+        var pt = interiorPointOf(f.geometry);
+        var tf = pt ? findFeatureContaining(townships, pt) : null;
+        var name = tf ? findPropCI(tf.properties || {}, ["township"]) : null;
+        if (name != null && name !== "") codeToName[code] = String(name);
+      });
+      precincts.features.forEach(function (f) {
+        if (!f.properties) f.properties = {};
+        var code = findPropCI(f.properties, ["township"]);
+        f.properties.dxTownshipName = (code != null && codeToName[code]) || null;
+      });
+      return precincts;
+    });
+  });
+
   /* ---------- "Live data source is down" descriptor (fork code) --------------
    * Every Socrata layer below fetches from the City of Chicago Data Portal at
    * runtime. Each declares a dataSource descriptor so that, when the portal is
@@ -8094,12 +8216,15 @@ function initChiExplorer() {
    * layer: Cook's Board of Commissioners (17 single-member districts, live
    * officeholder join from the county GIS), the Will County Board (11
    * districts, weekly-scraped roster), the DuPage County Board (6 districts
-   * electing 3 members each, weekly-scraped roster + countywide Chair), and
-   * the Lake County Board (19 single-member districts, member + contact
-   * carried on the county's own boundary GIS — no scraper), and the Kane
+   * electing 3 members each, weekly-scraped roster + countywide Chair), the
+   * Lake County Board (19 single-member districts, member + contact
+   * carried on the county's own boundary GIS — no scraper), the Kane
    * County Board (24 single-member districts, member names carried on the
    * boundary GIS — verified against the county's published directory incl.
-   * the 2026 District 2/9 appointments) as dispatch entries of ONE toggle.
+   * the 2026 District 2/9 appointments), the McHenry County Board (9
+   * districts, district-number-only GIS, card links the member directory),
+   * and the Kendall County Board (2 districts electing the 10-member board,
+   * same district-number-only shape) as dispatch entries of ONE toggle.
    * Each card carries a Body row naming its county's board, so the generic
    * label never obscures which body a district belongs to. ---------- */
   registerCountyLayer({
@@ -8434,6 +8559,21 @@ function initChiExplorer() {
           { label: "Official directory",
             html: '<a href="https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members" target="_blank" rel="noopener">McHenry County Board members (official)</a>' }
         ]
+      }),
+      // Kendall (10 members from just 2 districts — the smallest board map
+      // in the metro; the current line per the county's post-2020-census
+      // reapportionment, see the KENDALL COUNTY loader block). District
+      // number only on the GIS, so the card links the member directory.
+      polygonCountyEntry({
+        key: "kendall",
+        coverage: kendallCountyCoverage,
+        loader: loadKendallCountyBoard,
+        fields: [
+          { name: "district", label: "District", keys: ["district"], primary: true },
+          { label: "Body", value: "Kendall County Board" },
+          { label: "Official directory",
+            html: '<a href="https://www.kendallcountyil.gov/county-board/" target="_blank" rel="noopener">Kendall County Board members (official)</a>' }
+        ]
       })
     ]
   });
@@ -8451,12 +8591,16 @@ function initChiExplorer() {
    * judge-to-subcircuit roster exists — so each card links its circuit's
    * official court, and the Court row names the circuit AND county so the
    * generic toggle label never obscures which court a subcircuit belongs to.
-   * Kane's 16th-Circuit subcircuits (4) ship PRE-BUILT: the county's own
-   * services are permission-locked, so the boundary comes from the enacted
-   * PA 102-0693 shapefile (ilsenateredistricting.com, archived in
-   * data/source/raw/) through the build_embedded_boundaries.py protocol —
-   * same source family and pipeline as il-supreme-court, served same-origin
-   * and cache-first. ---------- */
+   * Kane's 16th-Circuit subcircuits (4) and McHenry's 22nd-Circuit
+   * subcircuits (4) ship PRE-BUILT: Kane's own services are
+   * permission-locked and McHenry publishes no subcircuit service, so both
+   * boundaries come from the enacted PA 102-0693 shapefile
+   * (ilsenateredistricting.com, archived in data/source/raw/) through the
+   * build_embedded_boundaries.py protocol — same source family and pipeline
+   * as il-supreme-court, served same-origin and cache-first. Kendall has NO
+   * entry by statute, not omission: its 23rd Circuit received no
+   * subcircuits under PA 102-0693, so the layer honestly hides there.
+   * ---------- */
   var loadCookJudicialSubcircuits = makeCached(function () { return loadCookCountyLayerGeoJSON(5); });
   var loadCookMunicipalDistricts = makeCached(function () { return loadCookCountyLayerGeoJSON(27); });
   registerCountyLayer({
@@ -8577,12 +8721,15 @@ function initChiExplorer() {
    * + Will (37 districts, trustees in GIS attrs — falsy slots dropped by the
    * field semantics, a real "Office is vacant" string shown as-is) + DuPage
    * (30, name-only — its GIS carries no trustee/contact fields) + Lake (22,
-   * office contact in GIS attrs). Partial coverage in every county: fire
-   * protection districts are the suburban taxing bodies serving areas
-   * outside the municipal fire departments, so an in-county point with none
-   * — the Loop included (CFD is a city department) — honestly reports "No
-   * result for this point." A County row keeps each card's origin legible
-   * under the generic label. ---------- */
+   * office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief +
+   * office contact in GIS attrs) + McHenry (19, name-only after its
+   * filler/municipal/rescue-squad exclusions) + Kendall (10 FPDs on the
+   * county's tax-code tiling, municipal Joliet row excluded). Partial
+   * coverage in every county: fire protection districts are the suburban
+   * taxing bodies serving areas outside the municipal fire departments, so
+   * an in-county point with none — the Loop included (CFD is a city
+   * department) — honestly reports "No result for this point." A County row
+   * keeps each card's origin legible under the generic label. ---------- */
   var loadCookFireDistricts = makeCached(function () { return loadCookCountyLayerGeoJSON(17); });
   registerCountyLayer({
     id: "fire-district",
@@ -8682,6 +8829,17 @@ function initChiExplorer() {
           { name: "name", label: "Fire District", keys: ["firedist"], primary: true },
           { label: "County", value: "McHenry County" }
         ]
+      }),
+      // Kendall: the parcel-derived tax-code tiling, name-only (the loader
+      // excludes the municipal Joliet row — see the KENDALL COUNTY block)
+      polygonCountyEntry({
+        key: "kendall",
+        coverage: kendallCountyCoverage,
+        loader: loadKendallFire,
+        fields: [
+          { name: "name", label: "Fire District", keys: ["fire"], primary: true },
+          { label: "County", value: "Kendall County" }
+        ]
       })
     ]
   });
@@ -8691,9 +8849,13 @@ function initChiExplorer() {
    * CHICAGO PARK DISTRICT, so a Loop click resolves the city's own park
    * taxing body; live-verified 2026-07) + Will (22, commissioners in GIS
    * attrs) + DuPage (39, name-only — its GIS carries no commissioner/contact
-   * fields) + Lake (23, office contact in GIS attrs). Partial coverage —
-   * park districts don't tile any county (a city-department parks town like
-   * Evanston honestly reports "No result"). ---------- */
+   * fields) + Lake (23, office contact in GIS attrs) + Kane (11, board
+   * president + office contact in GIS attrs) + Kendall (5 genuine districts
+   * on the county's tax-code tiling, name-only). McHenry is the one sourced
+   * county with NO entry — it publishes park facilities, not district
+   * boundaries (recorded gap). Partial coverage — park districts don't tile
+   * any county (a city-department parks town like Evanston honestly reports
+   * "No result"). ---------- */
   var loadCookParkDistricts = makeCached(function () { return loadCookCountyLayerGeoJSON(23); });
   registerCountyLayer({
     id: "park-district",
@@ -8781,13 +8943,28 @@ function initChiExplorer() {
           ];
           return renderFieldList(fields.concat(kaneRepContactRows(result)));
         }
-      }
+      },
+      // Kendall (all five bodies in the county's park tax tiling are genuine
+      // park districts — Fox Valley / Joliet / Oswegoland / Plainfield /
+      // Sandwich, several spilling over from neighbor counties), name-only.
+      // (McHenry has NO entry here: it publishes park facilities, not
+      // district boundaries — the recorded gap.)
+      polygonCountyEntry({
+        key: "kendall",
+        coverage: kendallCountyCoverage,
+        loader: loadKendallParks,
+        fields: [
+          { name: "name", label: "Park District", keys: ["park"], primary: true },
+          { label: "County", value: "Kendall County" }
+        ]
+      })
     ]
   });
 
   /* ---------- Library District — a NEW concept born consolidated: which
    * separate library taxing body serves this point, dispatched by county
-   * across all four sourced counties (no per-county predecessors to absorb).
+   * (no per-county predecessors to absorb; Kane, McHenry, and Kendall
+   * followed as further entries — see their loader blocks).
    * - Cook: the Clerk's tax-agency tilings on the county GIS — layer 20
    *   (independent Public Library Districts, elected boards, 59) checked
    *   first, then layer 19 (municipal Library Funds — a city/village
@@ -8948,6 +9125,18 @@ function initChiExplorer() {
           { name: "name", label: "Library District", keys: ["librarydistrict"], primary: true },
           { label: "County", value: "McHenry County" }
         ]
+      }),
+      // Kendall: the complete tax tiling, incl. the municipal city-library
+      // funds (Joliet, Yorkville) the county records alongside the districts
+      // — see the KENDALL COUNTY loader block. Name-only.
+      polygonCountyEntry({
+        key: "kendall",
+        coverage: kendallCountyCoverage,
+        loader: loadKendallLibraries,
+        fields: [
+          { name: "name", label: "Library District", keys: ["library"], primary: true },
+          { label: "County", value: "Kendall County" }
+        ]
       })
     ]
   });
@@ -8962,10 +9151,14 @@ function initChiExplorer() {
    * in a single County Board district (10 ILCS 5/11-2) the precinct data
    * doesn't carry, so that row comes from a best-effort spatial join against
    * the county's own board boundary (shared with county-board's cache): a
-   * board failure drops just that row, never the precinct card. The
-   * sub-precinct committeeperson isn't published in either dataset, so each
-   * card links its county clerk's registration/polling-place lookup — which
-   * also names the card's county. ---------- */
+   * board failure drops just that row, never the precinct card. Lake (431),
+   * Kane (292, board district carried on the features), McHenry (223), and
+   * Kendall (78, township names derived from the county's own layers +
+   * the county's polling-place assignment joined by GlobalID) followed as
+   * further entries. The sub-precinct committeeperson isn't published in
+   * any county's dataset, so each card links its county clerk's
+   * registration/polling-place lookup — which also names the card's
+   * county. ---------- */
   registerCountyLayer({
     id: "county-precinct",
     group: "geography",
@@ -9172,6 +9365,82 @@ function initChiExplorer() {
           }
           fields.push({ label: "Registration & polling place",
             html: '<a href="https://www.mchenrycountyil.gov/departments/county-clerk/elections" target="_blank" rel="noopener">McHenry County Clerk — Elections (official)</a>' });
+          return renderFieldList(fields);
+        }
+      },
+      {
+        key: "kendall",
+        coverage: kendallCountyCoverage,
+        loadGeometry: loadKendallPrecincts,
+        // the loader stamps dxTownshipName from the county's own townships
+        // layer (see the KENDALL COUNTY block), so hover and card can both
+        // show the compound identity ("OSWEGO 11"); a precinct whose code
+        // failed to resolve degrades to "Precinct 11".
+        hoverName: function (feature) {
+          var props = feature.properties || {};
+          var n = findPropCI(props, ["precinct_number"]);
+          if (n == null || n === "") return null;
+          return props.dxTownshipName ? props.dxTownshipName + " " + n : "Precinct " + n;
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadKendallPrecincts(),
+            loadKendallCountyBoard().catch(function () { return null; }),
+            loadKendallPollingPlaces().catch(function () { return null; })
+          ]).then(function (results) {
+            var geojson = results[0], boardGeo = results[1], polling = results[2];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var num = findPropCI(props, ["precinct_number"]);
+            var township = props.dxTownshipName || null;
+            var boardDistrict = null;
+            if (boardGeo) {
+              var bf = findFeatureContaining(boardGeo, point);
+              if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
+            }
+            // The county assigns each precinct its polling place inside the
+            // same dataset (a GlobalID join to the Polling Places layer —
+            // 78/78 resolved when this entry was built). Surface the
+            // county's own assignment; the clerk link below stays the
+            // authoritative per-election word.
+            var pollingPlace = null, pollingAddress = null;
+            var guid = findPropCI(props, ["polling_place_guid"]);
+            if (polling && guid != null && guid !== "") {
+              var want = String(guid).toUpperCase().replace(/[{}]/g, "");
+              for (var i = 0; i < polling.features.length; i++) {
+                var pp = polling.features[i].properties || {};
+                var gid = findPropCI(pp, ["globalid"]);
+                if (gid && String(gid).toUpperCase().replace(/[{}]/g, "") === want) {
+                  pollingPlace = findPropCI(pp, ["name"]);
+                  pollingAddress = findPropCI(pp, ["address"]);
+                  break;
+                }
+              }
+            }
+            return {
+              seq: seq,
+              name: num == null || num === "" ? null
+                : (township ? township + " " + num : "Precinct " + num),
+              township: township,
+              boardDistrict: boardDistrict != null && boardDistrict !== "" ? String(boardDistrict) : null,
+              pollingPlace: pollingPlace,
+              pollingAddress: pollingAddress
+            };
+          });
+        },
+        render: function (result) {
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.township) fields.push({ label: "Township", value: String(result.township) });
+          if (result.boardDistrict) {
+            fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+          }
+          if (result.pollingPlace) {
+            fields.push({ label: "Polling place", value: String(result.pollingPlace) +
+              (result.pollingAddress ? " — " + String(result.pollingAddress) : "") });
+          }
+          fields.push({ label: "Registration & polling place",
+            html: '<a href="https://www.kendallcountyil.gov/offices/county-clerk-recorder/election-voter-information/precincts-locations" target="_blank" rel="noopener">Kendall County Clerk — Precincts &amp; Locations (official)</a>' });
           return renderFieldList(fields);
         }
       }
