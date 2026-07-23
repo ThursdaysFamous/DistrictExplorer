@@ -140,21 +140,29 @@ stays there until the CHI release ships. The fork PR description must link
 that tracking issue. Discretionary back-porting is dead; the WARN is the
 debt collector.
 
-## Current ENGINE block inventory (45 in index.html + 2 in sw.js)
+## Current ENGINE block inventory (50 in index.html + 2 in sw.js)
 
 index.html: `app-token`, `arcgis-loader`, `arcgis-paged-loader`,
-`cached-loaders`, `chamber-factory`, `cps-network-factory`, `exports`,
-`extract-district-number`, `feedback`, `fetch-retry`, `find-prop-ci`,
-`geocoder-search`, `geocoder-shell`, `geolocation`, `groups`, `haversine`,
-`hover-explorer`, `int-field`, `layer-registry`, `metro-links`,
-`metro-links-html`, `metro-portal`, `nearest-point-factory`,
-`office-helpers`, `overlay-cards`, `permalink`, `poi-geocode`,
-`point-in-polygon`, `polygon-containment`, `polygon-factory`,
-`probe-geometry-column`, `relationship-pinning`, `render-helper`,
-`sanitize`, `school-zone-factory`, `scope-mask`, `selection-controls`,
-`socrata-loader`, `socrata-point-loader`, `state`, `styles-app`,
-`styles-core`, `styles-footer`, `styles-hover-responsive`,
-`styles-sibling-result`.
+`cached-loaders`, `card-helpers`, `chamber-factory`, `cps-network-factory`,
+`exports`, `extract-district-number`, `feedback`, `fetch-retry`,
+`find-prop-ci`, `geocoder-search`, `geocoder-shell`, `geolocation`,
+`groups`, `haversine`, `hover-explorer`, `int-field`, `layer-registry`,
+`map-chrome-classes`, `map-pan-filter`, `metro-links`, `metro-links-html`,
+`metro-portal`, `nearest-point-factory`, `office-helpers`, `overlay-cards`,
+`permalink`, `poi-geocode`, `point-in-polygon`, `polygon-containment`,
+`polygon-factory`, `probe-geometry-column`, `relationship-pinning`,
+`render-helper`, `sanitize`, `school-zone-factory`, `scope-mask`,
+`selection-controls`, `socrata-loader`, `socrata-point-loader`, `state`,
+`styles-app`, `styles-card-v2`, `styles-core`, `styles-footer`,
+`styles-hover-responsive`, `styles-markers`, `styles-sibling-result`.
+(Count and list re-synced against `check_engine_parity.py` output while
+adding the two card blocks — the previous list said 45 but had drifted,
+missing `map-chrome-classes`, `map-pan-filter`, and `styles-markers`.)
+
+(`card-helpers` + `styles-card-v2` are the card-system redesign surface —
+docs/CARD_RENDER_API.md. Both are additive on top of `render-helper` /
+`styles-app`: `renderFieldList` and the `.result-row` CSS keep serving
+unmigrated call sites until the fleet-wide retirement release deletes them.)
 
 (`geocoder-shell`/`geocoder-search`/`poi-geocode` fence the geocoder UI —
 search-shell expander, result rendering, submit/debounce wiring, the

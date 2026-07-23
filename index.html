@@ -1636,6 +1636,213 @@ svg.leaflet-image-layer.leaflet-interactive path {
   dl.result-fields { margin: 0; }
 
   /* ==== ENGINE:END styles-app ==== */
+  /* ==== ENGINE:BEGIN styles-card-v2 ==== */
+  /* ---- Card-system redesign (docs/CARD_RENDER_API.md; design refs in
+     docs/design_handoff_county_board_card/ + docs/design_handoff_card_system/).
+     Additive overrides on top of styles-app: the legacy .result-row rules
+     above keep serving unmigrated renderFieldList cards inside this chrome
+     until the fleet-wide retirement release. Palette is scoped to the cards —
+     the rest of the app keeps the existing token set. ---- */
+  .layer-block {
+    --card-accent: #1d5fd6;
+    --card-link: #1a56c4;
+    --card-link-hover: #123c8a;
+    --card-ink: #111827;
+    --card-ink-2: #374151;
+    --card-body-ink: #4b5563;
+    --card-muted: #6b7280;
+    --card-detail-ink: #5b6472;
+    --card-hint: #9aa3b2;
+    --card-sep: #c3c9d4;
+    --card-badge-bg: #e3edfb;
+    --card-pill-bg: #eef4fd;
+    --card-section-bg: #f8fafc;
+    --card-border: #e8eaef;
+    --card-row-border: #f1f3f7;
+    --card-btn-border: #c7d7f2;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-left: 3px solid var(--card-accent);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+  /* 4e state accents live on the card's left edge; :has() reads the body's
+     state class because the accent element (the block) is the body's parent. */
+  .layer-block:has(> .layer-card-body.state-error) { border-left-color: #c2410c; }
+  .layer-block:has(> .layer-card-body.state-empty) { border-left-color: #d1d5db; }
+  .layer-block-head {
+    gap: 12px;
+    padding: 14px 18px;
+    background: #fff;
+  }
+  .layer-block-head label {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--card-ink);
+  }
+  .layer-block-head input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--card-accent);
+  }
+  .layer-color-dot { width: 10px; height: 10px; border: none; }
+  .card-id-pill {
+    flex: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--card-link);
+    background: var(--card-pill-bg);
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  /* 4b compact header: small layer-name kicker over the matched value, meta
+     (GEOID) right-aligned. The label element moves inside the stack, so the
+     16px header rule above is re-scoped back down here. */
+  .card-compact-stack { flex: 1; min-width: 0; }
+  .card-compact-stack label { display: block; font-size: 13px; font-weight: 600; color: var(--card-muted); }
+  .card-compact-value { font-size: 15px; font-weight: 700; color: var(--card-ink); }
+  .card-compact-meta { flex: none; margin-left: auto; font-size: 11.5px; color: var(--card-hint); font-variant-numeric: tabular-nums; }
+  .card-id-pill[hidden], .card-compact-value[hidden], .card-compact-meta[hidden] { display: none; }
+
+  .layer-card-body { padding: 14px 18px; font-size: 13px; border-top: 1px solid var(--card-border); }
+  .layer-card-body.state-compact { display: none; }
+  .layer-card-body.state-empty { color: var(--card-muted); font-style: normal; }
+  .layer-card-body.state-error { color: #7c2d12; }
+  .layer-card-body .retry-btn {
+    border: 1px solid var(--card-btn-border);
+    color: var(--card-link);
+    background: #fff;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .spinner { width: 16px; height: 16px; border-color: var(--card-btn-border); border-top-color: var(--card-accent); }
+
+  /* Migrated render() output: one wrapper with class card-flush; rows carry
+     their own padding, so the body's falls away. Legacy renderFieldList
+     bodies (no marker) keep the padded layout above. */
+  .layer-card-body:has(> .card-flush) { padding: 0; }
+  .card-flush > .card-row-b { border-bottom: 1px solid var(--card-row-border); }
+  .card-flush > .card-row-b:last-child,
+  .card-flush > .card-row-b:has(+ .card-section-label) { border-bottom: none; }
+
+  .card-intro { padding: 14px 18px 6px; }
+  .card-intro-title { font-size: 14px; font-weight: 600; color: var(--card-ink-2); }
+  .card-intro-note { font-size: 12px; color: var(--card-muted); margin-top: 2px; }
+
+  .card-person { display: flex; flex-direction: column; gap: 2px; padding: 10px 18px; }
+  summary.card-person { cursor: pointer; list-style: none; }
+  summary.card-person::-webkit-details-marker, .card-office-group > summary::-webkit-details-marker { display: none; }
+  .card-person-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-person-name { font-size: 14.5px; font-weight: 700; color: var(--card-ink); }
+  .card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--card-link);
+    background: var(--card-badge-bg);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .card-note { font-size: 12px; color: var(--card-muted); }
+  .card-details-hint { margin-left: auto; font-size: 11px; color: var(--card-hint); }
+  .card-details-hint::after { content: " ▸"; }
+  details[open] > summary .card-details-hint::after { content: " ▾"; }
+  .card-contact { display: flex; flex-wrap: wrap; gap: 3px 9px; align-items: baseline; font-size: 12.5px; color: var(--card-body-ink); }
+  .card-contact a { color: var(--card-link); text-decoration: none; }
+  .card-contact a:hover { color: var(--card-link-hover); }
+  .card-contact a.card-phone { color: var(--card-body-ink); }
+  .card-phone { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card-sep { color: var(--card-sep); }
+  .card-person-details { padding: 0 18px 12px; font-size: 12.5px; line-height: 1.5; color: var(--card-detail-ink); }
+  .card-person-details .card-detail-label { font-weight: 600; color: var(--card-ink-2); }
+  .card-tinted { background: var(--card-section-bg); }
+
+  .card-section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 18px 4px;
+    background: var(--card-section-bg);
+    border-top: 1px solid var(--card-border);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--card-muted);
+  }
+  .card-section-label::after { content: ""; flex: 1; height: 1px; background: var(--card-border); }
+
+  .card-office-group > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--card-ink-2);
+  }
+  .card-office-list { display: flex; flex-direction: column; gap: 8px; padding: 0 18px 12px; }
+  .card-office-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--card-muted); }
+  .card-office-line { font-size: 12.5px; line-height: 1.5; color: var(--card-body-ink); }
+  .card-office-line .card-phone { color: var(--card-body-ink); text-decoration: none; }
+
+  .card-nearest { display: flex; align-items: baseline; gap: 10px; padding: 10px 18px; }
+  .card-nearest-main { min-width: 0; flex: 1; }
+  .card-nearest-name { font-size: 14px; font-weight: 700; color: var(--card-ink); }
+  .card-nearest-note { font-size: 12.5px; color: var(--card-body-ink); }
+  .card-distance {
+    flex: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--card-link);
+    background: var(--card-pill-bg);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .card-linkrow { display: flex; flex-direction: column; gap: 2px; padding: 12px 18px; }
+  .card-linkrow-title { font-size: 14.5px; font-weight: 700; color: var(--card-ink); }
+  /* the outage card composes a link row inside the padded legacy body */
+  .layer-card-body > .card-linkrow { padding: 8px 0 0; }
+
+  .card-footer { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--card-border); }
+  .card-footer .pin-parent-btn {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--card-link);
+    background: #fff;
+    border: 1px solid var(--card-btn-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+  .card-footer .pin-parent-btn:hover { background: #f3f7fd; }
+  .card-footer-link { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--card-link); text-decoration: none; white-space: nowrap; }
+  .card-footer-link:hover { color: var(--card-link-hover); }
+
+  /* Mobile deltas (Handoff 1 §mobile) keyed to the cards column's own width,
+     not the viewport, so a narrow sidebar on a wide screen compacts too. */
+  .group-cards { container-type: inline-size; }
+  @container (max-width: 419px) {
+    .layer-block-head { gap: 10px; padding: 12px 14px; }
+    .layer-block-head label { font-size: 14.5px; }
+    .layer-block-head input[type="checkbox"] { width: 22px; height: 22px; }
+    .card-intro, .card-person, .card-nearest, .card-linkrow, .card-footer,
+    .card-office-group > summary { padding-left: 14px; padding-right: 14px; }
+    .card-person-details, .card-office-list { padding-left: 14px; padding-right: 14px; }
+    .card-section-label { padding-left: 14px; padding-right: 14px; }
+    .card-person { padding-top: 12px; padding-bottom: 12px; min-height: 44px; gap: 3px; }
+    .card-person-name, .card-nearest-name { font-size: 14px; }
+    .card-contact a, .card-contact .card-phone { padding: 4px 0; }
+    .card-details-hint-word { display: none; }
+  }
+  /* ==== ENGINE:END styles-card-v2 ==== */
   /* ---- School Location layer: type filter + color-coded nearest list ---- */
   .school-filter { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0 0 10px; }
   .school-filter-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; user-select: none; }
@@ -4244,13 +4451,42 @@ function initChiExplorer() {
 
     head.appendChild(checkbox);
     head.appendChild(colorDot);
-    head.appendChild(label);
+    var compactValue = null, compactMeta = null, idPill = null;
+    if (mod.compact) {
+      // 4b name-only presentation (docs/CARD_RENDER_API.md): the header
+      // itself carries the result — the layer name becomes a small kicker
+      // over the matched value (mod.cardIdentifier), with mod.cardMeta
+      // right-aligned. render() is not called on success (runLayerQueryAt);
+      // the body below still serves the loading/error/empty states.
+      var stack = document.createElement("div");
+      stack.className = "card-compact-stack";
+      stack.appendChild(label);
+      compactValue = document.createElement("div");
+      compactValue.className = "card-compact-value";
+      compactValue.hidden = true;
+      stack.appendChild(compactValue);
+      head.appendChild(stack);
+      compactMeta = document.createElement("span");
+      compactMeta.className = "card-compact-meta";
+      compactMeta.hidden = true;
+      head.appendChild(compactMeta);
+    } else {
+      head.appendChild(label);
+    }
     if (mod.stub) {
       var badge = document.createElement("span");
       badge.className = "stub-badge";
       badge.textContent = "STUB";
       badge.title = "Demonstration module — real data source lands in a later build thread.";
       head.appendChild(badge);
+    }
+    if (!mod.compact) {
+      // header identifier pill ("District 6", "IL‑14") — populated per result
+      // from mod.cardIdentifier by setCardExtras, cleared by resetCardExtras
+      idPill = document.createElement("span");
+      idPill.className = "card-id-pill";
+      idPill.hidden = true;
+      head.appendChild(idPill);
     }
     block.appendChild(head);
 
@@ -4263,6 +4499,13 @@ function initChiExplorer() {
 
     layerRuntime[mod.id].cardBody = body;
     layerRuntime[mod.id].block = block;
+    // result-driven header/footer extras (docs/CARD_RENDER_API.md) — set by
+    // setCardExtras on a result, cleared by resetCardExtras on every other
+    // state so a stale pill/value can never outlive its result
+    layerRuntime[mod.id].idPill = idPill;
+    layerRuntime[mod.id].compactValue = compactValue;
+    layerRuntime[mod.id].compactMeta = compactMeta;
+    layerRuntime[mod.id].cardFooter = null;
 
     checkbox.addEventListener("change", function () {
       state.layersOn[mod.id] = checkbox.checked;
@@ -4393,6 +4636,7 @@ function initChiExplorer() {
       }
       rt.cardBody.className = "layer-card-body state-off";
       rt.cardBody.textContent = "Layer off.";
+      resetCardExtras(mod); // pill/compact value/footer must not outlive the result
       refreshActiveLayerOpacities(); // active count just dropped — remaining active layers get more opaque
       // No reorderActiveLayers() here (P8): removing one layer leaves the
       // survivors' relative z-order — which the stacking invariant already
@@ -4469,13 +4713,79 @@ function initChiExplorer() {
       .catch(function () { /* hover omits the name; click card owns the error surface */ });
   }
 
+  // Clear the result-driven header/footer extras (identifier pill, compact
+  // value/meta, shell-owned footer) — every non-result card state routes
+  // through here so a stale pill can never outlive its result. The footer is
+  // rebuilt per result by setCardExtras; the pin control re-appends itself
+  // there via appendPinControl on the next render.
+  function resetCardExtras(mod) {
+    var rt = layerRuntime[mod.id];
+    if (!rt) return;
+    if (rt.idPill) { rt.idPill.hidden = true; rt.idPill.textContent = ""; }
+    if (rt.compactValue) { rt.compactValue.hidden = true; rt.compactValue.textContent = ""; }
+    if (rt.compactMeta) { rt.compactMeta.hidden = true; rt.compactMeta.textContent = ""; }
+    if (rt.cardFooter) {
+      if (rt.cardFooter.parentNode) rt.cardFooter.parentNode.removeChild(rt.cardFooter);
+      rt.cardFooter = null;
+    }
+  }
+  // Populate the result-driven extras (docs/CARD_RENDER_API.md): the header
+  // identifier pill — or the compact value/meta lines — and the shell-owned
+  // footer holding mod.primaryLink. All fields are optional and presence-
+  // based: a module that declares none of them renders exactly as before.
+  function setCardExtras(mod, result) {
+    var rt = layerRuntime[mod.id];
+    resetCardExtras(mod);
+    var value, text;
+    if (mod.compact && rt.compactValue) {
+      value = mod.cardIdentifier ? mod.cardIdentifier(result) : null;
+      text = value === null || value === undefined ? "" : String(value);
+      rt.compactValue.textContent = text;
+      rt.compactValue.hidden = text === "";
+      var meta = mod.cardMeta ? mod.cardMeta(result) : null;
+      var metaText = meta === null || meta === undefined ? "" : String(meta);
+      rt.compactMeta.textContent = metaText;
+      rt.compactMeta.hidden = metaText === "";
+    } else if (rt.idPill && mod.cardIdentifier) {
+      value = mod.cardIdentifier(result);
+      text = value === null || value === undefined ? "" : String(value);
+      rt.idPill.textContent = text;
+      rt.idPill.hidden = text === "";
+    }
+    var link = mod.primaryLink ? mod.primaryLink(result) : null;
+    var linkEl = link ? cardExternalLink(link.label, link.url) : null;
+    // a compact card needs the footer even without a link — it is the only
+    // visible home for the pin control while the body is state-compact
+    if (linkEl || mod.compact) {
+      var footer = document.createElement("div");
+      footer.className = "card-footer";
+      if (linkEl) {
+        linkEl.className = "card-footer-link";
+        footer.appendChild(linkEl);
+      }
+      // directly after the body, before any nested sub-layer blocks
+      rt.block.insertBefore(footer, rt.cardBody.nextSibling);
+      rt.cardFooter = footer;
+    }
+  }
+  // An extras footer that ended up with no children (no link, and the pin
+  // control declined — e.g. a non-polygon layer) reads as a stray rule line.
+  function pruneEmptyCardFooter(mod) {
+    var rt = layerRuntime[mod.id];
+    if (rt.cardFooter && !rt.cardFooter.firstChild) {
+      if (rt.cardFooter.parentNode) rt.cardFooter.parentNode.removeChild(rt.cardFooter);
+      rt.cardFooter = null;
+    }
+  }
   function setCardLoading(mod) {
     var body = layerRuntime[mod.id].cardBody;
+    resetCardExtras(mod);
     body.className = "layer-card-body";
-    body.innerHTML = '<div class="loading-row"><span class="spinner" aria-hidden="true"></span> Loading…</div>';
+    body.innerHTML = '<div class="loading-row"><span class="spinner" aria-hidden="true"></span> Loading district data…</div>';
   }
   function setCardError(mod, message, seq) {
     var body = layerRuntime[mod.id].cardBody;
+    resetCardExtras(mod);
     body.innerHTML = "";
     // A layer that declares a live data source (mod.dataSource) degrades to a
     // calm, honest "the outage is upstream, not this tool" card rather than the
@@ -4518,11 +4828,10 @@ function initChiExplorer() {
       " This is an outage on the data provider's end, not this tool, and it doesn't affect the other layers.";
     body.appendChild(notice);
     if (ds.lookup && ds.lookup.url) {
-      body.appendChild(renderFieldList([{
-        label: ds.lookup.label || "In the meantime",
-        html: '<a href="' + sanitize(ds.lookup.url) + '" target="_blank" rel="noopener">' +
-          sanitize(ds.lookup.text || ds.lookup.url) + "</a>"
-      }]));
+      body.appendChild(renderLinkRow({
+        title: ds.lookup.label || "In the meantime",
+        links: [{ label: ds.lookup.text || ds.lookup.url, url: ds.lookup.url }]
+      }));
     }
     var retry = document.createElement("button");
     retry.type = "button";
@@ -4534,8 +4843,9 @@ function initChiExplorer() {
 
   function setCardEmpty(mod) {
     var body = layerRuntime[mod.id].cardBody;
+    resetCardExtras(mod);
     body.className = "layer-card-body state-empty";
-    body.textContent = "No result for this point.";
+    body.textContent = "This point isn't inside any district in this layer.";
   }
   function setCardResult(mod, resultEl) {
     var body = layerRuntime[mod.id].cardBody;
@@ -4695,8 +5005,19 @@ function initChiExplorer() {
         updateLayerHighlight(mod);
         reorderActiveLayers(); // re-assert area-size stacking now this layer has painted (queries resolve in arbitrary order)
         if (!result) { setCardEmpty(mod); clearLayerPoi(mod); refreshRelationshipOutlines(); return; }
-        setCardResult(mod, mod.render(result));
+        if (mod.compact) {
+          // 4b name-only card: the header carries the result (setCardExtras
+          // below); render() is skipped and the body hides until a non-result
+          // state needs it again (docs/CARD_RENDER_API.md).
+          var compactBody = layerRuntime[mod.id].cardBody;
+          compactBody.className = "layer-card-body state-compact";
+          compactBody.innerHTML = "";
+        } else {
+          setCardResult(mod, mod.render(result));
+        }
+        setCardExtras(mod, result); // identifier pill / compact value + footer link
         appendPinControl(mod); // "Pin as parent" control on the card
+        pruneEmptyCardFooter(mod); // a footer that gained neither link nor pin goes away
         updateLayerPoi(mod, result, seq);
         refreshRelationshipOutlines(); // this layer may be a pinned parent's child, or the parent itself
       })
@@ -4758,6 +5079,183 @@ function initChiExplorer() {
   }
 
   /* ==== ENGINE:END render-helper ==== */
+  /* ==== ENGINE:BEGIN card-helpers ==== */
+  /* ---------- card-system row vocabulary (docs/CARD_RENDER_API.md) ----------
+   * Shared builders for the redesigned result cards (design refs in
+   * docs/design_handoff_county_board_card/ + docs/design_handoff_card_system/).
+   * The contract is enforced here so call sites can't regress it:
+   *   - callers pass DATA, never markup — no html fields exist on this
+   *     surface; every string lands via textContent (renderFieldList's
+   *     caller-certified f.html escape hatch does not carry over);
+   *   - every external URL is scheme-checked through safeHttpUrl before it
+   *     becomes an href (a failed check drops the link, never renders it);
+   *   - mailto:/tel: hrefs are built HERE from a raw address/number — an
+   *     email address is never printed (the "Email" label is the link), and
+   *     a phone number displays with non-breaking hyphens while its tel:
+   *     href keeps only dialable characters.
+   * A migrated render() returns one wrapper element with class "card-flush";
+   * the styles-card-v2 rules key row padding/borders off that marker while
+   * legacy renderFieldList cards keep the padded-body layout. */
+  function cardEl(tag, className, text) {
+    var el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined && text !== null && text !== "") el.textContent = String(text);
+    return el;
+  }
+  function cardExternalLink(label, url) {
+    var safe = safeHttpUrl(url);
+    if (!safe) return null;
+    var a = document.createElement("a");
+    a.href = safe;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = String(label || safe);
+    return a;
+  }
+  function cardPhoneLink(phone) {
+    var dial = String(phone).replace(/[^\d+]/g, "");
+    if (!dial) return null;
+    var a = cardEl("a", "card-phone", String(phone).replace(/-/g, "‑"));
+    a.href = "tel:" + dial;
+    return a;
+  }
+  function cardContactLine(spec) {
+    // spec: { phone?, email?, links?: [{label, url}] } -> one wrapping line of
+    // phone / Email / external links separated by middots; null when empty.
+    var items = [];
+    if (spec.phone) {
+      var p = cardPhoneLink(spec.phone);
+      if (p) items.push(p);
+    }
+    if (spec.email) {
+      var e = document.createElement("a");
+      e.href = "mailto:" + String(spec.email);
+      e.textContent = "Email";
+      items.push(e);
+    }
+    (spec.links || []).forEach(function (l) {
+      var a = cardExternalLink(l.label, l.url);
+      if (a) items.push(a);
+    });
+    if (!items.length) return null;
+    var line = cardEl("div", "card-contact");
+    items.forEach(function (item, i) {
+      if (i) line.appendChild(cardEl("span", "card-sep", "·"));
+      line.appendChild(item);
+    });
+    return line;
+  }
+  function cardDesktopWidth() {
+    // details-open defaults are desktop-only. Measured at render time — cards
+    // re-render on every selection, so a resize between selections is
+    // accepted as stale until the next render (docs/CARD_RENDER_API.md).
+    var wrap = document.querySelector(".group-cards");
+    return !wrap || wrap.clientWidth >= 420;
+  }
+  function cardDetailsHint() {
+    var hint = cardEl("span", "card-details-hint");
+    hint.appendChild(cardEl("span", "card-details-hint-word", "details"));
+    return hint;
+  }
+  function renderBodyIntro(spec) {
+    // { title?, note? } — the body-name + count line under the header.
+    var el = cardEl("div", "card-intro");
+    if (spec.title) el.appendChild(cardEl("div", "card-intro-title", spec.title));
+    if (spec.note) el.appendChild(cardEl("div", "card-intro-note", spec.note));
+    return el;
+  }
+  function renderPersonRows(people, opts) {
+    // people: [{ name, badge?, note?, phone?, email?, links?, details?:
+    // {label, items}, detailsOpen? }]. A person with details renders as a
+    // native <details> expander; absent fields render nothing (no
+    // placeholders, no guessed officeholders — honesty rules).
+    var tinted = opts && opts.tinted;
+    var frag = document.createDocumentFragment();
+    people.forEach(function (person) {
+      var row = cardEl(person.details ? "summary" : "div",
+        "card-person" + (tinted ? " card-tinted" : ""));
+      var line = cardEl("div", "card-person-line");
+      line.appendChild(cardEl("span", "card-person-name", person.name));
+      if (person.badge) line.appendChild(cardEl("span", "card-badge", person.badge));
+      if (person.note) line.appendChild(cardEl("span", "card-note", person.note));
+      if (person.details) line.appendChild(cardDetailsHint());
+      row.appendChild(line);
+      var contact = cardContactLine(person);
+      if (contact) row.appendChild(contact);
+      if (!person.details) {
+        row.classList.add("card-row-b");
+        frag.appendChild(row);
+        return;
+      }
+      var det = cardEl("details", "card-row-b" + (tinted ? " card-tinted" : ""));
+      if (person.detailsOpen && cardDesktopWidth()) det.open = true;
+      det.appendChild(row);
+      var body = cardEl("div", "card-person-details");
+      body.appendChild(cardEl("span", "card-detail-label",
+        (person.details.label || "Details") + ": "));
+      body.appendChild(document.createTextNode((person.details.items || []).join(" · ")));
+      det.appendChild(body);
+      frag.appendChild(det);
+    });
+    return frag;
+  }
+  function renderSectionLabel(text) {
+    // the uppercase kicker divider ("COUNTYWIDE") before a tinted row group
+    return cardEl("div", "card-section-label", text);
+  }
+  function renderOfficeGroup(spec) {
+    // { label?, open?, offices: [{label, lines, phone?}] } — the kicker-
+    // labelled office blocks behind one <details> group (Handoff 2 §4a).
+    var det = cardEl("details", "card-office-group card-row-b");
+    if (spec.open !== false && cardDesktopWidth()) det.open = true;
+    var summary = document.createElement("summary");
+    summary.appendChild(cardEl("span", null, spec.label || "Offices"));
+    summary.appendChild(cardDetailsHint());
+    det.appendChild(summary);
+    var list = cardEl("div", "card-office-list");
+    (spec.offices || []).forEach(function (office) {
+      var block = cardEl("div", "card-office");
+      if (office.label) block.appendChild(cardEl("div", "card-office-kicker", office.label));
+      (office.lines || []).forEach(function (line) {
+        block.appendChild(cardEl("div", "card-office-line", line));
+      });
+      if (office.phone) {
+        var phoneLink = cardPhoneLink(office.phone);
+        if (phoneLink) {
+          var phoneLine = cardEl("div", "card-office-line");
+          phoneLine.appendChild(phoneLink);
+          block.appendChild(phoneLine);
+        }
+      }
+      list.appendChild(block);
+    });
+    det.appendChild(list);
+    return det;
+  }
+  function renderNearestRows(items) {
+    // [{ name, note?, distanceLabel? }] — nearest-N rows with distance pills;
+    // the caller owns distance formatting (Handoff 2 §4d).
+    var frag = document.createDocumentFragment();
+    items.forEach(function (item) {
+      var row = cardEl("div", "card-nearest card-row-b");
+      var main = cardEl("div", "card-nearest-main");
+      main.appendChild(cardEl("div", "card-nearest-name", item.name));
+      if (item.note) main.appendChild(cardEl("div", "card-nearest-note", item.note));
+      row.appendChild(main);
+      if (item.distanceLabel) row.appendChild(cardEl("span", "card-distance", item.distanceLabel));
+      frag.appendChild(row);
+    });
+    return frag;
+  }
+  function renderLinkRow(spec) {
+    // { title?, links: [{label, url}] } — a name + link line (Handoff 2 §4c).
+    var el = cardEl("div", "card-linkrow card-row-b");
+    if (spec.title) el.appendChild(cardEl("div", "card-linkrow-title", spec.title));
+    var contact = cardContactLine({ links: spec.links });
+    if (contact) el.appendChild(contact);
+    return el;
+  }
+  /* ==== ENGINE:END card-helpers ==== */
   /* =========================================================================
    * THREAD 1 — GEOGRAPHY: Community Area + ZIP Code
    * Both datasets are small (77 community areas, ~60 ZIPs) so each module
@@ -5037,7 +5535,23 @@ function initChiExplorer() {
       pointOfInterest: opts.pointOfInterest,
       coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
       subOf: opts.subOf,       // optional sub-selection parent (nests under it)
-      onToggle: opts.onToggle  // optional toggle reaction (e.g. a sub-layer framing its parent)
+      onToggle: opts.onToggle, // optional toggle reaction (e.g. a sub-layer framing its parent)
+      // 4b name-only presentation (docs/CARD_RENDER_API.md): a fork opts a
+      // layer in with opts.compact — the header then carries the primary
+      // field's value (same value hoverName shows, so the surfaces agree)
+      // with opts.compactMetaField's value right-aligned; render() above
+      // keeps serving unmigrated forks and the non-compact layers.
+      compact: opts.compact === true,
+      cardIdentifier: (opts.compact === true && primaryField) ? function (result) {
+        var v = result[primaryField.name];
+        return v ? String(v) : "Unknown";
+      } : undefined,
+      cardMeta: (opts.compact === true && opts.compactMetaField) ? function (result) {
+        var v = result[opts.compactMetaField];
+        if (v === null || v === undefined || v === "") return null;
+        var metaField = keyedFields.filter(function (f) { return f.name === opts.compactMetaField; })[0];
+        return (metaField && metaField.label ? metaField.label + " " : "") + String(v);
+      } : undefined
     });
   }
   /* ==== ENGINE:END polygon-factory ==== */
@@ -5312,6 +5826,7 @@ function initChiExplorer() {
       { name: "name", label: "Subdivision", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
     ],
+    compact: true, compactMetaField: "geoid", // 4b name-only card
     // Townships are the county's subdivisions, so this nests under County (as
     // Precinct nests under Township below). Turning it on brings County on as
     // the outline frame; turning it off un-frames County and, since Township is
@@ -5344,7 +5859,8 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "Municipality", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
-    ]
+    ],
+    compact: true, compactMetaField: "geoid" // 4b name-only card
   });
 
   registerPolygonLayer({
@@ -5363,7 +5879,8 @@ function initChiExplorer() {
       // this Unified card is the one that answers for a Chicago point.
       { name: "name", label: "District", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
-    ]
+    ],
+    compact: true, compactMetaField: "geoid" // 4b name-only card
   });
 
   registerPolygonLayer({
@@ -5377,7 +5894,8 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "District", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
-    ]
+    ],
+    compact: true, compactMetaField: "geoid" // 4b name-only card
   });
 
   registerPolygonLayer({
@@ -5391,7 +5909,8 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "District", keys: ["name"], primary: true },
       { name: "geoid", label: "GEOID", keys: ["geoid"] }
-    ]
+    ],
+    compact: true, compactMetaField: "geoid" // 4b name-only card
   });
 
   /* =========================================================================
@@ -6165,7 +6684,8 @@ function initChiExplorer() {
     fields: [
       { name: "name", label: "Name", keys: ["community", "community_area_name", "commarea", "comarea"], primary: true },
       { name: "number", label: "Area #", keys: ["area_numbe", "area_num_1", "area_number", "community_area_number", "area_num"] }
-    ]
+    ],
+    compact: true, compactMetaField: "number" // 4b name-only card
   });
   declareDataSource("community-area", { label: CHICAGO_PORTAL });
 
@@ -6205,7 +6725,8 @@ function initChiExplorer() {
     style: { color: "#0B5394", weight: 1.5, fillColor: "#41B6E6", fillOpacity: 0.05, dashArray: "1 4" },
     fields: [
       { name: "zip", label: "ZIP Code", keys: ["zcta5", "zip", "zip_code", "zipcode", "zcta5ce10"], primary: true }
-    ]
+    ],
+    compact: true // 4b name-only card (no meta field — the ZIP is the value)
   });
 
   /* =========================================================================
@@ -6683,20 +7204,20 @@ function initChiExplorer() {
         });
       },
       render: function (result) {
-        var wrap = document.createElement("div");
-        var intro = document.createElement("p");
-        intro.style.margin = "0 0 8px";
-        intro.textContent = opts.intro;
-        wrap.appendChild(intro);
-        var ol = document.createElement("ol");
-        ol.style.margin = "0";
-        ol.style.paddingLeft = "20px";
-        result.items.forEach(function (s) {
-          var li = document.createElement("li");
-          li.textContent = opts.line(s.props) + " — " + s.distanceMi.toFixed(2) + " mi";
-          ol.appendChild(li);
-        });
-        wrap.appendChild(ol);
+        // 4d nearest-N rows with distance pills (docs/CARD_RENDER_API.md).
+        // opts.item(props) -> {name, note} is the richer two-line split; a
+        // fork still on the single-string opts.line(props) contract gets a
+        // one-line row — the opts surface stays backward compatible.
+        var wrap = cardEl("div", "card-flush");
+        if (opts.intro) wrap.appendChild(renderBodyIntro({ note: opts.intro }));
+        wrap.appendChild(renderNearestRows(result.items.map(function (s) {
+          var item = (opts.item && opts.item(s.props)) || { name: opts.line(s.props) };
+          return {
+            name: item.name,
+            note: item.note,
+            distanceLabel: s.distanceMi.toFixed(1) + " mi"
+          };
+        })));
         return wrap;
       },
       coverage: opts.coverage // optional location-relevance test (see overlay-cards)
@@ -6756,6 +7277,16 @@ function initChiExplorer() {
         (address ? " — " + String(address) : "") +
         (city ? ", " + String(city) : "") +
         (zip ? " " + String(zip) : "");
+    },
+    item: function (props) { // 4d two-line row: name over address
+      var name = findPropCI(props, ["name"]);
+      var address = findPropCI(props, ["address"]);
+      var city = findPropCI(props, ["city"]);
+      var zip = findPropCI(props, ["zipcode", "zip"]);
+      var note = (address ? String(address) : "") +
+        (city ? (address ? ", " : "") + String(city) : "") +
+        (zip ? " " + String(zip) : "");
+      return { name: name ? String(name) : "Police station", note: note || undefined };
     }
   });
 
@@ -6781,6 +7312,16 @@ function initChiExplorer() {
         (address ? " — " + String(address) : "") +
         (city ? ", " + String(city) : "") +
         (zip ? " " + String(zip) : "");
+    },
+    item: function (props) { // 4d two-line row: name over address
+      var name = findPropCI(props, ["name"]);
+      var address = findPropCI(props, ["address"]);
+      var city = findPropCI(props, ["city"]);
+      var zip = findPropCI(props, ["zipcode", "zip"]);
+      var note = (address ? String(address) : "") +
+        (city ? (address ? ", " : "") + String(city) : "") +
+        (zip ? " " + String(zip) : "");
+      return { name: name ? String(name) : "Fire station", note: note || undefined };
     }
   });
 
@@ -6817,6 +7358,16 @@ function initChiExplorer() {
         (address ? " — " + String(address) : "") +
         (city ? ", " + String(city) : "") +
         (zip ? " " + String(zip) : "");
+    },
+    item: function (props) { // 4d two-line row: name over address
+      var name = findPropCI(props, ["name"]);
+      var address = findPropCI(props, ["address"]);
+      var city = findPropCI(props, ["city"]);
+      var zip = findPropCI(props, ["zipcode", "zip"]);
+      var note = (address ? String(address) : "") +
+        (city ? (address ? ", " : "") + String(city) : "") +
+        (zip ? " " + String(zip) : "");
+      return { name: name ? String(name) : "Post office", note: note || undefined };
     }
   });
 
@@ -6842,6 +7393,14 @@ function initChiExplorer() {
       return (name ? String(name) : "Library") +
         (address ? " — " + String(address) : "") +
         (phone ? " — " + String(phone) : "");
+    },
+    item: function (props) { // 4d two-line row: branch over address + phone
+      var name = findPropCI(props, ["branch_", "branch", "name"]);
+      var address = findPropCI(props, ["address"]);
+      var phone = findPropCI(props, ["phone"]);
+      var note = (address ? String(address) : "") +
+        (phone ? (address ? " — " : "") + String(phone) : "");
+      return { name: name ? String(name) : "Library", note: note || undefined };
     }
   });
 
@@ -6870,6 +7429,15 @@ function initChiExplorer() {
       return (name ? String(name) : "Early-voting site") +
         (ward ? " (Ward " + String(ward) + ")" : "") +
         (address ? " — " + String(address) : "");
+    },
+    item: function (props) { // 4d two-line row: site (+ ward) over address
+      var name = findPropCI(props, ["name", "site", "location"]);
+      var ward = findPropCI(props, ["ward"]);
+      var address = findPropCI(props, ["address"]);
+      return {
+        name: (name ? String(name) : "Early-voting site") + (ward ? " (Ward " + String(ward) + ")" : ""),
+        note: address ? String(address) : undefined
+      };
     }
   });
 
@@ -7641,6 +8209,38 @@ function initChiExplorer() {
     // unchanged. (opts.loadDistricts is a metro-specific value passed by the
     // registration below — the engine only supplies the default.) R2-2.
     var loadChamber = opts.loadDistricts || makeCached(function () { return loadTigerLayer(opts.layerIndex); });
+    // "IL‑14" where the concept is state-qualified (districtPrefix), plain
+    // "District 14" otherwise — one string shared by the header pill and the
+    // roster-less card body so the two can never disagree.
+    function districtLabel(result) {
+      if (!result || !result.district) return null;
+      return opts.districtPrefix
+        ? opts.districtPrefix + String(result.district)
+        : "District " + String(result.district);
+    }
+    // Split a roster office's raw lines (address lines + phone/fax lines
+    // mixed, exactly as scraped) into the renderOfficeGroup shape: the first
+    // phone-looking non-fax line becomes the tel:-linked phone (a leading
+    // "Phone:" prefix dropped); fax and every other line stay as text lines
+    // in scraped order, so no scraped detail is silently discarded.
+    function splitOfficeLines(lines) {
+      if (!lines || !lines.length) return null;
+      var office = { lines: [], phone: null };
+      lines.forEach(function (raw) {
+        var line = String(raw);
+        var phoneLike = /(?:phone|tel|\(\d{3}\)|\d{3}[-.\s]\d{4})/i.test(line) && !/fax/i.test(line);
+        if (phoneLike && !office.phone) {
+          office.phone = line.replace(/^\s*(?:phone|tel)[:.\s]*/i, "");
+        } else {
+          office.lines.push(line);
+        }
+      });
+      if (!office.lines.length && !office.phone) return null;
+      return office;
+    }
+    function memberProfileUrl(member) {
+      return member && member.url ? safeHttpUrl(member.url) : null;
+    }
     registerLayer({
       id: opts.id,
       group: "political",
@@ -7666,38 +8266,49 @@ function initChiExplorer() {
         });
       },
       render: function (result) {
-        // opts.districtPrefix (e.g. "IL-") state-qualifies the district number in
-        // the header where the concept reads that way (congress); "" for the ILGA
-        // chambers, whose districts are bare numbers.
-        var districtLabel = result.district ? (opts.districtPrefix || "") + String(result.district) : "Unknown";
-        var fields = [{ label: "District", value: districtLabel }];
+        // 4a representative card (docs/CARD_RENDER_API.md): person row with a
+        // party badge, then the offices behind one <details> group. District
+        // identity lives in the header pill (cardIdentifier below).
+        var wrap = cardEl("div", "card-flush");
         var member = result.member;
-        if (member) {
-          fields.push({ label: opts.memberLabel, value: String(member.name) });
-          if (member.party) fields.push({ label: "Party", value: String(member.party) });
-          // District office first (it's the local, on-map one this card pins),
-          // Springfield second. The pin color ties the District Office address
-          // to the teardrop marker dropped at the same spot on the map.
-          var districtOfficeHtml = officeFieldHtml(member.districtOffice);
-          if (districtOfficeHtml) fields.push({ label: "District Office", html: districtOfficeHtml, pin: opts.style.color });
-          var capitolHtml = officeFieldHtml(member.capitolOffice || member.springfieldOffice);
-          if (capitolHtml) fields.push({ label: opts.capitolLabel || "Capitol Office", html: capitolHtml });
+        if (!member) {
+          // roster gap or roster-fetch failure: district identity + the
+          // official directory (primaryLink in the footer) — never an
+          // invented name (honesty rules).
+          wrap.appendChild(renderBodyIntro({ title: districtLabel(result) || "Unknown district" }));
+          return wrap;
         }
+        var person = { name: String(member.name) };
+        if (member.party) person.badge = String(member.party);
+        // Label follows the actual href: only a roster-supplied member URL
+        // gets the per-member label — the directory fallback lives in the
+        // footer (primaryLink) and must not masquerade as the member's page.
+        var memberUrl = memberProfileUrl(member);
+        if (memberUrl) person.links = [{ label: opts.profileLabel || "Member profile", url: memberUrl }];
+        wrap.appendChild(renderPersonRows([person]));
+        // District office first (it's the local, on-map one this card pins),
+        // Springfield/D.C. second — same order the old key/value card used.
+        var offices = [];
+        var districtOffice = splitOfficeLines(member.districtOffice);
+        if (districtOffice) { districtOffice.label = "District Office"; offices.push(districtOffice); }
+        var capitolOffice = splitOfficeLines(member.capitolOffice || member.springfieldOffice);
+        if (capitolOffice) { capitolOffice.label = opts.capitolLabel || "Capitol Office"; offices.push(capitolOffice); }
+        if (offices.length) wrap.appendChild(renderOfficeGroup({ offices: offices }));
+        return wrap;
+      },
+      cardIdentifier: districtLabel,
+      primaryLink: function (result) {
         // member.url is this factory's one external-URL sink; scheme-check it
-        // through safeHttpUrl like every other href before it becomes an href,
-        // falling back to the trusted (hardcoded) directory URL when the roster
-        // supplies no usable http(s) link. This also fixes the empty-string url
-        // case, which previously emitted href="" (a self-link).
-        var memberUrl = member && member.url ? safeHttpUrl(member.url) : null;
-        var profileUrl = memberUrl || opts.directoryUrl || opts.ilgaUrl;
-        // Label follows the actual href: only a roster-supplied member URL gets
-        // the per-member label — a directory fallback must not masquerade as
-        // the member's own page (rosters without url fields hit this daily).
-        fields.push({
+        // through safeHttpUrl like every other href, falling back to the
+        // trusted (hardcoded) directory URL when the roster supplies no
+        // usable http(s) link.
+        var memberUrl = memberProfileUrl(result.member);
+        var url = memberUrl || opts.directoryUrl || opts.ilgaUrl;
+        if (!url) return null;
+        return {
           label: memberUrl ? (opts.profileLabel || "Member profile") : (opts.directoryLabel || "Member directory"),
-          html: '<a href="' + sanitize(profileUrl) + '" target="_blank" rel="noopener">' + sanitize(profileUrl) + '</a>'
-        });
-        return renderFieldList(fields);
+          url: url
+        };
       },
       pointOfInterest: function (result) {
         var member = result.member;
@@ -10178,7 +10789,13 @@ function initChiExplorer() {
     stylePinButton(btn, mod.id);
     btn.addEventListener("click", function () { setPinnedParent(mod.id); });
     rt.pinBtn = btn;
-    rt.cardBody.appendChild(btn);
+    if (rt.cardFooter) {
+      // migrated cards: the pin sits left in the shell-owned footer, before
+      // the right-aligned primary link (docs/CARD_RENDER_API.md)
+      rt.cardFooter.insertBefore(btn, rt.cardFooter.firstChild);
+    } else {
+      rt.cardBody.appendChild(btn);
+    }
   }
   /* ==== ENGINE:END relationship-pinning ==== */
 
