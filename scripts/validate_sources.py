@@ -137,6 +137,14 @@ PROVENANCE = [
      "note": "Same PA 102-0693 enacted-subcircuits shapefile ZIP as Kane "
              "(archived in data/source/raw/). Redrawn ~once a decade; the "
              "county publishes no subcircuit service at all."},
+    {"layer": "Kane County Board members (roster)",
+     "app_file": "kane-county-board-members.json",
+     "source_url": "https://www2.kanecountyil.gov/pages/countyboard/boardMembers.aspx",
+     "note": "Scraped weekly from the county's own SharePoint Board Members list "
+             "API (kane_county_board_scraper.py) — the same data this directory "
+             "page renders client-side: party, office phones, emails, and the "
+             "countywide-elected Chair. No bot block (verified 2026-07-23); the "
+             "boundary GIS separately carries member names (cross-checked)."},
     {"layer": "Kendall County Board members (roster)",
      "app_file": "kendall-county-board-members.json",
      "source_url": "https://www.kendallcountyil.gov/county-board/board-members",
