@@ -12,13 +12,13 @@ This is the reference implementation of a small fleet of sibling metro forks ([n
 
 ## What it answers
 
-Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 37 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, county-scoped layers appear only inside their counties (six consolidated layers — County Board, Judicial Subcircuit, Fire Protection District, Park District, Library District, Voting Precinct — span Cook/Will/DuPage/Lake and pick the right county's data automatically), and the statewide layers work anywhere in Illinois.
+Pick a point. The app runs a point-in-district lookup across every layer you have toggled on and builds a "civic profile" for that location. 37 layers ship today; layers are location-aware, so city-only layers hide outside Chicago, county-scoped layers appear only inside their counties (six consolidated layers — County Board, Judicial Subcircuit, Fire Protection District, Park District, Library District, Voting Precinct — span Cook/Will/DuPage/Lake/Kane and pick the right county's data automatically), and the statewide layers work anywhere in Illinois.
 
 | Group | Layer | What you get |
 |---|---|---|
 | **Political** | City Ward | Ward number, alderman, office phone + address |
 | | Ward Precinct | Precinct number (a sub-selection of City Ward — turning it on drops the ward to an outline and fills it with its precincts) |
-| | County Board District | Your county-legislature seat, picked by county: Cook Commissioner district (live officeholder join, office pin), Will or DuPage County Board district (weekly-scraped rosters + DuPage's countywide Chair), or Lake County Board district (member + contact carried on the county's own GIS) |
+| | County Board District | Your county-legislature seat, picked by county: Cook Commissioner district (live officeholder join, office pin), Will or DuPage County Board district (weekly-scraped rosters + DuPage's countywide Chair), Lake County Board district (member + contact carried on the county's own GIS), or Kane County Board district (member names on the county's own GIS) |
 | | U.S. House District | District (IL-N), representative, party, D.C. phone, website |
 | | IL State Senate District | Senator, party, Springfield + district offices, ILGA page |
 | | IL State House District | State representative, party, offices, ILGA page |
@@ -32,7 +32,7 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | CCPSA District Council | The three elected District Councilors for that police district (name + role) and links to each Councilor's profile + the council page |
 | | Police Station (nearest 3) | Nearest stations anywhere in the metro (USGS National Map structures) — CPD district stations, suburban PDs, and sheriff facilities alike, with addresses |
 | | Fire Station (nearest 3) | Nearest fire stations anywhere in the metro (USGS National Map structures) — CFD houses carry their district + station number; suburban entries name their department or fire protection district |
-| | Fire Protection District | Suburban fire *protection* (taxing) district, picked by county (Cook / Will / DuPage / Lake) — trustees in Will, district office contact in Lake, name-only in Cook and DuPage |
+| | Fire Protection District | Suburban fire *protection* (taxing) district, picked by county (Cook / Will / DuPage / Lake / Kane) — trustees in Will, office contact in Lake, chief + contact in Kane, name-only in Cook and DuPage |
 | | DuPage Special Police District | Township police-tax district funding supplemental DuPage County Sheriff patrol of unincorporated areas, with the Sheriff linked |
 | **Schools** | Elementary / Middle / High School Zone | CPS attendance-boundary school, grades, address, profile link, map pin |
 | | CPS Network (K-8 / High School) | Network, chief, phone, office address |
@@ -43,9 +43,9 @@ Pick a point. The app runs a point-in-district lookup across every layer you hav
 | | County | County name + seal, anywhere in Illinois |
 | | Township / County Subdivision | Township (a sub-selection of County) |
 | | Municipality | Incorporated place name, anywhere in Illinois |
-| | Park District | Park district, picked by county (Cook / Will / DuPage / Lake) — a Chicago click resolves the Chicago Park District; commissioners in Will, district office contact in Lake, name-only in Cook and DuPage |
-| | Library District | Which separate library taxing body serves the point, picked by county — Cook distinguishes independent Public Library Districts from municipal Library Funds (a Chicago click resolves the City of Chicago Library Fund); trustees in Will, name-only in DuPage, office contact in Lake |
-| | Voting Precinct | County voting precinct (a sub-selection of Township), picked by county (Will / DuPage / Lake), with the containing County Board district and the county clerk's election lookup |
+| | Park District | Park district, picked by county (Cook / Will / DuPage / Lake / Kane) — a Chicago click resolves the Chicago Park District; commissioners in Will, office contact in Lake, board president + contact in Kane, name-only in Cook and DuPage |
+| | Library District | Which separate library taxing body serves the point, picked by county — Cook distinguishes independent Public Library Districts from municipal Library Funds (a Chicago click resolves the City of Chicago Library Fund); trustees in Will, name-only in DuPage, office contact in Lake, board president + contact in Kane |
+| | Voting Precinct | County voting precinct (a sub-selection of Township), picked by county (Will / DuPage / Lake / Kane), with the containing County Board district and the county clerk's election lookup |
 | | Post Office (nearest 3) | Post office name, address, distance (USGS National Map structures) |
 | | Library (nearest 3) | Chicago Public Library location, address, phone, distance |
 
@@ -65,7 +65,7 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
-Most layers fetch live data from public APIs at runtime, so they need an internet connection. Layers with no public API ship same-origin files under `data/app/` that the page fetches on first toggle: the Elected School Board, IL Supreme Court, and Board of Review boundaries; the pre-built U.S. House / IL Senate / IL House district geometry; the Will, DuPage, and Lake county outlines used for coverage tests; and the hand-curated early-voting site list. With the service worker installed the boundary files are cached (cache-first), so once a layer has loaded it keeps working offline; the officeholder rosters and the early-voting list are cached network-first so a returning visitor always gets the latest.
+Most layers fetch live data from public APIs at runtime, so they need an internet connection. Layers with no public API ship same-origin files under `data/app/` that the page fetches on first toggle: the Elected School Board, IL Supreme Court, and Board of Review boundaries; the pre-built U.S. House / IL Senate / IL House district geometry; the Will, DuPage, Lake, and Kane county outlines used for coverage tests; and the hand-curated early-voting site list. With the service worker installed the boundary files are cached (cache-first), so once a layer has loaded it keeps working offline; the officeholder rosters and the early-voting list are cached network-first so a returning visitor always gets the latest.
 
 ## Architecture
 
@@ -89,6 +89,7 @@ Stable core + pluggable layer modules, all inside `index.html`. The full contrac
 | Will County ArcGIS | Judicial subcircuits, Board districts, fire protection districts, park districts, library districts, voting precincts |
 | DuPage County ArcGIS (`services.arcgis.com/neJvtQ4PXvnQ86MJ`) | Judicial subcircuits, Board districts, fire protection districts, special police districts, park districts, library districts, voting precincts |
 | Lake County ArcGIS (`services3.arcgis.com/HESxeTbDliKKvec2`) | Judicial subcircuits, Board districts (incl. member + contact), fire protection districts, park districts, library districts, voting precincts |
+| Kane County ArcGIS (`services1.arcgis.com/oRKmdBXD6EbdmVgJ`, the `KaneCo_IL_*` family) | Board districts (incl. member names), fire/park/library districts (incl. officer + office contact), voting precincts |
 | [willcountyillinois.gov](https://willcountyillinois.gov) (scraped weekly by CI) | Will County Board member roster (`data/app/will-county-board-members.json`) |
 | [dupagecounty.gov](https://www.dupagecounty.gov) (scraped weekly by CI) | DuPage County Board member roster + countywide Chair (`data/app/dupage-county-board-members.json`) |
 | [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators) (rebuilt weekly by CI) | U.S. House roster — IL's 17 reps only, `data/app/congress-roster.json` |

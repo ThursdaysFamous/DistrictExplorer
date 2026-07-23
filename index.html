@@ -3683,12 +3683,12 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) subcircuits, all PA 102-0693, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
-    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs), county-dispatched; partial coverage inside each county
+    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
-    "park-district",     // Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs), county-dispatched; partial coverage inside each county
-    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs), county-dispatched; partial coverage inside each county
+    "park-district",     // Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs) + Kane (11, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county
+    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -3711,7 +3711,7 @@ function initChiExplorer() {
     // Smallest county-scoped layer, so it renders on top of Township and County
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
-    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431), county-dispatched; subOf township
+    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features), county-dispatched; subOf township
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5778,6 +5778,125 @@ function initChiExplorer() {
     var site = safeHttpUrl(val(result.url));
     if (site) rows.push({ label: "Website", html: '<a href="' + sanitize(site) + '" target="_blank" rel="noopener">' + sanitize(site) + "</a>" });
     return rows;
+  }
+
+  /* =========================================================================
+   * KANE COUNTY — fourth collar county, dispatch entries only (the Lake
+   * recipe): five `kane` rows in the consolidated layers plus one TIGER
+   * outline (data/app/kane-county-outline.json, FIPS 17089) for
+   * kaneCountyCoverage. Every layer loads from the county's own public
+   * hosted org (services1.arcgis.com/oRKmdBXD6EbdmVgJ, the KaneCo_IL_*
+   * family, layers actively maintained — board edited 2026-03). Kane's GIS
+   * carries officeholders ON the features: the board features name the
+   * sitting member (CBName — verified against the county's published
+   * directory and the 2026 District 2/9 appointment coverage), and the
+   * fire/park/library features carry a named officer (Rep_Name/Rep_Title —
+   * chief or board president) with office contact. The precinct features
+   * even carry their County Board district as a field, so Kane's precinct
+   * card needs no spatial join. Judicial subcircuits are NOT here: Kane's
+   * only subcircuit services are permission-locked ArcGIS proxies, so the
+   * 16th Circuit entry waits for a public source (the PA 102-0693 shapefile
+   * route — recorded in the guidebook backlog) rather than guessing.
+   * ======================================================================= */
+  var loadKaneCountyOutline = makeCached(function () {
+    return fetchJSONWithRetry("data/app/kane-county-outline.json", {}, 2);
+  });
+  function kaneCountyCoverage(point) {
+    return loadKaneCountyOutline().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
+
+  var KANE_GIS = "https://services1.arcgis.com/oRKmdBXD6EbdmVgJ/arcgis/rest/services/";
+  function loadKaneFeatureServer(service, where, outFields, label) {
+    // the KaneCo_IL_* services all publish their single layer at index 1
+    var url = KANE_GIS + service + "/FeatureServer/1" +
+      "/query?where=" + encodeURIComponent(where) + "&outFields=" + outFields +
+      "&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("Kane County " + label + " returned no usable geometry");
+        return geojson;
+      });
+  }
+  var loadKaneCountyBoard = makeCached(function () {
+    return loadKaneFeatureServer("KaneCo_IL_County_Board", "1=1", "CBDist,CBName", "Board");
+  });
+  var loadKanePrecincts = makeCached(function () {
+    return loadKaneFeatureServer("KaneCo_IL_ElectionsPrecincts", "1=1", "PRECINCT,CBDist", "precincts");
+  });
+  // Kane codes municipal fire DEPARTMENTS with negative ids and the real fire
+  // (protection) taxing districts with 13-digit IDOR codes — the positive-id
+  // clause keeps the concept honest (taxing districts only, like the other
+  // counties' entries) and also drops the service's null filler feature and a
+  // legacy duplicate of the Carpentersville district.
+  var loadKaneFire = makeCached(function () {
+    return loadKaneFeatureServer("KaneCo_IL_Districts_Fire",
+      "FPDID IS NOT NULL AND FPDID NOT LIKE '-%'",
+      "DistrictName,Rep_Name,Rep_Title,Rep_Phone,Rep_Email,WebSite,Addr1,Addr1_City,Addr1_ST,Addr1_Zip", "fire districts");
+  });
+  var loadKaneParks = makeCached(function () {
+    return loadKaneFeatureServer("KaneCo_IL_Districts_Park", "DistrictName IS NOT NULL",
+      "DistrictName,Rep_Name,Rep_Title,Rep_Phone,Rep_Email,WebSite,Addr1,Addr1_City,Addr1_ST,Addr1_Zip", "park districts");
+  });
+  var loadKaneLibraries = makeCached(function () {
+    return loadKaneFeatureServer("KaneCo_IL_Districts_Library", "DistrictName IS NOT NULL",
+      "DistrictName,Rep_Name,Rep_Title,Rep_Phone,Rep_Email,WebSite,Addr1,Addr1_City,Addr1_ST,Addr1_Zip", "library districts");
+  });
+
+  // Shared card rows for Kane's tax-district entries (fire/park/library): the
+  // county GIS names a responsible officer (chief or board president) plus the
+  // district office's contact — surfaced per the card-order convention
+  // (officeholder, then location, then contact, then link). Kane publishes
+  // some websites scheme-less ("www.bartlettparks.org"); a bare domain gets a
+  // conservative https:// prefix before the scheme check, never anything else.
+  function kaneRepContactRows(result) {
+    function val(v) { return v == null ? "" : String(v).trim(); }
+    var rows = [];
+    if (val(result.repName)) {
+      rows.push({ label: val(result.repTitle) || "Officer", value: val(result.repName) });
+    }
+    var addr = [val(result.addr),
+      [val(result.city), [val(result.st), val(result.zip)].filter(Boolean).join(" ")].filter(Boolean).join(", ")]
+      .filter(Boolean);
+    if (addr.length) rows.push({ label: "Office Address", html: addr.map(sanitize).join("<br>") });
+    if (val(result.phone)) rows.push({ label: "Phone", value: val(result.phone) });
+    if (val(result.email)) {
+      rows.push({ label: "Email", html: '<a href="mailto:' + sanitize(val(result.email)) + '">' + sanitize(val(result.email)) + "</a>" });
+    }
+    var raw = val(result.url);
+    var site = safeHttpUrl(raw) || (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(raw) ? safeHttpUrl("https://" + raw) : null);
+    if (site) rows.push({ label: "Website", html: '<a href="' + sanitize(site) + '" target="_blank" rel="noopener">' + sanitize(site) + "</a>" });
+    return rows;
+  }
+
+  // query helper shared by the three Kane tax-district entries — same result
+  // shape kaneRepContactRows reads
+  function kaneOrgQuery(loader) {
+    return function (point, seq) {
+      return loader().then(function (geojson) {
+        var feature = findFeatureContaining(geojson, point);
+        if (!feature) return null;
+        var props = feature.properties || {};
+        return {
+          seq: seq,
+          name: findPropCI(props, ["districtname"]),
+          repName: findPropCI(props, ["rep_name"]),
+          repTitle: findPropCI(props, ["rep_title"]),
+          phone: findPropCI(props, ["rep_phone"]),
+          email: findPropCI(props, ["rep_email"]),
+          url: findPropCI(props, ["website"]),
+          addr: findPropCI(props, ["addr1"]),
+          city: findPropCI(props, ["addr1_city"]),
+          st: findPropCI(props, ["addr1_st"]),
+          zip: findPropCI(props, ["addr1_zip"])
+        };
+      });
+    };
+  }
+  function kaneOrgHoverName(feature) {
+    var v = findPropCI(feature.properties || {}, ["districtname"]);
+    return (v == null || String(v).trim() === "") ? null : String(v);
   }
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------
@@ -7897,10 +8016,12 @@ function initChiExplorer() {
    * districts, weekly-scraped roster), the DuPage County Board (6 districts
    * electing 3 members each, weekly-scraped roster + countywide Chair), and
    * the Lake County Board (19 single-member districts, member + contact
-   * carried on the county's own boundary GIS — no scraper) as dispatch
-   * entries of ONE toggle. Each card carries a Body row naming its county's
-   * board, so the generic label never obscures which body a district belongs
-   * to. ---------- */
+   * carried on the county's own boundary GIS — no scraper), and the Kane
+   * County Board (24 single-member districts, member names carried on the
+   * boundary GIS — verified against the county's published directory incl.
+   * the 2026 District 2/9 appointments) as dispatch entries of ONE toggle.
+   * Each card carries a Body row naming its county's board, so the generic
+   * label never obscures which body a district belongs to. ---------- */
   registerCountyLayer({
     id: "county-board",
     group: "political",
@@ -8172,6 +8293,53 @@ function initChiExplorer() {
             return (v == null || String(v).trim() === "") ? null : String(v).trim();
           }
         }
+      },
+      {
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loadGeometry: loadKaneCountyBoard,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["cbdist"]);
+          return (v == null || v === "") ? null : String(parseInt(v, 10) || v);
+        },
+        query: function (point, seq) {
+          return loadKaneCountyBoard().then(function (geojson) {
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var d = findPropCI(props, ["cbdist"]);
+            return {
+              seq: seq,
+              // Kane zero-pads the district ("01") — display the bare number
+              district: d != null && d !== "" ? String(parseInt(d, 10) || d) : null,
+              member: findPropCI(props, ["cbname"])
+            };
+          });
+        },
+        render: function (result) {
+          var fields = [
+            { label: "District", value: result.district != null ? String(result.district) : "Unknown" },
+            { label: "Body", value: "Kane County Board" }
+          ];
+          // the sitting member's name rides on the county's own maintained
+          // boundary GIS (no contact fields there — the directory link below
+          // carries those)
+          if (result.member && String(result.member).trim()) {
+            fields.push({ label: "Board Member", value: String(result.member).trim() });
+          }
+          fields.push({
+            label: "Official directory",
+            html: '<a href="https://www2.kanecountyil.gov/pages/countyboard/boardMembers.aspx" target="_blank" rel="noopener">Kane County Board members (official)</a>'
+          });
+          return renderFieldList(fields);
+        },
+        hoverOfficial: {
+          load: loadKaneCountyBoard,
+          name: function (feature) {
+            var v = findPropCI(feature.properties || {}, ["cbname"]);
+            return (v == null || String(v).trim() === "") ? null : String(v).trim();
+          }
+        }
       }
     ]
   });
@@ -8308,6 +8476,22 @@ function initChiExplorer() {
           ];
           return renderFieldList(fields.concat(lakeOrgContactRows(result)));
         }
+      },
+      // Kane names each district's chief plus the office contact — see the
+      // kaneRepContactRows helper for the row treatment
+      {
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loadGeometry: loadKaneFire,
+        hoverName: kaneOrgHoverName,
+        query: kaneOrgQuery(loadKaneFire),
+        render: function (result) {
+          var fields = [
+            { label: "Fire District", value: result.name ? String(result.name) : "Unknown" },
+            { label: "County", value: "Kane County" }
+          ];
+          return renderFieldList(fields.concat(kaneRepContactRows(result)));
+        }
       }
     ]
   });
@@ -8391,6 +8575,21 @@ function initChiExplorer() {
             { label: "County", value: "Lake County" }
           ];
           return renderFieldList(fields.concat(lakeOrgContactRows(result)));
+        }
+      },
+      // Kane names each district's board president plus the office contact
+      {
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loadGeometry: loadKaneParks,
+        hoverName: kaneOrgHoverName,
+        query: kaneOrgQuery(loadKaneParks),
+        render: function (result) {
+          var fields = [
+            { label: "Park District", value: result.name ? String(result.name) : "Unknown" },
+            { label: "County", value: "Kane County" }
+          ];
+          return renderFieldList(fields.concat(kaneRepContactRows(result)));
         }
       }
     ]
@@ -8534,6 +8733,21 @@ function initChiExplorer() {
             { label: "County", value: "Lake County" }
           ];
           return renderFieldList(fields.concat(lakeOrgContactRows(result)));
+        }
+      },
+      // Kane names each district's board president plus the office contact
+      {
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loadGeometry: loadKaneLibraries,
+        hoverName: kaneOrgHoverName,
+        query: kaneOrgQuery(loadKaneLibraries),
+        render: function (result) {
+          var fields = [
+            { label: "Library District", value: result.name ? String(result.name) : "Unknown" },
+            { label: "County", value: "Kane County" }
+          ];
+          return renderFieldList(fields.concat(kaneRepContactRows(result)));
         }
       }
     ]
@@ -8683,6 +8897,42 @@ function initChiExplorer() {
           }
           fields.push({ label: "Registration & polling place",
             html: '<a href="https://www.lakecountyil.gov/163/Elections" target="_blank" rel="noopener">Lake County Clerk — Elections (official)</a>' });
+          return renderFieldList(fields);
+        }
+      },
+      {
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loadGeometry: loadKanePrecincts,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["precinct"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        // Kane's precinct features carry their County Board district as a
+        // FIELD (CBDist), so no spatial join is needed. The precinct code is
+        // township-prefixed ("AU16") but the data carries no township-name
+        // field — mapping the prefix to a name would be a guess, so the card
+        // skips the Township row rather than inventing one.
+        query: function (point, seq) {
+          return loadKanePrecincts().then(function (geojson) {
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var d = findPropCI(props, ["cbdist"]);
+            return {
+              seq: seq,
+              name: findPropCI(props, ["precinct"]),
+              boardDistrict: d != null && d !== "" ? String(parseInt(d, 10) || d) : null
+            };
+          });
+        },
+        render: function (result) {
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.boardDistrict != null && result.boardDistrict !== "") {
+            fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+          }
+          fields.push({ label: "Registration & polling place",
+            html: '<a href="https://clerk.kanecountyil.gov/Elections" target="_blank" rel="noopener">Kane County Clerk — Elections (official)</a>' });
           return renderFieldList(fields);
         }
       }

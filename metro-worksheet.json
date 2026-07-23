@@ -195,7 +195,7 @@
       "label": "County Board District",
       "group": "political",
       "area_rank": 12,
-      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
+      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
     },
     {
       "id": "ccbr",
@@ -209,7 +209,7 @@
       "label": "Fire Protection District",
       "group": "safety",
       "area_rank": 14,
-      "rank_note": "Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
+      "rank_note": "Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs), county-dispatched; partial coverage inside each county"
     },
     {
       "id": "dupage-county-special-police",
@@ -223,14 +223,14 @@
       "label": "Park District",
       "group": "geography",
       "area_rank": 16,
-      "rank_note": "Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
+      "rank_note": "Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs) + Kane (11, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county"
     },
     {
       "id": "library-district",
       "label": "Library District",
       "group": "geography",
       "area_rank": 17,
-      "rank_note": "Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
+      "rank_note": "Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county"
     },
     {
       "id": "school-board",
@@ -333,7 +333,7 @@
       "label": "Voting Precinct",
       "group": "geography",
       "area_rank": 30,
-      "rank_note": "Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431), county-dispatched; subOf township",
+      "rank_note": "Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features), county-dispatched; subOf township",
       "rank_comment": [
         "Smallest county-scoped layer, so it renders on top of Township and County",
         "(smallest-on-top); turning it on drops both to outline-only, framing the",
@@ -391,7 +391,7 @@
     }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 6 consolidated county-dispatched layers (county-board, judicial-subcircuit, fire-district, park-district, library-district, county-precinct — Cook/Will/DuPage/Lake entries; docs/COUNTY_LAYER_CONSOLIDATION.md) + 1 DuPage-only layer (dupage-county-special-police) + 3 amenity nearest-point layers (post-office, library, early-voting) = 37 — live-verified 2026-07",
+  "layer_count_note": "17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 6 consolidated county-dispatched layers (county-board, judicial-subcircuit, fire-district, park-district, library-district, county-precinct — Cook/Will/DuPage/Lake/Kane entries; docs/COUNTY_LAYER_CONSOLIDATION.md) + 1 DuPage-only layer (dupage-county-special-police) + 3 amenity nearest-point layers (post-office, library, early-voting) = 37 — live-verified 2026-07",
   "anchor_point": {
     "lat": 41.8825,
     "lng": -87.6285,
@@ -465,6 +465,11 @@
         "file": "lake-county-outline.json",
         "min_features": 1,
         "max_features": 1
+      },
+      {
+        "file": "kane-county-outline.json",
+        "min_features": 1,
+        "max_features": 1
       }
     ],
     "rosters": [
@@ -519,7 +524,7 @@
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v17",
+    "cache_name": "district-explorer-shell-v18",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",

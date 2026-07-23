@@ -191,6 +191,8 @@ ENDPOINTS = [
      "url": "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/County_Board_Districts_2022/FeatureServer/0?f=json"},
     {"layer": "Lake County Board districts (19 members + contact carried on the county GIS)",
      "url": "https://services3.arcgis.com/HESxeTbDliKKvec2/arcgis/rest/services/LakeCounty_PoliticalBoundaries/FeatureServer/0?f=json"},
+    {"layer": "Kane County Board districts (24 members carried on the county GIS)",
+     "url": "https://services1.arcgis.com/oRKmdBXD6EbdmVgJ/arcgis/rest/services/KaneCo_IL_County_Board/FeatureServer/1?f=json"},
 ]
 
 FAIL, WARN, OK = "FAIL", "WARN", "OK"
