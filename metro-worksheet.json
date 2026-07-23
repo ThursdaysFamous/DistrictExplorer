@@ -202,7 +202,7 @@
       "label": "County Board District",
       "group": "political",
       "area_rank": 13,
-      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
+      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
     },
     {
       "id": "ccbr",
@@ -541,6 +541,11 @@
         "note": "11 board districts (2 members each) scraped weekly from willcountyboard.com"
       },
       {
+        "file": "kane-county-board-members.json",
+        "min_keys": 24,
+        "note": "24 single-member board districts + the countywide-elected Chair, scraped weekly from the county's own SharePoint Board Members list (no bot block — plain requests)"
+      },
+      {
         "file": "kendall-county-board-members.json",
         "min_keys": 2,
         "note": "2 board districts (5 members each incl. the Chairman) scraped weekly from kendallcountyil.gov (Akamai-fronted; the scraper falls back to Playwright)"
@@ -623,6 +628,11 @@
       "file": "update-mchenry-county-board-roster.yml",
       "purpose": "McHenry County Board roster (mchenrycountyil.gov scrape, Playwright fallback)",
       "schedule": "Thu 15:00 UTC"
+    },
+    {
+      "file": "update-kane-county-board-roster.yml",
+      "purpose": "Kane County Board roster (the county's SharePoint list API)",
+      "schedule": "Thu 16:00 UTC"
     },
     {
       "file": "update-ccbr-roster.yml",

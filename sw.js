@@ -88,6 +88,7 @@ const ROSTER_URLS = [
   "./data/app/cpd-district-info.json",
   "./data/app/ccpsa-district-councils.json",
   "./data/app/will-county-board-members.json",
+  "./data/app/kane-county-board-members.json",
   "./data/app/kendall-county-board-members.json",
   "./data/app/mchenry-county-board-members.json",
   "./data/app/early-voting-sites.json",

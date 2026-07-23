@@ -3684,7 +3684,7 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile; Kendall's 23rd Circuit received NO subcircuits under the act — structurally n/a, the layer hides there), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts) + Kendall (10 FPDs on the county's parcel-derived tax-code tiling, name-only — the municipal Joliet row excluded), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
@@ -5823,6 +5823,15 @@ function initChiExplorer() {
   }
   var loadKaneCountyBoard = makeCached(function () {
     return loadKaneFeatureServer("KaneCo_IL_County_Board", "1=1", "CBDist,CBName", "Board");
+  });
+  // Weekly-scraped roster from the county's own SharePoint directory list
+  // (kane_county_board_scraper.py — the same list the boardMembers.aspx page
+  // renders client-side). The boundary GIS keeps carrying each member's NAME
+  // (hover + card fallback); this file enriches the card with party, the
+  // official 630-444-12NN office line, email, a profile link, and the
+  // countywide-elected Board Chair (the DuPage chair shape).
+  var loadKaneBoardMembers = makeCached(function () {
+    return fetchJSONWithRetry("data/app/kane-county-board-members.json", {}, 2);
   });
   var loadKanePrecincts = makeCached(function () {
     return loadKaneFeatureServer("KaneCo_IL_ElectionsPrecincts", "1=1", "PRECINCT,CBDist", "precincts");
@@ -8645,15 +8654,23 @@ function initChiExplorer() {
           return (v == null || v === "") ? null : String(parseInt(v, 10) || v);
         },
         query: function (point, seq) {
-          return loadKaneCountyBoard().then(function (geojson) {
+          return Promise.all([
+            loadKaneCountyBoard(),
+            loadKaneBoardMembers().catch(function () { return {}; })
+          ]).then(function (results) {
+            var geojson = results[0], roster = results[1];
             var feature = findFeatureContaining(geojson, point);
             if (!feature) return null;
             var props = feature.properties || {};
             var d = findPropCI(props, ["cbdist"]);
+            // Kane zero-pads the district ("01") — display the bare number
+            var district = d != null && d !== "" ? String(parseInt(d, 10) || d) : null;
+            var entry = district != null ? roster[district] : null;
             return {
               seq: seq,
-              // Kane zero-pads the district ("01") — display the bare number
-              district: d != null && d !== "" ? String(parseInt(d, 10) || d) : null,
+              district: district,
+              entry: entry,
+              chair: roster.chair || null,
               member: findPropCI(props, ["cbname"])
             };
           });
@@ -8663,12 +8680,31 @@ function initChiExplorer() {
             { label: "District", value: result.district != null ? String(result.district) : "Unknown" },
             { label: "Body", value: "Kane County Board" }
           ];
-          // the sitting member's name rides on the county's own maintained
-          // boundary GIS (no contact fields there — the directory link below
-          // carries those)
-          if (result.member && String(result.member).trim()) {
+          // one rich row per person; every external string sanitized before
+          // it becomes innerHTML (name, party, phone, email, url)
+          function personRow(label, m) {
+            var lines = ["<strong>" + sanitize(m.name) + "</strong>" +
+              (m.party ? " " + sanitize(m.party) : "") +
+              (m.role && label.indexOf("Chair") === -1 ? " — " + sanitize(m.role) : "")];
+            var contact = [];
+            if (m.phone) contact.push(sanitize(m.phone));
+            if (m.email) contact.push('<a href="mailto:' + sanitize(m.email) + '">' + sanitize(m.email) + "</a>");
+            var prof = safeHttpUrl(m.url);
+            if (prof) contact.push('<a href="' + sanitize(prof) + '" target="_blank" rel="noopener">profile</a>');
+            if (contact.length) lines.push(contact.join(" · "));
+            fields.push({ label: label, html: lines.join("<br>") });
+          }
+          var members = result.entry && result.entry.members;
+          if (members && members.length) {
+            members.forEach(function (m) { personRow("Board Member", m); });
+          } else if (result.member && String(result.member).trim()) {
+            // roster unavailable: the sitting member's name still rides the
+            // county's own boundary GIS — name-only fallback, never blank
             fields.push({ label: "Board Member", value: String(result.member).trim() });
           }
+          // the Board Chair is elected countywide, so she represents every
+          // Kane resident — surface her on every district's card
+          if (result.chair && result.chair.name) personRow("Board Chair (countywide)", result.chair);
           fields.push({
             label: "Official directory",
             html: '<a href="https://www2.kanecountyil.gov/pages/countyboard/boardMembers.aspx" target="_blank" rel="noopener">Kane County Board members (official)</a>'

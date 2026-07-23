@@ -182,8 +182,11 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    For every concept a new county (or metro) brings in, the same change that
    ships the boundary decides — and builds — the officeholder story:
    - **GIS attrs**: the county's own boundary service carries member/contact
-     fields (Lake, Kane) → verify against the published directory and use
-     them; no pipeline needed.
+     fields (Lake; Kane's carries names) → verify against the published
+     directory and use them; no pipeline needed. GIS attrs and a directory
+     pipeline COMPOSE: Kane's card keeps GIS names as hover + fallback while
+     a weekly scrape of the county's SharePoint directory list adds
+     party/phone/email + the countywide-elected Chair (2026-07 enrichment).
    - **Official directory, no GIS fields**: the county publishes a member
      directory (Will, DuPage, Kendall) → the scraper + builder + weekly
      PR-opening workflow ships IN THE SAME EXPANSION CHANGE, not as a
