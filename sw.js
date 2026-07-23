@@ -89,6 +89,7 @@ const ROSTER_URLS = [
   "./data/app/ccpsa-district-councils.json",
   "./data/app/will-county-board-members.json",
   "./data/app/kendall-county-board-members.json",
+  "./data/app/mchenry-county-board-members.json",
   "./data/app/early-voting-sites.json",
   "./data/app/ccbr-roster.json",
   "./data/app/il-county-clerks.json",

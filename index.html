@@ -3684,7 +3684,7 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile; Kendall's 23rd Circuit received NO subcircuits under the act — structurally n/a, the layer hides there), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts) + Kendall (10 FPDs on the county's parcel-derived tax-code tiling, name-only — the municipal Joliet row excluded), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
@@ -5945,6 +5945,15 @@ function initChiExplorer() {
   }
   var loadMchenryCountyBoard = makeCached(function () {
     return loadMchenryFeatureServer("McHenry_County_Board_Districts", "1=1", "District", "Board");
+  });
+  // Weekly-scraped member roster (mchenry_county_board_scraper.py +
+  // build_mchenry_county_board_roster.py from the county's own member
+  // directory) — the boundary GIS carries only the district number, so the
+  // 18 members' names/contact plus the countywide-elected Chairman ride
+  // this same-origin file, joined by district like DuPage's roster (whose
+  // countywide-Chair shape this reuses).
+  var loadMchenryBoardMembers = makeCached(function () {
+    return fetchJSONWithRetry("data/app/mchenry-county-board-members.json", {}, 2);
   });
   var loadMchenryPrecincts = makeCached(function () {
     return loadMchenryFeatureServer("Precincts", "1=1", "PrecinctName", "precincts");
@@ -8338,9 +8347,11 @@ function initChiExplorer() {
    * County Board (24 single-member districts, member names carried on the
    * boundary GIS — verified against the county's published directory incl.
    * the 2026 District 2/9 appointments), the McHenry County Board (9
-   * districts, district-number-only GIS, card links the member directory),
-   * and the Kendall County Board (2 districts electing the 10-member board,
-   * same district-number-only shape) as dispatch entries of ONE toggle.
+   * districts electing 2 members each + a countywide-elected Chairman,
+   * weekly-scraped roster — the GIS is district-number-only), and the
+   * Kendall County Board (2 districts electing the 10-member board,
+   * weekly-scraped roster incl. the Chairman) as dispatch entries of ONE
+   * toggle.
    * Each card carries a Body row naming its county's board, so the generic
    * label never obscures which body a district belongs to. ---------- */
   registerCountyLayer({
@@ -8672,20 +8683,68 @@ function initChiExplorer() {
           }
         }
       },
-      // McHenry (9 districts, each electing 2 of the 18 members): the county
-      // GIS carries only the district number, so the card links the official
-      // directory rather than naming members (honesty rule)
-      polygonCountyEntry({
+      // McHenry (9 districts, each electing 2 of the 18 members, plus a
+      // COUNTYWIDE-elected Board Chairman — the DuPage shape): the county
+      // GIS carries only the district number; members + the Chairman join
+      // from the weekly-scraped roster of the county's own directory.
+      {
         key: "mchenry",
         coverage: mchenryCountyCoverage,
-        loader: loadMchenryCountyBoard,
-        fields: [
-          { name: "district", label: "District", keys: ["district"], primary: true },
-          { label: "Body", value: "McHenry County Board" },
-          { label: "Official directory",
-            html: '<a href="https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members" target="_blank" rel="noopener">McHenry County Board members (official)</a>' }
-        ]
-      }),
+        loadGeometry: loadMchenryCountyBoard,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["district"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadMchenryCountyBoard(),
+            loadMchenryBoardMembers().catch(function () { return {}; })
+          ]).then(function (results) {
+            var geojson = results[0], roster = results[1];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var district = findPropCI(feature.properties || {}, ["district"]);
+            var entry = district != null ? roster[String(district)] : null;
+            return { seq: seq, district: district, entry: entry, chair: roster.chair || null };
+          });
+        },
+        render: function (result) {
+          var fields = [
+            { label: "District", value: result.district != null && result.district !== "" ? String(result.district) : "Unknown" },
+            { label: "Body", value: "McHenry County Board" }
+          ];
+          // one rich row per person; every external string sanitized before
+          // it becomes innerHTML (name, role, phone, email)
+          function personRow(label, m) {
+            var lines = ["<strong>" + sanitize(m.name) + "</strong>" + (m.role ? " — " + sanitize(m.role) : "")];
+            var contact = [];
+            if (m.phone) contact.push(sanitize(m.phone));
+            if (m.email) contact.push('<a href="mailto:' + sanitize(m.email) + '">' + sanitize(m.email) + "</a>");
+            if (contact.length) lines.push(contact.join(" · "));
+            fields.push({ label: label, html: lines.join("<br>") });
+          }
+          var members = result.entry && result.entry.members;
+          if (members && members.length) {
+            members.forEach(function (m) { personRow("Board Member", m); });
+          }
+          // the Chairman is elected countywide, so he represents every
+          // McHenry resident — surface him on every district's card
+          if (result.chair && result.chair.name) personRow("Board Chairman (countywide)", result.chair);
+          fields.push({ label: "Official directory",
+            html: '<a href="https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members" target="_blank" rel="noopener">McHenry County Board members (official)</a>' });
+          return renderFieldList(fields);
+        },
+        hoverOfficial: {
+          load: loadMchenryBoardMembers,
+          name: function (feature, roster) {
+            if (!roster) return null;
+            var d = findPropCI(feature.properties || {}, ["district"]);
+            var e = d != null ? roster[String(d)] : null;
+            if (!e || !e.members || !e.members.length) return null;
+            return e.members.map(function (m) { return m.name; }).join(", ");
+          }
+        }
+      },
       // Kendall (10 members from just 2 districts — the smallest board map
       // in the metro; the current line per the county's post-2020-census
       // reapportionment, see the KENDALL COUNTY loader block). The GIS
