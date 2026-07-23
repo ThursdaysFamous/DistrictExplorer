@@ -26,11 +26,20 @@ Source (Granicus CMS pages):
               mailto with visible text. "Current Term Ends" rides a labeled
               paragraph.
 
-Fetch engines (`--engine`, the cpd_district_scraper.py pattern): the county
-fronts the site with bot management that 403s plain datacenter HTTP clients.
-`--engine auto` (default) tries `requests` first and falls back to a real
-headless Chromium (`playwright`) the moment the listing is blocked — no
-evasion, just a genuine browser.
+Fetch engines (`--engine`): the county fronts the site with bot management
+that 403s datacenter HTTP clients — including, live-verified on the first CI
+run (2026-07-23), a genuine headless Chromium: the block is IP-reputation
+based, so it never "clears" for a runner no matter how real the browser is.
+`--engine auto` (default) is therefore a three-rung ladder: `requests`
+first, `playwright` second (covers JS-challenge fronts and residential-ish
+egress), and `wayback` last — ask the Internet Archive's Save Page Now to
+capture a fresh copy with the Archive's own crawler (which the county has
+historically allowed — the site's existing snapshots) and read the archived
+original, falling back to the newest existing snapshot when a save fails,
+refused entirely if the newest snapshot is older than WAYBACK_MAX_AGE_DAYS.
+No evasion anywhere on the ladder: the content is always the county's own
+page, fetched either directly or through a public archive, and records
+fetched via the archive carry `archived_at` for provenance.
 
 Notes on data honesty (per project conventions):
 - A field that can't be found is stored null, never guessed. Email/phone are
@@ -181,11 +190,124 @@ class PlaywrightFetcher:
             self._pw.stop()
 
 
+# Reject archive copies older than this: a stale snapshot could silently miss
+# a new appointee for months, which is worse than a loud failed run (the
+# weekly workflow just fails visibly and a human looks).
+WAYBACK_MAX_AGE_DAYS = 45
+
+
+class WaybackFetcher:
+    """Terminal fallback: fetch the page through the Internet Archive. Save
+    Page Now captures a fresh copy with the Archive's own crawler — which the
+    county does not block (the site's existing snapshots prove it) — and the
+    raw archived original (`id_` URL) is read back. If the save fails, the
+    newest existing snapshot serves, but never one older than
+    WAYBACK_MAX_AGE_DAYS. Not evasion: a public archive of the county's own
+    page, with the copy's timestamp surfaced for provenance."""
+
+    engine = "wayback"
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.last_archived_at = None  # timestamp of the copy the last fetch used
+
+    def _save_authenticated(self, url, key, secret):
+        """SPN2 (POST + job polling) with an archive.org API key — the
+        reliable path when the runner's shared IP has exhausted the anonymous
+        quota. Keys ride the ARCHIVE_SPN_ACCESS_KEY / ARCHIVE_SPN_SECRET_KEY
+        env vars (repo secrets in CI); absent keys skip straight to the
+        anonymous route."""
+        auth = {"Accept": "application/json", "Authorization": "LOW %s:%s" % (key, secret)}
+        try:
+            r = self.session.post("https://web.archive.org/save",
+                                  headers=dict(HEADERS, **auth),
+                                  data={"url": url}, timeout=60)
+            job = r.json().get("job_id")
+            if not job:
+                return None
+            for _ in range(30):  # up to ~2.5 minutes per capture
+                time.sleep(5)
+                s = self.session.get("https://web.archive.org/save/status/" + job,
+                                     headers=dict(HEADERS, **auth), timeout=30).json()
+                if s.get("status") == "success":
+                    return s.get("timestamp")
+                if s.get("status") == "error":
+                    return None
+        except (requests.RequestException, ValueError):
+            pass
+        return None
+
+    def _save(self, url):
+        """Ask Save Page Now for a fresh capture; return its timestamp or None."""
+        key = os.environ.get("ARCHIVE_SPN_ACCESS_KEY")
+        secret = os.environ.get("ARCHIVE_SPN_SECRET_KEY")
+        if key and secret:
+            ts = self._save_authenticated(url, key, secret)
+            if ts:
+                return ts
+        try:
+            resp = self.session.get(
+                "https://web.archive.org/save/" + url,
+                headers=HEADERS, timeout=180, allow_redirects=True)
+            m = re.search(r"/web/(\d{14})", resp.url or "")
+            if not m:
+                m = re.search(r"/web/(\d{14})", resp.headers.get("Content-Location", ""))
+            if resp.status_code == 200 and m:
+                return m.group(1)
+        except requests.RequestException:
+            pass
+        return None
+
+    def _latest(self, url):
+        """Newest existing snapshot's timestamp, or None."""
+        try:
+            resp = self.session.get(
+                "https://archive.org/wayback/available",
+                params={"url": url}, headers=HEADERS, timeout=60)
+            snap = (resp.json().get("archived_snapshots") or {}).get("closest") or {}
+            return snap.get("timestamp") or None
+        except (requests.RequestException, ValueError):
+            return None
+
+    def fetch(self, url, retries=1):
+        last_err = None
+        for attempt in range(retries + 1):
+            ts = self._save(url) or self._latest(url)
+            if ts is None:
+                last_err = "no archive snapshot available"
+                time.sleep(3 * (attempt + 1))
+                continue
+            age_days = (datetime.now(timezone.utc)
+                        - datetime.strptime(ts, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)).days
+            if age_days > WAYBACK_MAX_AGE_DAYS:
+                last_err = ("newest archive snapshot is %d days old (max %d) — refusing "
+                            "stale officeholder data" % (age_days, WAYBACK_MAX_AGE_DAYS))
+                break
+            try:
+                resp = self.session.get(
+                    "https://web.archive.org/web/%sid_/%s" % (ts, url),
+                    headers=HEADERS, timeout=120)
+                if resp.status_code == 200 and not _looks_blocked(resp.text):
+                    self.last_archived_at = ts
+                    return resp.text
+                last_err = ("archived copy is itself a block page" if resp.status_code == 200
+                            else "HTTP %d reading snapshot %s" % (resp.status_code, ts))
+            except requests.RequestException as e:
+                last_err = str(e)
+            time.sleep(3 * (attempt + 1))
+        raise RuntimeError("Failed to fetch %s via the Internet Archive: %s" % (url, last_err))
+
+    def close(self):
+        self.session.close()
+
+
 def make_fetcher(engine):
     if engine == "requests":
         return RequestsFetcher()
     if engine == "playwright":
         return PlaywrightFetcher()
+    if engine == "wayback":
+        return WaybackFetcher()
     raise ValueError("unknown engine: %s" % engine)
 
 
@@ -302,10 +424,13 @@ def parse_member_page(html):
     return {"district": district, "chair": chair, "email": email, "phone": phone, "term": term}
 
 
-def scrape_all(fetcher, delay=0.75, verbose=True):
-    listing = parse_listing(fetcher.fetch(BASE + LISTING_PATH))
+def scrape_all(fetcher, delay=0.75, verbose=True, listing_html=None):
+    if listing_html is None:
+        listing_html = fetcher.fetch(BASE + LISTING_PATH)
+    listing = parse_listing(listing_html)
     if verbose:
-        print("listing yielded %d member link(s)" % len(listing), file=sys.stderr)
+        print("listing yielded %d member link(s) [engine=%s]" % (len(listing), fetcher.engine),
+              file=sys.stderr)
     records = []
     for i, m in enumerate(listing, 1):
         if verbose:
@@ -327,6 +452,9 @@ def scrape_all(fetcher, delay=0.75, verbose=True):
             rec["email"] = detail["email"]
             rec["phone"] = detail["phone"]
             rec["term_expiration"] = detail["term"]
+            archived = getattr(fetcher, "last_archived_at", None)
+            if archived:
+                rec["archived_at"] = archived  # provenance: the archive copy used
         except Exception as e:
             rec["error"] = str(e)
         records.append(rec)
@@ -335,31 +463,37 @@ def scrape_all(fetcher, delay=0.75, verbose=True):
 
 
 def scrape(engine, delay=0.75):
-    """auto: one decisive probe — if plain requests can't fetch the listing,
-    every page is blocked the same way, so switch to the browser engine."""
-    if engine in ("requests", "playwright"):
+    """auto: walk the engine ladder (requests -> playwright -> wayback),
+    probing each on the listing page; the first engine that can fetch it runs
+    the whole scrape. The probe result is reused so the winning engine never
+    refetches the listing (a Save Page Now capture is not free)."""
+    if engine in ("requests", "playwright", "wayback"):
         fetcher = make_fetcher(engine)
         try:
             return scrape_all(fetcher, delay=delay)
         finally:
             fetcher.close()
 
-    req = RequestsFetcher()
-    try:
-        req.fetch(BASE + LISTING_PATH)
-    except Exception as e:
-        req.close()
-        print("requests engine blocked (%s); falling back to Playwright" % e, file=sys.stderr)
-        pw = make_fetcher("playwright")
+    last_err = None
+    for name in ("requests", "playwright", "wayback"):
         try:
-            return scrape_all(pw, delay=delay)
-        finally:
-            pw.close()
-    else:
+            fetcher = make_fetcher(name)
+        except Exception as e:  # e.g. playwright/Chromium not installed
+            print("%s engine unavailable (%s); trying next" % (name, e), file=sys.stderr)
+            last_err = e
+            continue
         try:
-            return scrape_all(req, delay=delay)
+            listing_html = fetcher.fetch(BASE + LISTING_PATH)
+        except Exception as e:
+            print("%s engine blocked (%s); trying next" % (name, e), file=sys.stderr)
+            last_err = e
+            fetcher.close()
+            continue
+        try:
+            return scrape_all(fetcher, delay=delay, listing_html=listing_html)
         finally:
-            req.close()
+            fetcher.close()
+    raise RuntimeError("all fetch engines failed; last error: %s" % last_err)
 
 
 def main():
@@ -367,10 +501,11 @@ def main():
     ap.add_argument("out", nargs="?", default=None, help="output JSON path (default: stdout)")
     ap.add_argument(
         "--engine",
-        choices=["auto", "requests", "playwright"],
+        choices=["auto", "requests", "playwright", "wayback"],
         default="auto",
-        help="Fetch engine: auto (requests, fall back to playwright on a bot-management "
-        "block), requests (browserless), or playwright (real Chromium).",
+        help="Fetch engine: auto (the requests -> playwright -> wayback ladder), "
+        "requests (browserless), playwright (real Chromium), or wayback "
+        "(Internet Archive Save Page Now + snapshot read).",
     )
     ap.add_argument("--delay", type=float, default=0.75, help="Delay between requests (seconds)")
     args = ap.parse_args()

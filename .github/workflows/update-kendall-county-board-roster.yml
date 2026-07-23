@@ -29,15 +29,24 @@ jobs:
       - name: Install scraper dependencies
         run: pip install -r scripts/requirements.txt
 
-      # kendallcountyil.gov sits behind Akamai bot management, which answers
-      # plain HTTP clients from datacenter egress with an "Access Denied"
-      # page or a TCP reset. The scraper's default --engine auto falls back
-      # to a real headless Chromium when that happens, so Chromium must be
-      # present (same pattern as update-cpd-roster.yml).
+      # kendallcountyil.gov's Akamai front denies datacenter clients — the
+      # sibling McHenry run proved even a genuine headless Chromium never
+      # clears this block class. The scraper's --engine auto ladder is
+      # requests -> playwright -> wayback (Internet Archive Save Page Now);
+      # Chromium stays installed for the middle rung in case the edge policy
+      # ever relaxes.
       - name: Install Chromium for Playwright
         run: python3 -m playwright install --with-deps chromium
 
       - name: Scrape Kendall County Board member roster
+        env:
+          # Optional archive.org API keys (repo secrets): the wayback rung
+          # uses authenticated Save Page Now when present — the reliable path
+          # when anonymous SPN is quota-limited on shared runner IPs. Absent,
+          # the rung still tries anonymous SPN + the newest fresh-enough
+          # snapshot (age-guarded; stale data is refused loudly).
+          ARCHIVE_SPN_ACCESS_KEY: ${{ secrets.ARCHIVE_SPN_ACCESS_KEY }}
+          ARCHIVE_SPN_SECRET_KEY: ${{ secrets.ARCHIVE_SPN_SECRET_KEY }}
         run: python3 scripts/kendall_county_board_scraper.py /tmp/kendall_county_board_raw.json
 
       - name: Rebuild roster data file

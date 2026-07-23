@@ -139,9 +139,10 @@ The five rules every module must honor are unchanged and non-negotiable: seq-tag
    with an elected body, the SAME change that ships the boundary determines the
    officeholder story and ships its pipeline: boundary-GIS attrs verified against the
    published directory where they exist; else a scraper + builder + weekly PR-opening
-   workflow (bot-managed sites are handled, not skipped — the dual-engine
-   requests→Playwright pattern in `cpd_district_scraper.py` /
-   `kendall_county_board_scraper.py` clears Cloudflare and Akamai fronts alike); only
+   workflow (bot-managed sites are handled, not skipped — the
+   requests→Playwright→Internet-Archive engine ladder in
+   `kendall_county_board_scraper.py` / `mchenry_county_board_scraper.py`
+   covers JS challenges and IP-reputation blocks alike); only
    when no verifiable source exists does the card link the official body, with the gap
    recorded in the guidebook.
 8. **Re-derive every gate constant** (§9) and the `sw.js` lists (all three — §1).

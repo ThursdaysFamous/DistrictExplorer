@@ -187,10 +187,12 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    - **Official directory, no GIS fields**: the county publishes a member
      directory (Will, DuPage, Kendall) → the scraper + builder + weekly
      PR-opening workflow ships IN THE SAME EXPANSION CHANGE, not as a
-     follow-up. Bot-managed sites are not an excuse: the dual-engine
-     pattern (requests → Playwright fallback, cpd_district_scraper.py /
-     kendall_county_board_scraper.py) handles Cloudflare- and
-     Akamai-fronted sites alike.
+     follow-up. Bot-managed sites are not an excuse: the engine ladder
+     (requests → Playwright → Internet Archive Save Page Now,
+     kendall_county_board_scraper.py / mchenry_county_board_scraper.py)
+     handles Cloudflare- and Akamai-fronted sites alike — IP-reputation
+     blocks that stop even a genuine browser fall through to the Archive's
+     crawler, with authenticated SPN via optional ARCHIVE_SPN_* secrets.
    - **No verifiable source**: the card links the official body and the
      guidebook records the gap — the honesty floor, never the default.
    McHenry predated this rule as the recorded retro-debt and was resolved
