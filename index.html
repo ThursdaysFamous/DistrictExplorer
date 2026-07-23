@@ -3682,7 +3682,7 @@ function initChiExplorer() {
     "school-district-elementary", // IL elementary school district (371 statewide)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
-    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) subcircuits, all PA 102-0693, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
+    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4, pre-built from the enacted PA 102-0693 shapefile) subcircuits, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
     "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs), county-dispatched; partial coverage inside each county
@@ -5842,6 +5842,14 @@ function initChiExplorer() {
   var loadKaneLibraries = makeCached(function () {
     return loadKaneFeatureServer("KaneCo_IL_Districts_Library", "DistrictName IS NOT NULL",
       "DistrictName,Rep_Name,Rep_Title,Rep_Phone,Rep_Email,WebSite,Addr1,Addr1_City,Addr1_ST,Addr1_Zip", "library districts");
+  });
+  // 16th-Circuit judicial subcircuits — the one Kane boundary served
+  // same-origin instead of from the county org: Kane's own subcircuit services
+  // are permission-locked, so this ships PRE-BUILT from the enacted
+  // PA 102-0693 shapefile via build_embedded_boundaries.py (cache-first, like
+  // the other data/app geometry).
+  var loadKaneJudicial = makeCached(function () {
+    return fetchJSONWithRetry("data/app/kane-judicial-subcircuits.json", {}, 2);
   });
 
   // Shared card rows for Kane's tax-district entries (fire/park/library): the
@@ -8357,9 +8365,12 @@ function initChiExplorer() {
    * judge-to-subcircuit roster exists — so each card links its circuit's
    * official court, and the Court row names the circuit AND county so the
    * generic toggle label never obscures which court a subcircuit belongs to.
-   * (Kane's 16th-Circuit entry waits on a public source — its county
-   * services are permission-locked; the enacted-shapefile route is recorded
-   * in the guidebook backlog.) ---------- */
+   * Kane's 16th-Circuit subcircuits (4) ship PRE-BUILT: the county's own
+   * services are permission-locked, so the boundary comes from the enacted
+   * PA 102-0693 shapefile (ilsenateredistricting.com, archived in
+   * data/source/raw/) through the build_embedded_boundaries.py protocol —
+   * same source family and pipeline as il-supreme-court, served same-origin
+   * and cache-first. ---------- */
   var loadCookJudicialSubcircuits = makeCached(function () { return loadCookCountyLayerGeoJSON(5); });
   var loadCookMunicipalDistricts = makeCached(function () { return loadCookCountyLayerGeoJSON(27); });
   registerCountyLayer({
@@ -8448,6 +8459,17 @@ function initChiExplorer() {
           { label: "Court", value: "19th Judicial Circuit (Lake County)" },
           { label: "Judges",
             html: '<a href="https://www.19thcircuitcourt.state.il.us/" target="_blank" rel="noopener">19th Judicial Circuit Court (official)</a>' }
+        ]
+      }),
+      polygonCountyEntry({
+        key: "kane",
+        coverage: kaneCountyCoverage,
+        loader: loadKaneJudicial,
+        fields: [
+          { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
+          { label: "Court", value: "16th Judicial Circuit (Kane County)" },
+          { label: "Judges",
+            html: '<a href="https://www.illinois16thjudicialcircuit.org/" target="_blank" rel="noopener">16th Judicial Circuit Court (official)</a>' }
         ]
       })
     ]

@@ -130,8 +130,9 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    district's office contact, so the honesty rules are satisfied by the county's
    own data with no roster pipeline at all. Kane followed in the same change-shape (2026-07): five entries from the county's
    public `KaneCo_IL_*` hosted family — board members and even each precinct's
-   board district ride the features; its 16th-Circuit judicial entry honestly
-   waits on a public source (only permission-locked proxies exist). McHenry and
+   board district ride the features; its 16th-Circuit judicial entry followed
+   via the pre-built route (the enacted PA 102-0693 shapefile through
+   build_embedded_boundaries.py) since only permission-locked proxies exist. McHenry and
    Kendall follow the same recipe; a county-specific layer is only ever created for a concept no
    consolidated layer covers yet (as `dupage-county-special-police` remains
    today).

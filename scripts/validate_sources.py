@@ -125,6 +125,12 @@ PROVENANCE = [
      "app_file": "ccbr-districts.json",
      "source_url": "https://www.cookcountyboardofreview.com/",
      "note": "PA 102-0012 shapefile. Redrawn ~once a decade."},
+    {"layer": "Kane 16th-Circuit judicial subcircuits",
+     "app_file": "kane-judicial-subcircuits.json",
+     "source_url": "https://www.ilsenateredistricting.com/",
+     "note": "PA 102-0693 enacted-subcircuits shapefile ZIP (archived in "
+             "data/source/raw/). Redrawn ~once a decade; the county's own "
+             "services are permission-locked, hence the shapefile route."},
     {"layer": "Illinois county clerks (roster)",
      "app_file": "il-county-clerks.json",
      "source_url": "https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx",
