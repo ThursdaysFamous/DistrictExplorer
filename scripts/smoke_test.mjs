@@ -77,13 +77,19 @@ async function booted(context, url, routeFn) {
 }
 
 // Wait for a layer card to finish loading, then return its normalized text.
+// Redesigned cards (docs/CARD_RENDER_API.md) render a .card-flush body and
+// move the district identifier into the header pill (.card-id-pill), so
+// completion accepts either card generation and the returned text prepends
+// the pill — the "District N" assertions read the whole card, not just the
+// body, exactly as a user does.
 async function cardText(page, id) {
   await page
     .waitForFunction(
       (cid) => {
         const el = document.getElementById("card-" + cid);
         return el && !el.querySelector(".loading-row") &&
-          (el.querySelector(".result-fields") || el.querySelector(".state-empty") ||
+          (el.querySelector(".result-fields") || el.querySelector(".card-flush") ||
+           el.querySelector(".state-empty") ||
            el.classList.contains("state-empty") || el.classList.contains("state-error") || el.querySelector(".state-error"));
       },
       id,
@@ -93,8 +99,11 @@ async function cardText(page, id) {
   return page.evaluate((cid) => {
     const el = document.getElementById("card-" + cid);
     if (!el) return { text: "(no card)", error: true, empty: false };
+    const block = el.closest(".layer-block");
+    const pill = block && block.querySelector(".card-id-pill:not([hidden])");
+    const text = (pill ? pill.textContent + " " : "") + el.innerText;
     return {
-      text: el.innerText.replace(/\s+/g, " ").trim(),
+      text: text.replace(/\s+/g, " ").trim(),
       error: el.classList.contains("state-error") || !!el.querySelector(".state-error"),
       empty: el.classList.contains("state-empty") || !!el.querySelector(".state-empty"),
     };
@@ -167,12 +176,18 @@ try {
     const moved = await page.evaluate(async () => {
       window.ChiExplorer.setSelectedPoint(41.99, -87.66);
       const el = document.getElementById("card-school-board");
+      // the district identifier lives in the header pill on redesigned cards
+      const cardTextNow = () => {
+        const block = el && el.closest(".layer-block");
+        const pill = block && block.querySelector(".card-id-pill:not([hidden])");
+        return ((pill ? pill.textContent + " " : "") + (el ? el.innerText : "")).replace(/\s+/g, " ").trim();
+      };
       for (let i = 0; i < 100; i++) {
-        if (el && !el.querySelector(".loading-row") && /District\s+4\b/i.test(el.innerText)) break;
+        if (el && !el.querySelector(".loading-row") && /District\s+4\b/i.test(cardTextNow())) break;
         await new Promise((r) => setTimeout(r, 100));
       }
       const highlights = document.querySelectorAll("#map .region-highlight").length;
-      return { text: el ? el.innerText.replace(/\s+/g, " ").trim() : "(no card)", highlights };
+      return { text: el ? cardTextNow() : "(no card)", highlights };
     });
     check(
       "point move re-classifies (District 12 -> 4) and re-highlights",
@@ -314,10 +329,14 @@ try {
     const res = await page.evaluate(() => {
       const sb = document.getElementById("card-school-board");
       const other = document.getElementById("card-ccbr");
+      // the surviving layer's district identifier lives in its header pill
+      const otherBlock = other && other.closest(".layer-block");
+      const otherPill = otherBlock && otherBlock.querySelector(".card-id-pill:not([hidden])");
+      const otherText = (otherPill ? otherPill.textContent + " " : "") + (other ? other.innerText : "");
       return {
         errored: !!sb && sb.classList.contains("state-error"),
         hasRetry: !!sb && !!sb.querySelector(".retry-btn"),
-        otherOk: !!other && !other.classList.contains("state-error") && /District/i.test(other.innerText),
+        otherOk: !!other && !other.classList.contains("state-error") && /District/i.test(otherText),
       };
     });
     check("failed layer shows error card + Retry", res.errored && res.hasRetry);
