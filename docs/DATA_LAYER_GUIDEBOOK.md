@@ -174,6 +174,24 @@ compat legacy branches, now dead code. The retirement engine release (delete
 `docs/CARD_RENDER_API.md`) is unblocked and awaits an operator's release cut. New
 cards follow procedure 2b.
 
+**Design-review polish + Handoff 3 (July 2026):** a design review of the first
+redesign pass produced two engine releases and a fork pass in each metro.
+`engine-v1.0.11` restored the layer-colored card accent/shadow tie, made the
+`<details>` expanders default closed fleet-wide, and added the `pill`/`dotColor`
+opts (CHI #181). `engine-v1.0.12` shipped Handoff 3's engine surface
+(`docs/design_handoff_fixes_and_schools/`, ids 5a/6a/8a): the card shadow +
+id pill tinted with the layer color (§5a), `cardTitleCase`/`cardGradeRange`
+and `renderNearestRows` `tag`/`accentColor` (§6a/§8a), and the
+`school-zone-factory` `titleCaseData` opt + grade-range identifier pill (§6a).
+CHI shipped the engine surface plus its `school-site` chips rebuild in #183;
+NYC (#71) and SF (#37) took their fork passes on the `v1.0.12` bump —
+universal id pills on their court/ZIP/school-district layers, a compact
+neighborhood card, and the §8a/§8b **School Location** chips rebuild (type
+filter chips + typed rows + per-session persistence) mirroring Chicago's
+reference. The three `school-site` cards now share one interaction model,
+differing only in each metro's type taxonomy (CHI grade-band, NYC/SF
+public/charter/private) and whether the feed carries a grade range.
+
 ## Backlog — researched candidates, deliberately not (yet) built
 
 Every entry cites where it's recorded and the blocker. When one ships, move it into the

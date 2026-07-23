@@ -342,3 +342,25 @@ directions, so reconciling means merging features, not overwriting:
    `.result-row` CSS, and the factories' legacy caller-HTML branches — is
    now unblocked; it ships as a normal `engine-v*` cut when an operator
    chooses (no urgency: the legacy branches are dead code, not drift).
+12. **Design-review polish + Handoff 3 (engine-v1.0.11 + v1.0.12, July
+   2026)** — two follow-on releases from a design review of the redesign's
+   first pass, both **changed-blocks-only** (no new fences, so no sibling
+   seeding). `v1.0.11` (changed `styles-card-v2`, `card-helpers`,
+   `polygon-factory`): restored the layer-colored card accent/shadow tie,
+   made `<details>` expanders default closed fleet-wide (the desktop-width
+   auto-open + its `cardDesktopWidth` helper removed), and added the
+   `pill`/`dotColor` opts. `v1.0.12` (changed `styles-card-v2`,
+   `card-helpers`, `school-zone-factory`): Handoff 3's engine surface —
+   card shadow + id pill tinted with the layer color (5a),
+   `cardTitleCase`/`cardGradeRange` + `renderNearestRows` `tag`/`accentColor`
+   (6a/8a), and the `school-zone-factory` `titleCaseData` opt + grade-range
+   identifier pill (6a). Both fanned out and merged clean (NYC #69/#70, SF
+   #35/#36); the engine block count is unchanged at **50/50 byte-identical**.
+   Fork adoption this round was **card-side, not seeding**: each sibling took
+   a fork pass on the `v1.0.12` bump (NYC #71, SF #37) adding universal id
+   pills, a compact neighborhood card, and the 8a/8b School Location chips
+   rebuild — plus the now-standard pill-aware/compact-aware smoke reader
+   adjustments where those cards are asserted (NYC judicial-district; SF
+   `cardText` gained compact value/meta reading for the now-compact
+   neighborhood). Recorded in `docs/engine-changelog/v1.0.11.md` and
+   `v1.0.12.md`.
