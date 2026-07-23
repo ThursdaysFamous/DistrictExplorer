@@ -1662,7 +1662,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     --card-btn-border: #c7d7f2;
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.08);
-    border-left: 3px solid var(--card-accent);
+    /* the left accent keeps each layer's own map color (the card-to-overlay
+       tie predating the redesign); the redesign blue is only the fallback */
+    border-left: 3px solid var(--layer-accent, var(--card-accent));
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
@@ -1700,7 +1702,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
      (GEOID) right-aligned. The label element moves inside the stack, so the
      16px header rule above is re-scoped back down here. */
   .card-compact-stack { flex: 1; min-width: 0; }
-  .card-compact-stack label { display: block; font-size: 13px; font-weight: 600; color: var(--card-muted); }
+  .card-compact-stack label { display: block; font-size: 16px; font-weight: 700; color: var(--card-ink); }
+  /* with a value showing, the layer name shrinks to the 4b kicker; an idle
+     (off/empty) compact card keeps the full-size title like every other card */
+  .card-compact-stack:has(.card-compact-value:not([hidden])) label { font-size: 13px; font-weight: 600; color: var(--card-muted); }
   .card-compact-value { font-size: 15px; font-weight: 700; color: var(--card-ink); }
   .card-compact-meta { flex: none; margin-left: auto; font-size: 11.5px; color: var(--card-hint); font-variant-numeric: tabular-nums; }
   .card-id-pill[hidden], .card-compact-value[hidden], .card-compact-meta[hidden] { display: none; }
@@ -1794,6 +1799,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .card-nearest { display: flex; align-items: baseline; gap: 10px; padding: 10px 18px; }
   .card-nearest-main { min-width: 0; flex: 1; }
   .card-nearest-name { font-size: 14px; font-weight: 700; color: var(--card-ink); }
+  .card-nearest-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
   .card-nearest-note { font-size: 12.5px; color: var(--card-body-ink); }
   .card-distance {
     flex: none;
@@ -1855,7 +1861,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .school-filter-item input { margin: 0; cursor: pointer; }
   .school-filter-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; flex: none; }
   .school-filter-note { margin: 8px 0 0; font-size: 11px; color: var(--slate-soft); line-height: 1.4; }
-  .school-list-intro { margin: 0 0 8px; }
+  .school-list-intro { margin: 0 0 4px; }
+  /* 4d rows inside the (padded) school card body — drop their own gutter */
+  .school-nearest .card-nearest { padding-left: 0; padding-right: 0; }
   .school-list { margin: 0; padding-left: 20px; }
   .school-list li { margin: 2px 0; }
   .school-list-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
@@ -5151,13 +5159,6 @@ function initChiExplorer() {
     });
     return line;
   }
-  function cardDesktopWidth() {
-    // details-open defaults are desktop-only. Measured at render time — cards
-    // re-render on every selection, so a resize between selections is
-    // accepted as stale until the next render (docs/CARD_RENDER_API.md).
-    var wrap = document.querySelector(".group-cards");
-    return !wrap || wrap.clientWidth >= 420;
-  }
   function cardDetailsHint() {
     var hint = cardEl("span", "card-details-hint");
     hint.appendChild(cardEl("span", "card-details-hint-word", "details"));
@@ -5194,7 +5195,7 @@ function initChiExplorer() {
         return;
       }
       var det = cardEl("details", "card-row-b" + (tinted ? " card-tinted" : ""));
-      if (person.detailsOpen && cardDesktopWidth()) det.open = true;
+      if (person.detailsOpen === true) det.open = true; // expanders default closed unless a caller insists
       det.appendChild(row);
       var body = cardEl("div", "card-person-details");
       body.appendChild(cardEl("span", "card-detail-label",
@@ -5213,7 +5214,7 @@ function initChiExplorer() {
     // { label?, open?, offices: [{label, lines, phone?}] } — the kicker-
     // labelled office blocks behind one <details> group (Handoff 2 §4a).
     var det = cardEl("details", "card-office-group card-row-b");
-    if (spec.open !== false && cardDesktopWidth()) det.open = true;
+    if (spec.open === true) det.open = true; // expanders default closed
     var summary = document.createElement("summary");
     summary.appendChild(cardEl("span", null, spec.label || "Offices"));
     summary.appendChild(cardDetailsHint());
@@ -5245,7 +5246,15 @@ function initChiExplorer() {
     items.forEach(function (item) {
       var row = cardEl("div", "card-nearest card-row-b");
       var main = cardEl("div", "card-nearest-main");
-      main.appendChild(cardEl("div", "card-nearest-name", item.name));
+      var nameEl = cardEl("div", "card-nearest-name", item.name);
+      if (item.dotColor) {
+        // optional identity dot (e.g. school-type color) ahead of the name
+        var dot = cardEl("span", "card-nearest-dot");
+        dot.setAttribute("aria-hidden", "true");
+        dot.style.background = String(item.dotColor);
+        nameEl.insertBefore(dot, nameEl.firstChild);
+      }
+      main.appendChild(nameEl);
       if (item.note) main.appendChild(cardEl("div", "card-nearest-note", item.note));
       row.appendChild(main);
       if (item.distanceLabel) row.appendChild(cardEl("span", "card-distance", item.distanceLabel));
@@ -5548,7 +5557,9 @@ function initChiExplorer() {
           if (f.when && !f.when(result)) return;
           if (f.keys) {
             var val = result[f.name];
-            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true });
+            // with opts.pill the primary field renders as the header pill
+            // (cardIdentifier below), not as a body row
+            if (f.primary) { if (opts.pill !== true) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true }); }
             else if (val) rows.push({ label: f.label, value: String(val) });
           } else if (f.html !== undefined) {
             rows.push({ label: f.label, html: f.html });
@@ -5576,7 +5587,12 @@ function initChiExplorer() {
       cardIdentifier: (opts.compact === true && primaryField) ? function (result) {
         var v = result[primaryField.name];
         return v ? String(v) : "Unknown";
-      } : undefined,
+      } : ((opts.pill === true && primaryField) ? function (result) {
+        // opts.pill: the primary field's label + value as the header pill
+        // ("District 1", "Subcircuit 5") — same value hoverName shows
+        var v = result[primaryField.name];
+        return (primaryField.label ? primaryField.label + " " : "") + (v ? String(v) : "Unknown");
+      } : undefined),
       cardMeta: (opts.compact === true && opts.compactMetaField) ? function (result) {
         var v = result[opts.compactMetaField];
         if (v === null || v === undefined || v === "") return null;
@@ -7965,9 +7981,9 @@ function initChiExplorer() {
       intro.textContent = "Nearest schools, straight-line distance:";
       wrap.appendChild(intro);
 
-      var ol = document.createElement("ol");
-      ol.className = "school-list";
-      wrap.appendChild(ol);
+      var rowsWrap = document.createElement("div");
+      rowsWrap.className = "school-nearest card-flush";
+      wrap.appendChild(rowsWrap);
 
       var note = document.createElement("p");
       note.className = "school-filter-note";
@@ -7975,38 +7991,30 @@ function initChiExplorer() {
       wrap.appendChild(note);
 
       function renderList() {
-        ol.innerHTML = "";
+        // 4d nearest rows (card-helpers vocabulary) with the school-type
+        // color dot carried onto each row; the filter checkboxes above
+        // re-render this list live, exactly as before.
+        rowsWrap.innerHTML = "";
         var shown = result.schools.filter(function (s) { return schoolTypeFilter[s.category]; }).slice(0, SCHOOL_SITE_COUNT);
         if (!shown.length) {
-          var empty = document.createElement("li");
+          var empty = document.createElement("p");
           empty.className = "school-list-empty";
           empty.textContent = "No schools of the selected type(s) nearby.";
-          ol.appendChild(empty);
+          rowsWrap.appendChild(empty);
           return;
         }
-        shown.forEach(function (s) {
-          var li = document.createElement("li");
-          var dot = document.createElement("span");
-          dot.className = "school-list-dot";
-          dot.style.background = SCHOOL_CAT_META[s.category].color;
-          li.appendChild(dot);
-          var name = s.name ? String(s.name) : "School";
-          var typePart = " — " + SCHOOL_CAT_META[s.category].full;
-          var gradesPart = s.grades ? " (" + String(s.grades) + ")" : "";
-          var addressPart = s.address ? " — " + String(s.address) : "";
-          li.appendChild(document.createTextNode(name + typePart + gradesPart + addressPart + " — " + s.distanceMi.toFixed(2) + " mi"));
-          var website = safeHttpUrl(s.website); // empty in current data; scheme-checked if ever populated
-          if (website) {
-            li.appendChild(document.createTextNode(" — "));
-            var a = document.createElement("a");
-            a.href = website;
-            a.target = "_blank";
-            a.rel = "noopener";
-            a.textContent = "website";
-            li.appendChild(a);
-          }
-          ol.appendChild(li);
-        });
+        // s.website is empty in the current dataset; if it ever populates,
+        // surface it here via a links slot on the row vocabulary first.
+        rowsWrap.appendChild(renderNearestRows(shown.map(function (s) {
+          var noteBits = [SCHOOL_CAT_META[s.category].full + (s.grades ? " (" + String(s.grades) + ")" : "")];
+          if (s.address) noteBits.push(String(s.address));
+          return {
+            name: s.name ? String(s.name) : "School",
+            note: noteBits.join(" · "),
+            distanceLabel: s.distanceMi.toFixed(1) + " mi",
+            dotColor: SCHOOL_CAT_META[s.category].color
+          };
+        })));
       }
       renderList();
       return wrap;
@@ -8676,6 +8684,7 @@ function initChiExplorer() {
     label: "IL Supreme Court District",
     loader: loadSupremeCourtDistricts,
     style: { color: "#8C6A2E", weight: 2, fillColor: "#8C6A2E", fillOpacity: 0.05, dashArray: "7 3" },
+    pill: true, // district identifier in the header pill
     fields: [
       { name: "district", label: "District", keys: ["districtn", "district"], primary: true },
       // structural fact from the Illinois Constitution (art. VI), not
@@ -9169,7 +9178,9 @@ function initChiExplorer() {
           if (f.when && !f.when(result)) return;
           if (f.keys) {
             var val = result[f.name];
-            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true });
+            // with opts.pill the primary field renders as the header pill
+            // (cardIdentifier below), not as a body row
+            if (f.primary) { if (opts.pill !== true) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true }); }
             else if (val) rows.push({ label: f.label, value: String(val) });
           } else if (f.html !== undefined) {
             rows.push({ label: f.label, html: f.html });
@@ -9183,6 +9194,10 @@ function initChiExplorer() {
         var hasHtml = rows.some(function (r) { return r.html !== undefined; });
         return hasHtml ? renderFieldList(rows) : renderFieldStack(rows);
       },
+      cardIdentifier: (opts.pill === true && primaryField) ? function (result) {
+        var v = result[primaryField.name];
+        return (primaryField.label ? primaryField.label + " " : "") + (v ? String(v) : "Unknown");
+      } : undefined,
       primaryLink: opts.primaryLink
     };
   }
@@ -9330,9 +9345,6 @@ function initChiExplorer() {
           var people;
           if (members && members.length) {
             people = members.map(function (m) { return boardMemberPerson(m); });
-            // Handoff 1: the first member's committees may default open on
-            // desktop; the rest start collapsed
-            if (people[0].details) people[0].detailsOpen = true;
           } else {
             // roster unavailable: the member names still ride the county's
             // own boundary GIS — name-only rows, never blank
@@ -9776,7 +9788,6 @@ function initChiExplorer() {
         },
         render: function (result) {
           var fields = [
-            { label: "Subcircuit", value: result.subcircuit != null && result.subcircuit !== "" ? String(result.subcircuit) : "Unknown", primary: true },
             { label: "Court", value: "Circuit Court of Cook County" }
           ];
           if (result.municipalDistrict != null && result.municipalDistrict !== "") {
@@ -9788,6 +9799,9 @@ function initChiExplorer() {
           }
           return renderFieldStack(fields);
         },
+        cardIdentifier: function (result) {
+          return result.subcircuit != null && result.subcircuit !== "" ? "Subcircuit " + String(result.subcircuit) : "Unknown";
+        },
         primaryLink: function () {
           // judges are elected FROM a subcircuit but sit circuit-wide — the
           // court's own site is the honest link, not a per-subcircuit roster
@@ -9798,6 +9812,7 @@ function initChiExplorer() {
         key: "will",
         coverage: willCountyCoverage,
         loader: loadWillJudicial,
+        pill: true, // subcircuit identifier in the header pill
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["subdistrict"], primary: true },
           { label: "Court", value: "12th Judicial Circuit (Will County)" }
@@ -9810,6 +9825,7 @@ function initChiExplorer() {
         key: "dupage",
         coverage: dupageCountyCoverage,
         loader: loadDupageJudicial,
+        pill: true, // subcircuit identifier in the header pill
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
           { label: "Court", value: "18th Judicial Circuit (DuPage County)" }
@@ -9822,6 +9838,7 @@ function initChiExplorer() {
         key: "lake",
         coverage: lakeCountyCoverage,
         loader: loadLakeJudicial,
+        pill: true, // subcircuit identifier in the header pill
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["judicial_sub"], primary: true },
           { label: "Court", value: "19th Judicial Circuit (Lake County)" }
@@ -9834,6 +9851,7 @@ function initChiExplorer() {
         key: "kane",
         coverage: kaneCountyCoverage,
         loader: loadKaneJudicial,
+        pill: true, // subcircuit identifier in the header pill
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
           { label: "Court", value: "16th Judicial Circuit (Kane County)" }
@@ -9846,6 +9864,7 @@ function initChiExplorer() {
         key: "mchenry",
         coverage: mchenryCountyCoverage,
         loader: loadMchenryJudicial,
+        pill: true, // subcircuit identifier in the header pill
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
           { label: "Court", value: "22nd Judicial Circuit (McHenry County)" }
@@ -10324,7 +10343,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             // Cook's county legislature calls its seats Commissioner
@@ -10332,6 +10351,9 @@ function initChiExplorer() {
             fields.push({ label: "Commissioner District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10369,12 +10391,15 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10412,12 +10437,15 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10455,12 +10483,15 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10494,11 +10525,14 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10535,12 +10569,15 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
@@ -10609,7 +10646,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
+          var fields = [];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict) {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
@@ -10619,6 +10656,9 @@ function initChiExplorer() {
               (result.pollingAddress ? " — " + String(result.pollingAddress) : "") });
           }
           return renderFieldStack(fields);
+        },
+        cardIdentifier: function (result) {
+          return result.name ? "Precinct " + String(result.name) : "Unknown";
         },
         primaryLink: function () {
           // registration & polling place lookup
