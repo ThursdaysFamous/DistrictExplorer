@@ -69,14 +69,14 @@ against the architecture: permalinks are lat/lng-based, so no permalink migratio
 | IL Supreme Court districts | Almost-never | IL General Assembly | geometry (see note) |
 | Cook County Board of Review | Almost-never | statute | geometry |
 | Wards (50) | Decennial-municipal | Chicago City Council | geometry, roster join, anchor if used |
-| County board districts (consolidated: Cook 17 / Will 11 / DuPage 6 / Lake 19 / Kane 24 / McHenry 9) | Decennial-municipal | each county's board | per-county geometry + roster joins inside the one `county-board` layer (Lake's and Kane's rosters ride on their boundary GIS; McHenry's GIS is district-geometry-only — its card links the member directory) |
+| County board districts (consolidated: Cook 17 / Will 11 / DuPage 6 / Lake 19 / Kane 24 / McHenry 9 / Kendall 2) | Decennial-municipal | each county's board | per-county geometry + roster joins inside the one `county-board` layer (Lake's and Kane's rosters ride on their boundary GIS; McHenry's and Kendall's GIS are district-geometry-only — their cards link the member directories; Kendall's post-2020 reapportionment kept the line, so its County_Board_2010 service is the current map — re-verify at the next reapportionment) |
 | ERSB school-board districts | New + volatile | IL statute (SB15) | geometry, numbering, roster join |
 | Chicago police districts (22) | Administrative-rare | CPD | geometry, anchor, roster join |
 | Community areas (77) | Never (frozen) | geography | none expected |
 | CPS attendance boundaries | Annual | CPS | dataset id every year |
 | ZIP codes | USPS-driven, not census | USPS | occasional |
 | Cook / Will / DuPage / Lake / Kane / McHenry judicial subcircuits (Cook 20 + 12th / 18th / 19th / 16th / 22nd Cir.) | Statutory, rare | IL General Assembly | geometry (Kane and McHenry are pre-built — rebuild via build_embedded_boundaries.py on redraw) |
-| Will / DuPage / Lake / Kane / McHenry fire / library / precinct + Will / DuPage / Lake / Kane park (+ DuPage special-police; + Cook fire/park/library tilings) | Administrative / per-election | districts + county clerks | geometry (precincts redraw with county maps; DuPage's current map is the 2024 consolidation) |
+| Will / DuPage / Lake / Kane / McHenry / Kendall fire / library / precinct + Will / DuPage / Lake / Kane / Kendall park (+ DuPage special-police; + Cook fire/park/library tilings) | Administrative / per-election | districts + county clerks | geometry (precincts redraw with county maps; DuPage's current map is the 2024 consolidation; Kendall's precinct layer is vintage-filtered `status='A'` — a new county map lands as new rows, re-check the filter) |
 | County / township / municipality (statewide) | Annexation-driven, rolling | local referenda; TIGERweb vintages | TIGERweb vintage rolls |
 | Statewide school districts (3 TIGERweb layers) | Consolidation-driven | ISBE / referenda | TIGERweb vintage rolls |
 

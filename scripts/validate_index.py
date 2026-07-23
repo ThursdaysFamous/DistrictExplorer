@@ -110,6 +110,7 @@ GEOMETRY_FILES = {
     "lake-county-outline.json": (1, 1),
     "kane-county-outline.json": (1, 1),
     "mchenry-county-outline.json": (1, 1),
+    "kendall-county-outline.json": (1, 1),
     "kane-judicial-subcircuits.json": (4, 4),  # 16th-Circuit subcircuits, pre-built from the PA 102-0693 enacted shapefile
     "mchenry-judicial-subcircuits.json": (4, 4),  # 22nd-Circuit subcircuits, pre-built from the PA 102-0693 enacted shapefile
 }

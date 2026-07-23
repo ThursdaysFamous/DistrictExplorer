@@ -207,6 +207,8 @@ ENDPOINTS = [
      "url": "https://services1.arcgis.com/oRKmdBXD6EbdmVgJ/arcgis/rest/services/KaneCo_IL_County_Board/FeatureServer/1?f=json"},
     {"layer": "McHenry County Board districts (9, district-number-only on the county GIS)",
      "url": "https://services1.arcgis.com/6iYC5AXXYapRVNzl/arcgis/rest/services/McHenry_County_Board_Districts/FeatureServer/0?f=json"},
+    {"layer": "Kendall County Board districts (2, the current line — the county's ArcGIS Enterprise)",
+     "url": "https://maps.co.kendall.il.us/server/rest/services/Hosted/County_Board_2010/FeatureServer/0?f=json"},
 ]
 
 FAIL, WARN, OK = "FAIL", "WARN", "OK"

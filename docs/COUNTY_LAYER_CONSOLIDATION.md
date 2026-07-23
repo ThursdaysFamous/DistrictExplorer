@@ -146,7 +146,19 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    protection district) across its fire districts — all excluded by where
    clause so municipal/unserved points honestly resolve "no district" and
    the one-district-per-point dispatch holds.
-   Kendall follows the same recipe; a county-specific layer is only ever created for a concept no
+   **Kendall (DONE, 2026-07) completes the collar**: five entries from the
+   county's own ArcGIS Enterprise (maps.co.kendall.il.us/server) — board 2
+   districts (the county's post-2020-census reapportionment kept the line,
+   so the County_Board_2010 service is the current map), fire 10 / park 5 /
+   library 9 on parcel-derived tax-code tilings (municipal Joliet fire row
+   excluded; the library tiling's municipal city-library funds KEPT — it
+   records every library taxing body, the Cook shape, unlike McHenry's
+   lone-row case), and precincts 78 with township names derived at load from
+   the county's own townships layer plus the county's per-precinct
+   polling-place assignment joined by GlobalID. Kendall also proved the
+   second structural-n/a shape: `judicial-subcircuit` has no Kendall entry
+   because the 23rd Circuit received no subcircuits under PA 102-0693 —
+   statute, not a gap. A county-specific layer is only ever created for a concept no
    consolidated layer covers yet (as `dupage-county-special-police` remains
    today).
 
