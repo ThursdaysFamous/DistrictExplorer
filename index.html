@@ -3684,7 +3684,7 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile; Kendall's 23rd Circuit received NO subcircuits under the act — structurally n/a, the layer hides there), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members + contact + office address carried live on the county GIS; the Chair/Vice-Chair tags join from a weekly-scraped roles file with a name-match guard) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts) + Kendall (10 FPDs on the county's parcel-derived tax-code tiling, name-only — the municipal Joliet row excluded), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
@@ -5738,6 +5738,14 @@ function initChiExplorer() {
         return geojson;
       });
   }
+  // Weekly-scraped leadership tags (lake_county_board_roles_scraper.py from
+  // the county's own directory page — requests with an Internet Archive
+  // fallback): the boundary GIS carries every member's name/contact live,
+  // but not who chairs the board. The card applies a role only when this
+  // file's name matches the GIS member for the district.
+  var loadLakeBoardRoles = makeCached(function () {
+    return fetchJSONWithRetry("data/app/lake-county-board-roles.json", {}, 2);
+  });
   var loadLakeCountyBoard = makeCached(function () {
     return loadLakeFeatureServer("LakeCounty_PoliticalBoundaries", 0, "1=1",
       "CB_DIST,NAME,PHONE,EMAIL,URL", "Board");
@@ -8594,17 +8602,48 @@ function initChiExplorer() {
           return (v == null || v === "") ? null : String(v);
         },
         query: function (point, seq) {
-          return loadLakeCountyBoard().then(function (geojson) {
+          return Promise.all([
+            loadLakeCountyBoard(),
+            loadLakeBoardRoles().catch(function () { return {}; })
+          ]).then(function (results) {
+            var geojson = results[0], roles = results[1];
             var feature = findFeatureContaining(geojson, point);
             if (!feature) return null;
             var props = feature.properties || {};
+            var district = findPropCI(props, ["cb_dist"]);
+            var member = findPropCI(props, ["name"]);
+            // leadership tag from the weekly-scraped directory roles file —
+            // applied ONLY when its name matches the GIS member for this
+            // district (surname check), so a reorganization the scrape
+            // hasn't caught yet degrades to a role-less row, never a
+            // mislabeled chair
+            var role = null;
+            var entry = district != null ? roles[String(district)] : null;
+            if (entry && entry.role && member && entry.name) {
+              var gisLast = String(member).trim().split(/\s+/).pop().toLowerCase();
+              var rosLast = String(entry.name).trim().split(/\s+/).pop().toLowerCase();
+              if (gisLast && gisLast === rosLast) role = entry.role;
+            }
+            // the shared county-building office address rides the feature too
+            var addr = findPropCI(props, ["addr"]);
+            var city = findPropCI(props, ["city"]);
+            var zip = findPropCI(props, ["zip"]);
+            var office = null;
+            if (addr && String(addr).trim()) {
+              office = String(addr).trim() +
+                (city && String(city).trim() ? ", " + String(city).trim() : "") +
+                (zip && String(zip).trim() ? " " + String(zip).trim() : "");
+            }
             return {
               seq: seq,
-              district: findPropCI(props, ["cb_dist"]),
-              member: findPropCI(props, ["name"]),
+              district: district,
+              member: member,
+              role: role,
+              office: office,
               phone: findPropCI(props, ["phone"]),
               email: findPropCI(props, ["email"]),
-              url: findPropCI(props, ["url"])
+              url: findPropCI(props, ["url"]),
+              newsletter: findPropCI(props, ["url2"])
             };
           });
         },
@@ -8613,12 +8652,15 @@ function initChiExplorer() {
             { label: "District", value: result.district != null && result.district !== "" ? String(result.district) : "Unknown" },
             { label: "Body", value: "Lake County Board" }
           ];
-          // the sitting member, phone, official email, and district page all
-          // ride on the county's own maintained boundary feature (verified
-          // against the county's published directory, 2026-07) — a live
-          // officeholder join with no scraper, like Cook's
+          // the sitting member, phone, official email, office address, and
+          // district/newsletter pages all ride on the county's own maintained
+          // boundary feature (verified against the county's published
+          // directory) — a live officeholder join; only the Chair/Vice-Chair
+          // tag comes from the weekly-scraped roles file (the one
+          // officeholder fact the GIS lacks)
           if (result.member && String(result.member).trim()) {
-            var lines = ["<strong>" + sanitize(String(result.member).trim()) + "</strong>"];
+            var lines = ["<strong>" + sanitize(String(result.member).trim()) + "</strong>" +
+              (result.role ? " — Board " + sanitize(String(result.role)) : "")];
             var contact = [];
             if (result.phone && String(result.phone).trim()) contact.push(sanitize(String(result.phone).trim()));
             if (result.email && String(result.email).trim()) {
@@ -8626,7 +8668,10 @@ function initChiExplorer() {
             }
             var page = safeHttpUrl(result.url);
             if (page) contact.push('<a href="' + sanitize(page) + '" target="_blank" rel="noopener">district page</a>');
+            var news = safeHttpUrl(result.newsletter);
+            if (news) contact.push('<a href="' + sanitize(news) + '" target="_blank" rel="noopener">newsletter</a>');
             if (contact.length) lines.push(contact.join(" · "));
+            if (result.office) lines.push(sanitize(result.office));
             fields.push({ label: "Board Member", html: lines.join("<br>") });
           }
           fields.push({

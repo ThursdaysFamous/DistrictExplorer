@@ -145,6 +145,15 @@ PROVENANCE = [
              "page renders client-side: party, office phones, emails, and the "
              "countywide-elected Chair. No bot block (verified 2026-07-23); the "
              "boundary GIS separately carries member names (cross-checked)."},
+    {"layer": "Lake County Board leadership roles (roster)",
+     "app_file": "lake-county-board-roles.json",
+     "source_url": "https://www.lakecountyil.gov/2336/Board-Members",
+     "note": "Chair/Vice-Chair tags scraped weekly from the county's own "
+             "directory (lake_county_board_roles_scraper.py; requests with an "
+             "Internet Archive fallback — the site's edge 403s datacenter "
+             "clients, so a reachability WARN here is expected, not drift). "
+             "Member names/contact stay live on the boundary GIS; the card "
+             "applies a role only when this file's name matches the GIS."},
     {"layer": "Kendall County Board members (roster)",
      "app_file": "kendall-county-board-members.json",
      "source_url": "https://www.kendallcountyil.gov/county-board/board-members",
