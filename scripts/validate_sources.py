@@ -212,6 +212,11 @@ ENDPOINTS = [
     {"layer": "Suburban Cook voting precincts (1,430 — the Clerk's current fabric, precinctHistorical L0; "
               "same geometry as Socrata k7sw-w3b8 'Suburban Cook Election Precincts - Current')",
      "url": "https://gis.cookcountyil.gov/traditional/rest/services/precinctHistorical/MapServer/0?f=json"},
+    {"layer": "Cook TIF districts (418 — the Clerk's un-yeared current tiling, clerkTaxDistricts L18; "
+              "retired year editions archive in Tax_Increment_Finance_District_Boundaries)",
+     "url": "https://gis.cookcountyil.gov/traditional/rest/services/clerkTaxDistricts/MapServer/18?f=json"},
+    {"layer": "MWRD of Greater Chicago boundary (1 district — the Clerk's tax-agency polygon)",
+     "url": "https://gis.cookcountyil.gov/traditional/rest/services/politicalBoundary/MapServer/21?f=json"},
 ]
 
 FAIL, WARN, OK = "FAIL", "WARN", "OK"

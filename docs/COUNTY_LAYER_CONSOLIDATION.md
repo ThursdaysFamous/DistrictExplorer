@@ -90,8 +90,13 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
   legislature. Concepts consolidate; bodies don't merge.
 - **`ward-precinct`** — same *concept* as the county precincts but a different parent
   (`subOf ward`, not township) and a different electoral system; it stays a city layer.
-- **Single-county concepts** (`dupage-county-special-police`) — consolidation starts when a
-  **second** county ships the concept; until then a dedicated layer is simpler and honest.
+- **Single-county concepts** (`dupage-county-special-police`; joined 2026-07 by
+  `tif-district` and `mwrd`, the Cook Clerk tax-agency layers) — consolidation
+  starts when a **second** county ships the concept; until then a dedicated
+  layer is simpler and honest. `tif-district` is the one expected to convert:
+  TIFs exist in every collar county and Kendall's server already carries a
+  `TIF_Districts` service (recorded in the guidebook backlog); `mwrd` has no
+  sibling-county analog and should stay dedicated.
 
 ## Migration plan
 

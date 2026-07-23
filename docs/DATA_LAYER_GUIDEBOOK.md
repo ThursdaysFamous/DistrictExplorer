@@ -148,6 +148,8 @@ which the never-guess rule excludes as a source.
 | Township / municipality | SHIPPED `township` · `municipality` (statewide IL) | n/a | n/a |
 | Park district | SHIPPED `park-district` (consolidated CountyDispatch: Cook + Will + DuPage + Lake + Kane + Kendall; Cook's Clerk tiling includes the Chicago Park District — a Loop click resolves the city's own park taxing body; DuPage/Kendall name-only, Lake carries office contact, Kane names each district's board president + contact; McHenry is the one sourced county with no entry — recorded gap, it publishes facilities not district boundaries) | n/a | n/a |
 | Library taxing district | SHIPPED `library-district` (CountyDispatch, born consolidated: Cook's two Clerk tax-agency tilings — 59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund at a Loop click — + Will 27 w/ trustees + DuPage 32 name-only + Lake 15 w/ office contact + Kane 16 w/ board president + contact + McHenry 13 name-only + Kendall 9 name-only incl. the municipal Joliet/Yorkville city-library funds its tax tiling records, the Cook-style shape) | n/a — NYC's three library systems (NYPL/BPL/QPL) are nonprofit corporations, not taxing districts | n/a — SFPL is a city department |
+| Tax increment financing (TIF) district | SHIPPED `tif-district` (Cook, 418 — the Clerk's un-yeared current agency tiling, clerkTaxDistricts L18; dedicated Cook layer per the single-county rule until a second county ships — Kendall's `TIF_Districts` service is the recorded next entry) | n/a — New York State discontinued NYC-style TIF; no city program | n/a — SF uses IFDs/CFDs, no published district tiling evaluated |
+| Water reclamation / sewerage special district | SHIPPED `mwrd` (Cook, 1 — the Metropolitan Water Reclamation District of Greater Chicago, the Clerk's tax-agency boundary; nine commissioners elected at large, card links the official board; in/out is the real discrimination — Cook's fringe townships sit outside) | n/a — NYC DEP is a city department, not a separate elected district | n/a — SFPUC is a city department |
 | Post office points | SHIPPED `post-office` (USGS National Map L38 — same national source in every fork) | SHIPPED | SHIPPED |
 | Library points | SHIPPED `library` (CPL) | SHIPPED `library` (NYPL/BPL/QPL) | SHIPPED `library` (SFPL) |
 | Ballot drop boxes | SHIPPED — folded into `early-voting`: Chicago's secured drop boxes (10 ILCS 5/19-6 collection sites, chicagoelections.gov/voting/drop-boxes) are hosted at the early-voting sites themselves — the 50 ward sites in the shipped 52-site file (plus the 2 downtown sites) — and the card intro says so | NO HONEST ANALOG — NYC runs no standalone drop-box program; absentee/mail ballots return by mail, at any poll site, or at BOE offices (vote.nyc / RequestBallot), all already covered by `early-voting` + the card's official links | SHIPPED (inside `early-voting`) |
@@ -273,18 +275,30 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
   **McHenry: recorded gap (2026-07)** — the county publishes park *facilities*
   (~350 point/asset features), not park-district boundaries, so no honest
   McHenry entry is possible until the county ships a district tiling.
-- Cook County GIS layers never wired — TIF/MWRD/forest-preserve tax districts on
-  `gis.cookcountyil.gov` (`politicalBoundary` server), "not evaluated" in the
-  original build. (The library tilings — L20 districts + L19 municipal funds —
-  shipped 2026-07 as `library-district`'s Cook entry; the fire L17 and park L23
-  tilings followed as Cook entries in `fire-district` / `park-district`, the park
-  tiling putting the Chicago Park District on a Loop click.)
+- Cook County GIS tax-agency tilings — **the original "never wired" trio is
+  resolved (2026-07)**: TIF shipped as `tif-district` (the Clerk's un-yeared
+  current tiling, clerkTaxDistricts L18, 418 agencies), MWRD shipped as `mwrd`
+  (one district, nine at-large commissioners, in/out coverage), and **forest
+  preserve is a recorded drop, not a gap**: the Forest Preserve District of
+  Cook County's taxing district is coterminous with the county (zero point
+  discrimination) and its board is the county Board of Commissioners **ex
+  officio** — the `county-board` Cook card carries that fact as a row, so FPD
+  representation is already answered; the Clerk's "Forest Preserve Holdings"
+  layer maps the FPD's exempt land (an asset map — same drop class as
+  McHenry's park facilities). (Earlier waves: the library L20+L19, fire L17,
+  and park L23 tilings shipped 2026-07 as Cook entries in their consolidated
+  layers.) **Still-unwired Clerk tilings sighted in the same
+  `clerkTaxDistricts` catalog** (recorded candidates, not evaluated):
+  Home Equity Assurance (L5), Mosquito Abatement (L9), Sanitary (L12),
+  Special Service Area (L13), Street Light (L14), Drainage (L1). Kendall's
+  `TIF_Districts` service is the recorded second-county entry that would
+  consolidate `tif-district`.
 
 ---
 
 ## Per-fork inventories
 
-### Chicago — 37 layers
+### Chicago — 39 layers
 
 | id | label | group | pattern | source | roster / join | coverage |
 |---|---|---|---|---|---|---|
@@ -313,6 +327,8 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `police-beat` | Police Beat | safety | Bespoke | CPD ArcGIS | — | chicagoCoverage (subOf `police-district`) |
 | `police-district` | Police District | safety | Bespoke | CPD ArcGIS | `cpd-district-info.json` (weekly CI, Playwright) | chicagoCoverage |
 | `ccpsa-district-council` | CCPSA District Council | safety | Bespoke | shares `police-district` geometry | `ccpsa-district-councils.json` (weekly CI) | chicagoCoverage |
+| `mwrd` | Water Reclamation District (MWRD) | geography | Polygon | Cook County GIS (`politicalBoundary` L21 — the Clerk's tax-agency boundary, 1 district) | none elected per sub-area (nine commissioners at large) — card links mwrd.org's board page | cookCountyCoverage (in-county fringe outside the district honestly reports "No result") |
+| `tif-district` | TIF District | geography | Polygon | Cook County GIS (`clerkTaxDistricts` L18 — the Clerk's un-yeared CURRENT tiling, 418; retired year editions archive in the `Tax_Increment_Finance_District_Boundaries` service) | no elected body (TIFs are municipal ordinance districts) — card shows the Clerk agency number + links the Clerk's TIF-reports page | cookCountyCoverage (most points are in no TIF) |
 | `community-area` | Community Area | geography | Polygon | Socrata `igwz-8jzy` | — | chicagoCoverage |
 | `zip-code` | ZIP Code | geography | Polygon | live TIGERweb ZCTA | — | — |
 | `cps-high` | CPS High School Zone | schools | SchoolZone | Socrata `xg7c-d8rm` (year-versioned) | zoned-school POI | chicagoCoverage |

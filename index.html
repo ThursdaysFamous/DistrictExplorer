@@ -3677,6 +3677,7 @@ function initChiExplorer() {
     "il-senate",         // IL State Senate district
     "il-house",          // IL State House district
     "county",            // IL county (102 statewide; TIGERweb, live-verified 2026-07)
+    "mwrd",              // Metropolitan Water Reclamation District of Greater Chicago — ONE ~882 sq mi district (the Clerk's tax-agency boundary, county GIS politicalBoundary L21); nine commissioners elected at large, card links the official board; partial coverage (Cook's fringe townships sit outside the district), Cook-gated
     "school-district-secondary", // IL secondary school district (105 statewide; only where elem/HS pairs exist)
     "school-district-unified", // IL unified school district (387 statewide incl. CPS as SD 299)
     "school-district-elementary", // IL elementary school district (371 statewide)
@@ -3712,6 +3713,7 @@ function initChiExplorer() {
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
     "county-precinct",   // Consolidated voting-precinct layer — suburban Cook current map (1,430, the Clerk's precinctHistorical L0; covers Cook-outside-Chicago only — city precincts are the BOE's ward-precinct layer) + Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features) + McHenry current map (223) + Kendall current map (78, township names derived from the county's own layers + per-precinct polling place joined by GlobalID), county-dispatched; subOf township
+    "tif-district",      // Cook TIF districts — the Clerk's current tax-increment-financing agency tiling (418, county GIS clerkTaxDistricts L18: the un-yeared layer the Clerk refreshes in place, retired year editions archived in the year-versioned service); card shows name + Clerk agency number + the Clerk's TIF-reports link; partial coverage (most points are in no TIF), Cook-gated. Dedicated Cook layer per the consolidation rule until a second county ships TIFs (Kendall's server carries a TIF_Districts service — recorded as the next entry)
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -8042,6 +8044,74 @@ function initChiExplorer() {
               function () { return true; });
     });
   }
+
+  /* ---------- Cook Clerk tax-agency tilings: TIF + MWRD (fork code) --------
+   * Two more Clerk agency tilings from the same county GIS family the Cook
+   * fire/park/library entries use. TIF serves clerkTaxDistricts layer 18 —
+   * the Clerk's UN-YEARED current TIF tiling (418 agencies, matching the
+   * dedicated year-versioned service's 2025 edition; retired editions keep
+   * their own year layers, so annual redraws land here in place, no id
+   * swap). MWRD serves politicalBoundary layer 21: ONE polygon, because the
+   * Metropolitan Water Reclamation District of Greater Chicago is a single
+   * district governed by nine commissioners elected at large — the card's
+   * discrimination is the real in/out question (Cook's fringe townships sit
+   * outside the district), with an honest "No result" outside. Both ship as
+   * Cook-only DEDICATED layers per the consolidation rule: a concept
+   * consolidates when a SECOND county ships it (TIF tilings are sighted on
+   * collar servers — Kendall's TIF_Districts — and would consolidate then;
+   * MWRD has no sibling-county analog).
+   * FOREST PRESERVE is deliberately NOT a layer: the Forest Preserve
+   * District of Cook County's taxing district is coterminous with the
+   * county (zero point discrimination), and its governing board is the
+   * county Board of Commissioners ex officio — so the county-board card
+   * already answers FPD representation and carries that fact as a card row.
+   * The Clerk's "Forest Preserve Holdings" layer maps the FPD's EXEMPT LAND
+   * (an asset map, not a member district) — same drop class as McHenry's
+   * park facilities (docs/DATA_LAYER_GUIDEBOOK.md records both). -------- */
+  var loadCookTifDistricts = makeCached(function () {
+    var url = "https://gis.cookcountyil.gov/traditional/rest/services/clerkTaxDistricts/MapServer/18" +
+      "/query?where=" + encodeURIComponent("1=1") +
+      "&outFields=AGENCY_DESCRIPTION,AGENCYNUM&outSR=4326&f=geojson&geometryPrecision=6";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("Cook County TIF districts returned no usable geometry");
+        return geojson;
+      });
+  });
+  var loadMwrdBoundary = makeCached(function () { return loadCookCountyLayerGeoJSON(21); });
+
+  registerPolygonLayer({
+    id: "tif-district",
+    group: "geography",
+    label: "TIF District",
+    loader: loadCookTifDistricts,
+    coverage: cookCountyCoverage,
+    style: { color: "#6A4A93", weight: 2, fillColor: "#8E6BB8", fillOpacity: 0.10, dashArray: "4 3" },
+    fields: [
+      { name: "name", label: "TIF District", keys: ["agency_description"], primary: true },
+      // the Clerk keys every TIF report to this agency number — the row makes
+      // the card's link actionable
+      { name: "agencyNum", label: "Clerk agency number", keys: ["agencynum"] },
+      { label: "County", value: "Cook County" },
+      { label: "Revenue & reports",
+        html: '<a href="https://www.cookcountyclerkil.gov/service/tif-reports" target="_blank" rel="noopener">Cook County Clerk — TIF reports (official)</a>' }
+    ]
+  });
+
+  registerPolygonLayer({
+    id: "mwrd",
+    group: "geography",
+    label: "Water Reclamation District (MWRD)",
+    loader: loadMwrdBoundary,
+    coverage: cookCountyCoverage,
+    style: { color: "#0E7C86", weight: 2, fillColor: "#19A0AD", fillOpacity: 0.06, dashArray: "10 4" },
+    fields: [
+      { name: "name", label: "District", keys: ["max_agency_desc"], primary: true },
+      { label: "Commissioners", value: "Nine commissioners elected at large, district-wide" },
+      { label: "Board",
+        html: '<a href="https://mwrd.org/board-commissioners" target="_blank" rel="noopener">MWRD Board of Commissioners (official)</a>' }
+    ]
+  });
   var COMMISSIONER_DISTRICT_FIELDS = ["district_int", "district_txt", "district"];
 
   // Assemble a commissioner's display name from the electedOfficials table's
@@ -8317,6 +8387,16 @@ function initChiExplorer() {
             var website = safeHttpUrl(findPropCI(office, ["url1"])); // scheme-check before it becomes an href
             if (website) fields.push({ label: "Website", html: '<a href="' + sanitize(website) + '" target="_blank" rel="noopener">' + sanitize(website) + '</a>' });
           }
+          // the same commissioners govern the Forest Preserve District of
+          // Cook County ex officio, and the FPD taxing district is
+          // coterminous with the county — this row IS the app's
+          // forest-preserve representation answer (no separate FPD layer;
+          // docs/DATA_LAYER_GUIDEBOOK.md records the drop)
+          fields.push({
+            label: "Forest Preserve District",
+            html: 'The commissioners also serve, ex officio, as the Forest Preserve District of Cook County board — ' +
+              '<a href="https://fpdcc.com/about/board-commissioners/" target="_blank" rel="noopener">FPD board (official)</a>'
+          });
           fields.push({
             label: "Board info",
             html: '<a href="https://maps.cookcountyil.gov/findmydistrict/" target="_blank" rel="noopener">Cook County Find My District (official)</a>'
