@@ -41,7 +41,7 @@
 // roster backing the Early Voting Site nearest-point layer — network-first,
 // refreshed per election.)
 /* ==== GENERATED:BEGIN sw-metro-config ==== */
-const CACHE_NAME = "district-explorer-shell-v19";
+const CACHE_NAME = "district-explorer-shell-v20";
 
 const SHELL_URLS = [
   "./",
@@ -71,7 +71,9 @@ const GEOMETRY_URLS = [
   "./data/app/dupage-county-outline.json",
   "./data/app/lake-county-outline.json",
   "./data/app/kane-county-outline.json",
+  "./data/app/mchenry-county-outline.json",
   "./data/app/kane-judicial-subcircuits.json",
+  "./data/app/mchenry-judicial-subcircuits.json",
 ];
 
 // Roster/officeholder data (also in data/app/) is refreshed by the weekly CI

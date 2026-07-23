@@ -3682,13 +3682,13 @@ function initChiExplorer() {
     "school-district-elementary", // IL elementary school district (371 statewide)
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
-    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4, pre-built from the enacted PA 102-0693 shapefile) subcircuits, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
-    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs), county-dispatched; partial coverage inside each county
+    "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
     "park-district",     // Consolidated park-district layer — Cook (99, the Clerk's park tax-agency tiling incl. the Chicago Park District, name-only) + Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs) + Kane (11, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county
-    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs), county-dispatched; partial coverage inside each county
+    "library-district",  // Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs) + Kane (16, board president + office contact in GIS attrs) + McHenry (13, name-only after the county's own Z_None-filler + municipal-row exclusions), county-dispatched; partial coverage inside each county
     "school-board",      // Elected School Board district (10, citywide)
     "cps-hs-network",    // CPS High School Network (admin grouping)
     "cps-network",       // CPS K-8 Network (admin grouping)
@@ -3711,7 +3711,7 @@ function initChiExplorer() {
     // Smallest county-scoped layer, so it renders on top of Township and County
     // (smallest-on-top); turning it on drops both to outline-only, framing the
     // precinct fills from underneath.
-    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features), county-dispatched; subOf township
+    "county-precinct",   // Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431) + Kane current map (292, board district carried on the features) + McHenry current map (223), county-dispatched; subOf township
     "cps-elementary",    // Elementary School attendance zone — smallest polygon layer
     "school-site",       // individual school-campus footprints — smallest polygons, above the zones
     "police-station",    // point marker — no polygon area, always topmost
@@ -5906,6 +5906,78 @@ function initChiExplorer() {
     var v = findPropCI(feature.properties || {}, ["districtname"]);
     return (v == null || String(v).trim() === "") ? null : String(v);
   }
+
+  /* =========================================================================
+   * MCHENRY COUNTY — fifth collar county, dispatch entries only. Coverage
+   * mirrors the siblings: exact containment in a TIGER-sourced outline
+   * (data/app/mchenry-county-outline.json, FIPS 17111). Four concepts load
+   * from the county's public hosted org (services1.arcgis.com/6iYC5AXXYapRVNzl,
+   * actively maintained — board/fire/library edited 2026-07); all are
+   * name-only (the GIS carries no officeholder/contact fields), so cards
+   * link the official bodies. The 22nd-Circuit judicial subcircuits ship
+   * PRE-BUILT from the enacted PA 102-0693 shapefile (the county publishes
+   * no subcircuit service at all — the Kane route). Park districts are a
+   * recorded gap: McHenry publishes park FACILITIES (350 points/areas with
+   * owners), not park-district taxing boundaries, so the park-district layer
+   * honestly has no mchenry entry (docs/DATA_LAYER_GUIDEBOOK.md).
+   * ======================================================================= */
+  var loadMchenryCountyOutline = makeCached(function () {
+    return fetchJSONWithRetry("data/app/mchenry-county-outline.json", {}, 2);
+  });
+  function mchenryCountyCoverage(point) {
+    return loadMchenryCountyOutline().then(function (geojson) {
+      return !!findFeatureContaining(geojson, point);
+    });
+  }
+
+  var MCHENRY_GIS = "https://services1.arcgis.com/6iYC5AXXYapRVNzl/arcgis/rest/services/";
+  function loadMchenryFeatureServer(service, where, outFields, label) {
+    var url = MCHENRY_GIS + service + "/FeatureServer/0" +
+      "/query?where=" + encodeURIComponent(where) + "&outFields=" + outFields +
+      "&outSR=4326&f=geojson&geometryPrecision=5";
+    return fetchJSONWithRetry(url, { timeoutMs: REMOTE_GEOJSON_TIMEOUT_MS }, 2)
+      .then(function (geojson) {
+        if (!hasUsableGeometry(geojson)) throw new Error("McHenry County " + label + " returned no usable geometry");
+        return geojson;
+      });
+  }
+  var loadMchenryCountyBoard = makeCached(function () {
+    return loadMchenryFeatureServer("McHenry_County_Board_Districts", "1=1", "District", "Board");
+  });
+  var loadMchenryPrecincts = makeCached(function () {
+    return loadMchenryFeatureServer("Precincts", "1=1", "PrecinctName", "precincts");
+  });
+  // McHenry's fire tiling carries its own honesty markers: eight filler
+  // polygons literally named "Z NO FIRE DISTRICT" (unserved areas), one
+  // explicitly-municipal row ("CRYSTAL LAKE FIRE CITY"), and the "MARENGO
+  // RESCUE SQUAD" — a rescue-squad district (70 ILCS 3105, an ambulance
+  // taxing body distinct from fire protection districts) that OVERLAYS the
+  // Marengo/Union fire districts and would break the one-district-per-point
+  // dispatch. All three are excluded so the concept stays the suburban fire
+  // protection districts (19), like every other county's entry — a Crystal
+  // Lake click honestly reports "No result". (The exclusion pattern must not
+  // catch "WOODSTOCK FIRE RESCUE", a real fire protection district.)
+  var loadMchenryFire = makeCached(function () {
+    return loadMchenryFeatureServer("Fire_Districts",
+      "FireDist NOT LIKE 'Z NO%' AND FireDist NOT LIKE '%CITY' AND FireDist NOT LIKE '%RESCUE SQUAD%'",
+      "FireDist", "fire districts");
+  });
+  // Same markers in the library tiling: six "Z_None (...)" fillers (areas
+  // served by municipal libraries or nothing) and a lone "CITY CRYSTAL LAKE
+  // LIBRARY" row — a municipal library, not a district, and the only city
+  // row in the tiling (other city-library areas are Z_None fillers), so
+  // keeping it would misstate the concept. 13 real districts remain.
+  var loadMchenryLibraries = makeCached(function () {
+    return loadMchenryFeatureServer("Library_Districts",
+      "LibraryDistrict NOT LIKE 'Z_None%' AND LibraryDistrict NOT LIKE 'CITY %'",
+      "LibraryDistrict", "library districts");
+  });
+  // 22nd-Circuit judicial subcircuits — pre-built from the enacted PA 102-0693
+  // shapefile via build_embedded_boundaries.py (cache-first, same-origin), the
+  // route kane-judicial proved.
+  var loadMchenryJudicial = makeCached(function () {
+    return fetchJSONWithRetry("data/app/mchenry-judicial-subcircuits.json", {}, 2);
+  });
 
   /* ---------- "Live data source is down" descriptor (fork code) --------------
    * Every Socrata layer below fetches from the City of Chicago Data Portal at
@@ -8348,7 +8420,21 @@ function initChiExplorer() {
             return (v == null || String(v).trim() === "") ? null : String(v).trim();
           }
         }
-      }
+      },
+      // McHenry (9 districts, each electing 2 of the 18 members): the county
+      // GIS carries only the district number, so the card links the official
+      // directory rather than naming members (honesty rule)
+      polygonCountyEntry({
+        key: "mchenry",
+        coverage: mchenryCountyCoverage,
+        loader: loadMchenryCountyBoard,
+        fields: [
+          { name: "district", label: "District", keys: ["district"], primary: true },
+          { label: "Body", value: "McHenry County Board" },
+          { label: "Official directory",
+            html: '<a href="https://www.mchenrycountyil.gov/departments/county-board/meet-your-county-board-members" target="_blank" rel="noopener">McHenry County Board members (official)</a>' }
+        ]
+      })
     ]
   });
 
@@ -8471,6 +8557,17 @@ function initChiExplorer() {
           { label: "Judges",
             html: '<a href="https://www.illinois16thjudicialcircuit.org/" target="_blank" rel="noopener">16th Judicial Circuit Court (official)</a>' }
         ]
+      }),
+      polygonCountyEntry({
+        key: "mchenry",
+        coverage: mchenryCountyCoverage,
+        loader: loadMchenryJudicial,
+        fields: [
+          { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
+          { label: "Court", value: "22nd Judicial Circuit (McHenry County)" },
+          { label: "Judges",
+            html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
+        ]
       })
     ]
   });
@@ -8575,7 +8672,17 @@ function initChiExplorer() {
           ];
           return renderFieldList(fields.concat(kaneRepContactRows(result)));
         }
-      }
+      },
+      // McHenry: name-only (see the loader's filler/municipal filter)
+      polygonCountyEntry({
+        key: "mchenry",
+        coverage: mchenryCountyCoverage,
+        loader: loadMchenryFire,
+        fields: [
+          { name: "name", label: "Fire District", keys: ["firedist"], primary: true },
+          { label: "County", value: "McHenry County" }
+        ]
+      })
     ]
   });
 
@@ -8832,7 +8939,16 @@ function initChiExplorer() {
           ];
           return renderFieldList(fields.concat(kaneRepContactRows(result)));
         }
-      }
+      },
+      polygonCountyEntry({
+        key: "mchenry",
+        coverage: mchenryCountyCoverage,
+        loader: loadMchenryLibraries,
+        fields: [
+          { name: "name", label: "Library District", keys: ["librarydistrict"], primary: true },
+          { label: "County", value: "McHenry County" }
+        ]
+      })
     ]
   });
 
@@ -9016,6 +9132,46 @@ function initChiExplorer() {
           }
           fields.push({ label: "Registration & polling place",
             html: '<a href="https://clerk.kanecountyil.gov/Elections" target="_blank" rel="noopener">Kane County Clerk — Elections (official)</a>' });
+          return renderFieldList(fields);
+        }
+      },
+      {
+        key: "mchenry",
+        coverage: mchenryCountyCoverage,
+        loadGeometry: loadMchenryPrecincts,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["precinctname"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadMchenryPrecincts(),
+            loadMchenryCountyBoard().catch(function () { return null; })
+          ]).then(function (results) {
+            var geojson = results[0], boardGeo = results[1];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var props = feature.properties || {};
+            var boardDistrict = null;
+            if (boardGeo) {
+              var bf = findFeatureContaining(boardGeo, point);
+              if (bf) boardDistrict = findPropCI(bf.properties || {}, ["district"]);
+            }
+            var name = findPropCI(props, ["precinctname"]);
+            // "HARTLAND 1" — the township is the county's own compound label
+            // minus its trailing precinct number, like Lake's TWP_PCT
+            var township = name != null ? String(name).replace(/\s+\d+$/, "") : null;
+            return { seq: seq, name: name, township: township, boardDistrict: boardDistrict };
+          });
+        },
+        render: function (result) {
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.township) fields.push({ label: "Township", value: String(result.township) });
+          if (result.boardDistrict != null && result.boardDistrict !== "") {
+            fields.push({ label: "County Board District", value: String(result.boardDistrict) });
+          }
+          fields.push({ label: "Registration & polling place",
+            html: '<a href="https://www.mchenrycountyil.gov/departments/county-clerk/elections" target="_blank" rel="noopener">McHenry County Clerk — Elections (official)</a>' });
           return renderFieldList(fields);
         }
       }

@@ -132,8 +132,21 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    public `KaneCo_IL_*` hosted family — board members and even each precinct's
    board district ride the features; its 16th-Circuit judicial entry followed
    via the pre-built route (the enacted PA 102-0693 shapefile through
-   build_embedded_boundaries.py) since only permission-locked proxies exist. McHenry and
-   Kendall follow the same recipe; a county-specific layer is only ever created for a concept no
+   build_embedded_boundaries.py) since only permission-locked proxies exist. **McHenry
+   (DONE, 2026-07)**: five entries (board 9 / judicial 22nd-Circuit 4 pre-built /
+   fire 19 / library 13 / precinct 223) — the first county with a **recorded
+   concept gap**: its GIS publishes park *facilities*, not park-district
+   boundaries, so `park-district` simply has no McHenry entry and hides there
+   (the honest behavior falls out of the dispatch table; the gap is logged in
+   the guidebook backlog). Its fire and library loaders also demonstrate
+   source-side filtering: the county tiles non-district area with literal
+   filler rows ('Z NO FIRE DISTRICT' / 'Z_None (...)'), includes lone
+   municipal Crystal Lake city rows in both tilings, and overlays the
+   Marengo rescue-squad district (an ambulance taxing body, not a fire
+   protection district) across its fire districts — all excluded by where
+   clause so municipal/unserved points honestly resolve "no district" and
+   the one-district-per-point dispatch holds.
+   Kendall follows the same recipe; a county-specific layer is only ever created for a concept no
    consolidated layer covers yet (as `dupage-county-special-police` remains
    today).
 
