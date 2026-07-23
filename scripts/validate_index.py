@@ -125,6 +125,7 @@ ROSTER_FILES = {
     "ccpsa-district-councils.json": 20,  # 22 councils (13 & 21 retired); floor guards a partial scrape
     "will-county-board-members.json": 11,  # 11 board districts (2 members each) scraped weekly from willcountyboard.com
     "kane-county-board-members.json": 24,  # 24 single-member board districts + the countywide-elected Chair, scraped weekly from the county's own SharePoint Board Members list (no bot block — plain requests)
+    "lake-county-board-roles.json": 19,  # Lake board leadership tags (Chair/Vice-Chair) + all 19 member names for the card's stale-role guard, scraped weekly from the county directory (requests with an Internet Archive fallback); names/contact stay live on the boundary GIS
     "kendall-county-board-members.json": 2,  # 2 board districts (5 members each incl. the Chairman) scraped weekly from kendallcountyil.gov (Akamai-fronted; the scraper falls back to Playwright)
     "mchenry-county-board-members.json": 9,  # 9 board districts (2 members each) + the countywide-elected Chairman, scraped weekly from mchenrycountyil.gov (bot-managed; the scraper falls back to Playwright)
     "early-voting-sites.json": 3,  # GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale

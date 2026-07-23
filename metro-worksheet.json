@@ -202,7 +202,7 @@
       "label": "County Board District",
       "group": "political",
       "area_rank": 13,
-      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
+      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members + contact + office address carried live on the county GIS; the Chair/Vice-Chair tags join from a weekly-scraped roles file with a name-match guard) + Kane (24, members carried on the county GIS; party/office phone/email + the countywide-elected Chair join from a weekly-scraped roster of the county's SharePoint directory) + McHenry (9 districts electing 2 members each + a countywide-elected Chairman; the GIS is district-number-only, so members + the Chairman + phone/email join from a weekly-scraped roster of the county's own directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
     },
     {
       "id": "ccbr",
@@ -546,6 +546,11 @@
         "note": "24 single-member board districts + the countywide-elected Chair, scraped weekly from the county's own SharePoint Board Members list (no bot block — plain requests)"
       },
       {
+        "file": "lake-county-board-roles.json",
+        "min_keys": 19,
+        "note": "Lake board leadership tags (Chair/Vice-Chair) + all 19 member names for the card's stale-role guard, scraped weekly from the county directory (requests with an Internet Archive fallback); names/contact stay live on the boundary GIS"
+      },
+      {
         "file": "kendall-county-board-members.json",
         "min_keys": 2,
         "note": "2 board districts (5 members each incl. the Chairman) scraped weekly from kendallcountyil.gov (Akamai-fronted; the scraper falls back to Playwright)"
@@ -633,6 +638,11 @@
       "file": "update-kane-county-board-roster.yml",
       "purpose": "Kane County Board roster (the county's SharePoint list API)",
       "schedule": "Thu 16:00 UTC"
+    },
+    {
+      "file": "update-lake-county-board-roles.yml",
+      "purpose": "Lake County Board leadership tags (directory scrape, Internet Archive fallback)",
+      "schedule": "Thu 17:00 UTC"
     },
     {
       "file": "update-ccbr-roster.yml",

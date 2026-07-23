@@ -186,7 +186,11 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
      directory and use them; no pipeline needed. GIS attrs and a directory
      pipeline COMPOSE: Kane's card keeps GIS names as hover + fallback while
      a weekly scrape of the county's SharePoint directory list adds
-     party/phone/email + the countywide-elected Chair (2026-07 enrichment).
+     party/phone/email + the countywide-elected Chair, and Lake's card reads
+     names/contact live from the GIS while a weekly single-page scrape adds
+     the Chair/Vice-Chair tags the GIS lacks — applied only on a name match,
+     so a missed reorganization degrades to role-less rows (both 2026-07
+     enrichments).
    - **Official directory, no GIS fields**: the county publishes a member
      directory (Will, DuPage, Kendall) → the scraper + builder + weekly
      PR-opening workflow ships IN THE SAME EXPANSION CHANGE, not as a
