@@ -2,7 +2,8 @@
 
 Status: **decided + fully migrated (July 2026): `county-board`, then `judicial-subcircuit`,
 `fire-district`, `park-district`, `county-precinct` — every multi-county concept now
-county-dispatched; 42 → 36 layers.**
+county-dispatched (42 → 36 layers) — plus `library-district`, the first concept born
+consolidated (37 layers).**
 Owner: CHI (fork-level — no engine change). Cross-refs: `docs/STATEWIDE_EXPANSION_PLAYBOOK.md`
 (the relevance-hiding capability this builds on, §3; the collar-first rollout, §7),
 `docs/DATA_LAYER_GUIDEBOOK.md` (the inventory this reshapes), `docs/ENGINE_SYNC.md` (why
@@ -109,9 +110,22 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    somewhere fixed: Body row (board), Court row (judicial), County row (fire/park), the
    clerk link (precinct). The retired "DuPage …"-prefixed labels are gone with the
    toggle-collision that motivated them.
-3. **Future counties (Lake, Kane, McHenry, Kendall)**: ship as dispatch entries into the
-   consolidated layers from day one; a county-specific layer is only ever created for a
-   concept no consolidated layer covers yet (as `dupage-county-special-police` remains
+2b. **New concepts launch consolidated** — proven by **`library-district` (2026-07)**,
+   the first concept born on the dispatcher with no per-county predecessors: Cook
+   (the Clerk's two tax-agency tilings, distinguishing independent Public Library
+   Districts from municipal Library Funds — a Chicago click resolves the City of
+   Chicago Library Fund), Will (trustees in GIS attrs), DuPage (name-only), and
+   Lake (office contact in GIS attrs) as day-one entries of one toggle.
+3. **Future counties ship as dispatch entries from day one** — proven by **Lake
+   (DONE, 2026-07)**: the first county to land with **zero new layers and zero
+   scrapers** — five `lake` entries (board 19 / judicial 12 / fire 22 / park 23 /
+   precinct 431) plus one TIGER outline for `lakeCountyCoverage`. Lake's own
+   boundary GIS carries the board members' names/phone/official email/district
+   page (verified against the county's published directory) and each fire/park
+   district's office contact, so the honesty rules are satisfied by the county's
+   own data with no roster pipeline at all. Kane, McHenry, and Kendall follow the
+   same recipe; a county-specific layer is only ever created for a concept no
+   consolidated layer covers yet (as `dupage-county-special-police` remains
    today).
 
 ## Verification

@@ -188,14 +188,14 @@
       "label": "Judicial Subcircuit",
       "group": "political",
       "area_rank": 11,
-      "rank_note": "Consolidated judicial-subcircuit layer — Will 12th-Circuit (5) + DuPage 18th-Circuit (7) subcircuits, both PA 102-0693, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties"
+      "rank_note": "Consolidated judicial-subcircuit layer — Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) subcircuits, all PA 102-0693, dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties"
     },
     {
       "id": "county-board",
       "label": "County Board District",
       "group": "political",
       "area_rank": 12,
-      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
+      "rank_note": "Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties"
     },
     {
       "id": "ccbr",
@@ -209,7 +209,7 @@
       "label": "Fire Protection District",
       "group": "safety",
       "area_rank": 14,
-      "rank_note": "Consolidated fire-protection-district layer — Will (37, trustees in GIS attrs) + DuPage (30, name-only), county-dispatched; partial coverage inside each county"
+      "rank_note": "Consolidated fire-protection-district layer — Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
     },
     {
       "id": "dupage-county-special-police",
@@ -223,41 +223,48 @@
       "label": "Park District",
       "group": "geography",
       "area_rank": 16,
-      "rank_note": "Consolidated park-district layer — Will (22, commissioners in GIS attrs) + DuPage (39, name-only), county-dispatched; partial coverage inside each county"
+      "rank_note": "Consolidated park-district layer — Will (22, commissioners in GIS attrs) + DuPage (39, name-only) + Lake (23, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
+    },
+    {
+      "id": "library-district",
+      "label": "Library District",
+      "group": "geography",
+      "area_rank": 17,
+      "rank_note": "Consolidated library-district layer — Cook (59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund) + Will (27, trustees in GIS attrs) + DuPage (32, name-only) + Lake (15, district office contact in GIS attrs), county-dispatched; partial coverage inside each county"
     },
     {
       "id": "school-board",
       "label": "Elected School Board District",
       "group": "political",
-      "area_rank": 17,
+      "area_rank": 18,
       "rank_note": "Elected School Board district (10, citywide)"
     },
     {
       "id": "cps-hs-network",
       "label": "CPS Network (High School, admin office)",
       "group": "schools",
-      "area_rank": 18,
+      "area_rank": 19,
       "rank_note": "CPS High School Network (admin grouping)"
     },
     {
       "id": "cps-network",
       "label": "CPS Network (K-8, admin office)",
       "group": "schools",
-      "area_rank": 19,
+      "area_rank": 20,
       "rank_note": "CPS K-8 Network (admin grouping)"
     },
     {
       "id": "ward",
       "label": "City Ward",
       "group": "political",
-      "area_rank": 20,
+      "area_rank": 21,
       "rank_note": "City Ward (50)"
     },
     {
       "id": "ward-precinct",
       "label": "Ward Precinct",
       "group": "political",
-      "area_rank": 21,
+      "area_rank": 22,
       "rank_note": "Ward Precinct (sub-selection of City Ward)",
       "rank_comment": [
         "Smaller than its parent ward, so it renders on top (smallest-on-top); turning it",
@@ -268,14 +275,14 @@
       "id": "police-district",
       "label": "Police District",
       "group": "safety",
-      "area_rank": 22,
+      "area_rank": 23,
       "rank_note": "Police District (22)"
     },
     {
       "id": "police-beat",
       "label": "Police Beat",
       "group": "safety",
-      "area_rank": 23,
+      "area_rank": 24,
       "rank_note": "Police Beat (~277)",
       "rank_comment": [
         "Smaller than its parent district, so it renders on top (smallest-on-top);",
@@ -286,7 +293,7 @@
       "id": "ccpsa-district-council",
       "label": "CCPSA District Council",
       "group": "safety",
-      "area_rank": 24,
+      "area_rank": 25,
       "rank_comment": [
         "CCPSA District Council shares the police-district geometry exactly (22,",
         "one council per district); place it just after so its outline draws on",
@@ -297,36 +304,36 @@
       "id": "community-area",
       "label": "Community Area",
       "group": "geography",
-      "area_rank": 25,
+      "area_rank": 26,
       "rank_note": "Community Area (77)"
     },
     {
       "id": "zip-code",
       "label": "ZIP Code",
       "group": "geography",
-      "area_rank": 26,
+      "area_rank": 27,
       "rank_note": "ZIP Code (statewide Census ZCTA; ZCTA ≈ USPS ZIP)"
     },
     {
       "id": "cps-high",
       "label": "CPS High School Zone",
       "group": "schools",
-      "area_rank": 27,
+      "area_rank": 28,
       "rank_note": "High School attendance zone"
     },
     {
       "id": "cps-middle",
       "label": "CPS Middle School Zone",
       "group": "schools",
-      "area_rank": 28,
+      "area_rank": 29,
       "rank_note": "Middle School attendance zone"
     },
     {
       "id": "county-precinct",
       "label": "Voting Precinct",
       "group": "geography",
-      "area_rank": 29,
-      "rank_note": "Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600), county-dispatched; subOf township",
+      "area_rank": 30,
+      "rank_note": "Consolidated voting-precinct layer — Will current 2022 map (310) + DuPage current 2024 consolidated map (600) + Lake current map (431), county-dispatched; subOf township",
       "rank_comment": [
         "Smallest county-scoped layer, so it renders on top of Township and County",
         "(smallest-on-top); turning it on drops both to outline-only, framing the",
@@ -337,54 +344,54 @@
       "id": "cps-elementary",
       "label": "CPS Elementary School Zone",
       "group": "schools",
-      "area_rank": 30,
+      "area_rank": 31,
       "rank_note": "Elementary School attendance zone — smallest polygon layer"
     },
     {
       "id": "school-site",
       "label": "School Location (all, incl. private, nearest N)",
       "group": "schools",
-      "area_rank": 31,
+      "area_rank": 32,
       "rank_note": "individual school-campus footprints — smallest polygons, above the zones"
     },
     {
       "id": "police-station",
       "label": "Police Station",
       "group": "safety",
-      "area_rank": 32,
+      "area_rank": 33,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "fire-station",
       "label": "Fire Station",
       "group": "safety",
-      "area_rank": 33,
+      "area_rank": 34,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "post-office",
       "label": "Post Office",
       "group": "geography",
-      "area_rank": 34,
+      "area_rank": 35,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "library",
       "label": "Library",
       "group": "geography",
-      "area_rank": 35,
+      "area_rank": 36,
       "rank_note": "point marker — no polygon area, always topmost"
     },
     {
       "id": "early-voting",
       "label": "Early Voting Site",
       "group": "political",
-      "area_rank": 36,
+      "area_rank": 37,
       "rank_note": "point marker — no polygon area, always topmost"
     }
   ],
   "min_register_layer": 15,
-  "layer_count_note": "17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 5 consolidated county-dispatched layers (county-board, judicial-subcircuit, fire-district, park-district, county-precinct — Cook/Will/DuPage entries; docs/COUNTY_LAYER_CONSOLIDATION.md) + 1 DuPage-only layer (dupage-county-special-police) + 3 amenity nearest-point layers (post-office, library, early-voting) = 36 — live-verified 2026-07",
+  "layer_count_note": "17 base + police-beat (#43) + school-site (#45) + ccpsa-district-council + ward-precinct + 6 statewide local-gov layers (county, township, municipality, school districts x3 — TIGERweb) + 6 consolidated county-dispatched layers (county-board, judicial-subcircuit, fire-district, park-district, library-district, county-precinct — Cook/Will/DuPage/Lake entries; docs/COUNTY_LAYER_CONSOLIDATION.md) + 1 DuPage-only layer (dupage-county-special-police) + 3 amenity nearest-point layers (post-office, library, early-voting) = 37 — live-verified 2026-07",
   "anchor_point": {
     "lat": 41.8825,
     "lng": -87.6285,
@@ -453,6 +460,11 @@
         "file": "dupage-county-outline.json",
         "min_features": 1,
         "max_features": 1
+      },
+      {
+        "file": "lake-county-outline.json",
+        "min_features": 1,
+        "max_features": 1
       }
     ],
     "rosters": [
@@ -507,7 +519,7 @@
     ]
   },
   "sw": {
-    "cache_name": "district-explorer-shell-v16",
+    "cache_name": "district-explorer-shell-v17",
     "shell_urls": [
       "./",
       "./manifest.webmanifest",

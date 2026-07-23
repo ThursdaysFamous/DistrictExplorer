@@ -29,7 +29,7 @@ in the researched-but-unbuilt backlog.
 <!-- ==== GUIDEBOOK:BEGIN coverage-map ==== -->
 ```json
 {
-  "chicago": ["il-supreme-court", "congress", "il-senate", "il-house", "county", "school-district-secondary", "school-district-unified", "school-district-elementary", "township", "municipality", "judicial-subcircuit", "county-board", "ccbr", "fire-district", "dupage-county-special-police", "park-district", "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat", "police-district", "ccpsa-district-council", "community-area", "zip-code", "cps-high", "cps-middle", "county-precinct", "cps-elementary", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
+  "chicago": ["il-supreme-court", "congress", "il-senate", "il-house", "county", "school-district-secondary", "school-district-unified", "school-district-elementary", "township", "municipality", "judicial-subcircuit", "county-board", "ccbr", "fire-district", "dupage-county-special-police", "park-district", "library-district", "school-board", "cps-hs-network", "cps-network", "ward-precinct", "ward", "police-beat", "police-district", "ccpsa-district-council", "community-area", "zip-code", "cps-high", "cps-middle", "county-precinct", "cps-elementary", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
   "nyc": ["borough", "judicial-district", "borough-president", "district-attorney", "congress", "municipal-court", "state-senate", "school-district", "cec", "fire-battalion", "council", "community-district", "election-district", "state-assembly", "police-sector", "police-precinct", "zip-code", "neighborhood", "hs-zone", "ms-zone", "es-zone", "school-site", "police-station", "fire-station", "post-office", "library", "early-voting"],
   "sf": ["congress", "ca-senate", "ca-assembly", "bart-director", "election-precinct", "supervisor-district", "police-district", "zip-code", "neighborhood", "elementary-attendance-area", "police-station", "fire-station", "school-site", "post-office", "library", "early-voting"]
 }
@@ -57,7 +57,7 @@ v1.0.6) · **CountyDispatch** `registerCountyLayer` (CHI fork-level dispatcher: 
 concept layer holding a per-county entry table — see
 `docs/COUNTY_LAYER_CONSOLIDATION.md`; adding a county is a table entry, not a layer).
 
-Fleet totals: **Chicago 36 · NYC 27 · SF 16** layers.
+Fleet totals: **Chicago 37 · NYC 27 · SF 16** layers.
 
 ---
 
@@ -71,11 +71,11 @@ Fleet totals: **Chicago 36 · NYC 27 · SF 16** layers.
 | State upper chamber | SHIPPED `il-senate` | SHIPPED `state-senate` | SHIPPED `ca-senate` |
 | State lower chamber | SHIPPED `il-house` | SHIPPED `state-assembly` | SHIPPED `ca-assembly` |
 | City council district | SHIPPED `ward` (50) | SHIPPED `council` (51) | SHIPPED `supervisor-district` (11; doubles as the county board — consolidated city-county) |
-| Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `county-precinct` (consolidated CountyDispatch: Will 2022 map 310 + DuPage 2024 map 600) | SHIPPED `election-district` (~4,200) | SHIPPED `election-precinct` (`jg6x-23ig`, 2022 map; subOf `supervisor-district`, polling-place lookup link) |
-| County legislature / commissioner | SHIPPED `county-board` (consolidated CountyDispatch layer: Cook Commissioner 17 + Will 11 + DuPage 6 districts; absorbed the former `commissioner` / `will-county-board` / `dupage-county-board` layers, old permalink ids aliased) | NO HONEST ANALOG¹ | NO HONEST ANALOG (folded into `supervisor-district`) |
+| Electoral precinct / ballot sub-unit | SHIPPED `ward-precinct` + `county-precinct` (consolidated CountyDispatch: Will 2022 map 310 + DuPage 2024 map 600 + Lake current map 431) | SHIPPED `election-district` (~4,200) | SHIPPED `election-precinct` (`jg6x-23ig`, 2022 map; subOf `supervisor-district`, polling-place lookup link) |
+| County legislature / commissioner | SHIPPED `county-board` (consolidated CountyDispatch layer: Cook Commissioner 17 + Will 11 + DuPage 6 + Lake 19 districts; absorbed the former `commissioner` / `will-county-board` / `dupage-county-board` layers, old permalink ids aliased; Lake's members + contact ride on the county's own boundary GIS — no scraper) | NO HONEST ANALOG¹ | NO HONEST ANALOG (folded into `supervisor-district`) |
 | County property-tax appeals board (elected) | SHIPPED `ccbr` (commissioner roster scraped weekly from the Board's own site) | NO HONEST ANALOG² | NO HONEST ANALOG⁵ |
 | State high-court electoral district | SHIPPED `il-supreme-court` | SHIPPED `judicial-district` (NY Supreme is trial-level, elected by district) | NO HONEST ANALOG⁶ |
-| Trial/civil-court sub-district | SHIPPED `judicial-subcircuit` (consolidated CountyDispatch: Will 12th-Circuit 5 + DuPage 18th-Circuit 7, PA 102-0693) | SHIPPED `municipal-court` (28) | NO HONEST ANALOG⁶ |
+| Trial/civil-court sub-district | SHIPPED `judicial-subcircuit` (consolidated CountyDispatch: Will 12th-Circuit 5 + DuPage 18th-Circuit 7 + Lake 19th-Circuit 12, PA 102-0693) | SHIPPED `municipal-court` (28) | NO HONEST ANALOG⁶ |
 | District Attorney (districted) | n/a (Cook State's Attorney is one countywide office) | SHIPPED `district-attorney` (5 borough DAs) | NO HONEST ANALOG (one citywide DA)⁷ |
 | Borough president / by-county executive | n/a | SHIPPED `borough-president` | n/a |
 | Community district / board (appointed, labeled so) | n/a | SHIPPED `community-district` | n/a |
@@ -116,9 +116,9 @@ entries with per-office source URLs, and label appointed clerks as appointed. (�
 | Police district / precinct | SHIPPED `police-district` (22) | SHIPPED `police-precinct` (78) | SHIPPED `police-district` (10) |
 | Police subdivision (beat / sector) | SHIPPED `police-beat` | SHIPPED `police-sector` | NO HONEST ANALOG — SFPD publishes no patrol-beat boundary (the only "beats" dataset is Parking Control's) |
 | Elected police oversight | SHIPPED `ccpsa-district-council` | NO HONEST ANALOG — CCRB is appointed/citywide; oversight story lives as labeled link rows on the precinct card | NO HONEST ANALOG — the SF Police Commission (Charter §4.109) and Department of Police Accountability are appointed (Mayor + Board of Supervisors), citywide, no districts; NYC's labeled-link-row precedent is the upgrade path if oversight links are ever wanted on the card |
-| Fire-service boundary | SHIPPED `fire-district` (consolidated CountyDispatch: Will + DuPage suburban Fire *Protection* Districts; DuPage is name-only — its GIS carries no trustees) | SHIPPED `fire-battalion` (operational battalions, 49) | NO HONEST ANALOG — SFFD battalions exist but no boundary is published |
+| Fire-service boundary | SHIPPED `fire-district` (consolidated CountyDispatch: Will + DuPage + Lake suburban Fire *Protection* Districts; DuPage name-only, Lake carries each district's office contact) | SHIPPED `fire-battalion` (operational battalions, 49) | NO HONEST ANALOG — SFFD battalions exist but no boundary is published |
 | Township police-service tax district | SHIPPED `dupage-county-special-police` (unincorporated-area township tax districts that fund supplemental DuPage County Sheriff patrol; card links the elected Sheriff, coverage-gated) | NO HONEST ANALOG — NYC has no townships | NO HONEST ANALOG — SF has no townships |
-| Police / fire station points | SHIPPED `police-station` · `fire-station` | SHIPPED | SHIPPED |
+| Police / fire station points | SHIPPED `police-station` · `fire-station` (both metro-wide from USGS National Map structures L53/L51 as of 2026-07 — replaced the city-gated CPD/CFD point sets after a completeness check: 22/22 CPD stations, 91/92 CFD houses; the CPD source still feeds the police-district card's station rows) | SHIPPED (city sources) | SHIPPED (city sources) |
 
 Note the fire-boundary concept is not equivalent across forks: NYC maps *operational*
 battalions; CHI maps suburban *taxing* districts. Chicago-proper CFD battalion/division
@@ -146,7 +146,8 @@ which the never-guess rule excludes as a source.
 | ZIP code | SHIPPED `zip-code` (ZCTA) | SHIPPED `zip-code` (MODZCTA) | SHIPPED `zip-code` (ZCTA) |
 | County | SHIPPED `county` (statewide IL) | SHIPPED `borough` (= county) | n/a — city and county are coterminous (recorded) |
 | Township / municipality | SHIPPED `township` · `municipality` (statewide IL) | n/a | n/a |
-| Park district | SHIPPED `park-district` (consolidated CountyDispatch: Will + DuPage; DuPage name-only) | n/a | n/a |
+| Park district | SHIPPED `park-district` (consolidated CountyDispatch: Will + DuPage + Lake; DuPage name-only, Lake carries office contact) | n/a | n/a |
+| Library taxing district | SHIPPED `library-district` (CountyDispatch, born consolidated: Cook's two Clerk tax-agency tilings — 59 Public Library Districts + 54 municipal Library Funds, incl. the City of Chicago Library Fund at a Loop click — + Will 27 w/ trustees + DuPage 32 name-only + Lake 15 w/ office contact) | n/a — NYC's three library systems (NYPL/BPL/QPL) are nonprofit corporations, not taxing districts | n/a — SFPL is a city department |
 | Post office points | SHIPPED `post-office` (USGS National Map L38 — same national source in every fork) | SHIPPED | SHIPPED |
 | Library points | SHIPPED `library` (CPL) | SHIPPED `library` (NYPL/BPL/QPL) | SHIPPED `library` (SFPL) |
 | Ballot drop boxes | SHIPPED — folded into `early-voting`: Chicago's secured drop boxes (10 ILCS 5/19-6 collection sites, chicagoelections.gov/voting/drop-boxes) are hosted at the early-voting sites themselves — the 50 ward sites in the shipped 52-site file (plus the 2 downtown sites) — and the card intro says so | NO HONEST ANALOG — NYC runs no standalone drop-box program; absentee/mail ballots return by mail, at any poll site, or at BOE offices (vote.nyc / RequestBallot), all already covered by `early-voting` + the card's official links | SHIPPED (inside `early-voting`) |
@@ -229,26 +230,33 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
   hand-encoding violates the never-guess rule.
 - Judicial subcircuits beyond Will — PA 102-0693 shapefiles exist (Cook + collar).
 - Statewide voting precincts — hardest class: 102 clerks, non-uniform, frequently
-  redrawn; collar-first plan recorded (suburban Cook `k7sw-w3b8`, Lake, …).
-- Collar-county boards (Lake, Kane, McHenry, Kendall) — per-county ArcGIS Hubs;
-  Cook + Will + DuPage shipped (DuPage board 2026-07: boundary + coverage + a
-  weekly-scraped member roster — 18 members across 6 districts + the countywide
-  Chair, with published @dupagecounty.gov emails. The directory turned out to be
-  static server-rendered HTML, so a plain requests+bs4 scrape sufficed — no
-  Playwright). Future counties join the consolidated `county-board` layer as
-  dispatch entries, not new layers (`docs/COUNTY_LAYER_CONSOLIDATION.md`).
+  redrawn; collar-first plan recorded (Will + DuPage + Lake shipped inside
+  `county-precinct`; suburban Cook `k7sw-w3b8` next, then Kane/McHenry/Kendall).
+- Collar-county boards (Kane, McHenry, Kendall) — per-county ArcGIS Hubs;
+  Cook + Will + DuPage + Lake shipped (DuPage board 2026-07: boundary + coverage
+  + a weekly-scraped member roster — 18 members across 6 districts + the
+  countywide Chair. Lake 2026-07: the first county to land entirely as dispatch
+  entries — zero new layers, and zero scrapers, because Lake's own boundary GIS
+  carries each member's name/phone/official email/district page, verified
+  against the county's published directory). Future counties join the
+  consolidated `county-board` layer as dispatch entries, not new layers
+  (`docs/COUNTY_LAYER_CONSOLIDATION.md`).
 - Park districts statewide (~350) — no statewide GIS; per-county sources. Will +
-  DuPage shipped (`will-county-park`, commissioners in GIS attrs; `dupage-county-park`
-  2026-07, name-only — DuPage's GIS carries no commissioner/contact fields).
-- Cook County GIS layers never wired — library/park/fire/TIF/MWRD/forest-preserve tax
+  DuPage + Lake shipped inside the consolidated `park-district` layer (Will:
+  commissioners in GIS attrs; DuPage: name-only — its GIS carries no
+  commissioner/contact fields; Lake: district office contact in GIS attrs).
+- Cook County GIS layers never wired — park/fire/TIF/MWRD/forest-preserve tax
   districts on `gis.cookcountyil.gov` (`politicalBoundary` server), "not evaluated" in
-  the original build.
+  the original build. (The library tilings — L20 districts + L19 municipal funds —
+  shipped 2026-07 as `library-district`'s Cook entry; the park L23 and fire L17
+  tilings are natural future Cook entries for the consolidated `park-district` /
+  `fire-district` layers.)
 
 ---
 
 ## Per-fork inventories
 
-### Chicago — 36 layers
+### Chicago — 37 layers
 
 | id | label | group | pattern | source | roster / join | coverage |
 |---|---|---|---|---|---|---|
@@ -262,12 +270,13 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `school-district-elementary` | Elementary School District | schools | Polygon | live TIGERweb School L2 | — | outsideChicagoSchoolCoverage |
 | `township` | Township / County Subdivision | geography | Polygon | live TIGERweb CouSub | — | — (subOf `county`) |
 | `municipality` | Municipality | geography | Polygon | live TIGERweb Places | — | — |
-| `judicial-subcircuit` | Judicial Subcircuit | political | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Judicial_Subcircuits`) | link-only (each card links its circuit's court; Court row names circuit + county) | OR of will/dupage county coverages |
-| `county-board` | County Board District | political | CountyDispatch | Cook County GIS L9 · Will County ArcGIS · DuPage County ArcGIS (`County_Board_Dist_new`) | Cook: live office join (same server); Will: `will-county-board-members.json` (weekly CI); DuPage: `dupage-county-board-members.json` (weekly CI; + countywide Chair) | OR of cook/will/dupage county coverages |
+| `judicial-subcircuit` | Judicial Subcircuit | political | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Judicial_Subcircuits`) · Lake County ArcGIS (`LakeCounty_PoliticalBoundaries` L1) | link-only (each card links its circuit's court; Court row names circuit + county) | OR of will/dupage/lake county coverages |
+| `county-board` | County Board District | political | CountyDispatch | Cook County GIS L9 · Will County ArcGIS · DuPage County ArcGIS (`County_Board_Dist_new`) · Lake County ArcGIS (`LakeCounty_PoliticalBoundaries` L0) | Cook: live office join (same server); Will: `will-county-board-members.json` (weekly CI); DuPage: `dupage-county-board-members.json` (weekly CI; + countywide Chair); Lake: member + phone/email/district page on the boundary GIS itself (verified vs the county directory 2026-07) | OR of cook/will/dupage/lake county coverages |
 | `ccbr` | Cook County Board of Review District | political | Bespoke | pre-built (PA 102-0012 shapefile) | `ccbr-roster.json` (weekly CI from cookcountyboardofreview.com) | cookCountyCoverage |
-| `fire-district` | Fire Protection District | safety | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Fire_Protection_Districts_`) | Will: trustees in GIS attrs; DuPage: name-only (its GIS carries no trustee/contact) | OR of will/dupage county coverages |
+| `fire-district` | Fire Protection District | safety | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Fire_Protection_Districts_`) · Lake County ArcGIS (`LakeCounty_TaxDistricts` L4) | Will: trustees in GIS attrs; DuPage: name-only; Lake: district office address/phone/email/site in GIS attrs | OR of will/dupage/lake county coverages |
 | `dupage-county-special-police` | DuPage Special Police District | safety | Polygon | DuPage County ArcGIS (`Special_Police_Districts_`, "Real Estate Tax Code polygons") | link-only (elected DuPage County Sheriff; unincorporated-area police-tax district) | dupageCountyCoverage |
-| `park-district` | Park District | geography | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Park_Districts_`) | Will: commissioners in GIS attrs; DuPage: name-only (its GIS carries no commissioner/contact) | OR of will/dupage county coverages |
+| `park-district` | Park District | geography | CountyDispatch | Will County ArcGIS · DuPage County ArcGIS (`Park_Districts_`) · Lake County ArcGIS (`LakeCounty_TaxDistricts` L11) | Will: commissioners in GIS attrs; DuPage: name-only; Lake: district office address/phone/email/site in GIS attrs | OR of will/dupage/lake county coverages |
+| `library-district` | Library District | geography | CountyDispatch | Cook County GIS L20 (Library Tax District) + L19 (Library Fund) · Will County ArcGIS (`Library_District`) · DuPage County ArcGIS (`Library_Districts_`) · Lake County ArcGIS (`LakeCounty_TaxDistricts` L8) | Cook: agency name + a Type row distinguishing district vs municipal fund; Will: trustees in GIS attrs (sparse); DuPage: name-only; Lake: district office contact in GIS attrs | OR of cook/will/dupage/lake county coverages |
 | `school-board` | Elected School Board District | political | Bespoke | pre-built (ERSB SB15 shapefile) | `school-board-members.json` (hand-curated) | chicagoCoverage |
 | `cps-hs-network` | CPS Network (High School) | schools | CpsNetwork | Socrata `aupu-jt2g` | chief in dataset props | chicagoCoverage |
 | `cps-network` | CPS Network (K-8) | schools | CpsNetwork | Socrata `pnta-kuqa` | chief in dataset props | chicagoCoverage |
@@ -280,11 +289,11 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
 | `zip-code` | ZIP Code | geography | Polygon | live TIGERweb ZCTA | — | — |
 | `cps-high` | CPS High School Zone | schools | SchoolZone | Socrata `xg7c-d8rm` (year-versioned) | zoned-school POI | chicagoCoverage |
 | `cps-middle` | CPS Middle School Zone | schools | SchoolZone | Socrata `fyff-53xy` (year-versioned) | zoned-school POI | chicagoCoverage |
-| `county-precinct` | Voting Precinct | geography | CountyDispatch | Will County ArcGIS `Precincts_2022` · DuPage County ArcGIS `Precincts_2024` (current 600-precinct map) | County Board district via spatial join; each card links its county clerk | OR of will/dupage county coverages (subOf `township`) |
+| `county-precinct` | Voting Precinct | geography | CountyDispatch | Will County ArcGIS `Precincts_2022` · DuPage County ArcGIS `Precincts_2024` (current 600-precinct map) · Lake County ArcGIS (`LakeCounty_PoliticalBoundaries` L7, 431) | County Board district via spatial join; each card links its county clerk | OR of will/dupage/lake county coverages (subOf `township`) |
 | `cps-elementary` | CPS Elementary School Zone | schools | SchoolZone | Socrata `x72b-38qv` (year-versioned) | zoned-school POI | chicagoCoverage |
 | `school-site` | School Location (nearest N) | schools | Bespoke nearest | CPD-org ArcGIS `Schools` | — | chicagoCoverage |
-| `police-station` | Police Station | safety | NearestPt | CPD ArcGIS stations | — | chicagoCoverage |
-| `fire-station` | Fire Station | safety | NearestPt | Socrata `28km-gtjn` | — | chicagoCoverage |
+| `police-station` | Police Station | safety | NearestPt | USGS National Map structures L53 (metro bbox) | — | — (metro-wide) |
+| `fire-station` | Fire Station | safety | NearestPt | USGS National Map structures L51 (metro bbox) | — | — (metro-wide) |
 | `post-office` | Post Office | geography | NearestPt | USGS National Map structures L38 | — | — |
 | `library` | Library | geography | NearestPt | Socrata `x8fc-8rcq` | — | chicagoCoverage |
 | `early-voting` | Early Voting Site | political | NearestPt | hand-curated `early-voting-sites.json` (per election; sites double as the secured drop boxes; WATCH.md row) | — | chicagoCoverage |

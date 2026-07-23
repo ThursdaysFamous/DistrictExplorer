@@ -89,8 +89,8 @@ EXPECT_LAYER_IDS = [
     "school-district-secondary", "school-district-unified",
     "school-district-elementary", "township", "municipality",
     "judicial-subcircuit", "county-board", "ccbr", "fire-district",
-    "dupage-county-special-police", "park-district", "school-board",
-    "cps-hs-network", "cps-network", "ward", "ward-precinct",
+    "dupage-county-special-police", "park-district", "library-district",
+    "school-board", "cps-hs-network", "cps-network", "ward", "ward-precinct",
     "police-district", "police-beat", "ccpsa-district-council",
     "community-area", "zip-code", "cps-high", "cps-middle", "county-precinct",
     "cps-elementary", "school-site", "police-station", "fire-station",
@@ -107,6 +107,7 @@ GEOMETRY_FILES = {
     "il-senate-districts.json": (60, 60),  # 59 IL Senate districts + ZZ; pre-built from TIGERweb layer 1
     "il-house-districts.json": (119, 119),  # 118 IL House districts + ZZ; pre-built from TIGERweb layer 2
     "dupage-county-outline.json": (1, 1),
+    "lake-county-outline.json": (1, 1),
 }
 
 # file -> minimum key count (officeholder rosters).

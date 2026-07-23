@@ -85,8 +85,6 @@ SOCRATA = [
      "name_contains": "Boundaries - Community Areas"},
     # ZIP Code moved off Socrata to the statewide Census ZCTA layer (no city
     # boundary line) — the endpoint is tracked in ENDPOINTS below, not here.
-    {"id": "28km-gtjn", "layer": "Fire Stations",
-     "name_contains": "Fire Stations"},
     {"id": "x8fc-8rcq", "layer": "Library locations (nearest N)",
      "name_contains": "Libraries - Locations"},
     {"id": "x72b-38qv", "layer": "CPS Elementary School Zone",
@@ -175,6 +173,10 @@ ENDPOINTS = [
      "url": "https://services2.arcgis.com/t3tlzCPfmaQzSWAk/arcgis/rest/services/Schools/FeatureServer/0?f=json"},
     {"layer": "USGS National Map structures — post offices (layer 38)",
      "url": "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/38?f=json"},
+    {"layer": "USGS National Map structures — fire stations (layer 51; replaced CFD 28km-gtjn)",
+     "url": "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/51?f=json"},
+    {"layer": "USGS National Map structures — police stations (layer 53; replaced the CPD station list for the nearest-3 layer)",
+     "url": "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/53?f=json"},
     {"layer": "Census TIGERweb counties (statewide county layer)",
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer?f=json"},
     {"layer": "Census TIGERweb county subdivisions + places (township/municipality layers)",
@@ -187,6 +189,8 @@ ENDPOINTS = [
      "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer?f=json"},
     {"layer": "Will County Board districts 2022 (current 11-district map + reps)",
      "url": "https://services.arcgis.com/fGsbyIOAuxHnF97m/arcgis/rest/services/County_Board_Districts_2022/FeatureServer/0?f=json"},
+    {"layer": "Lake County Board districts (19 members + contact carried on the county GIS)",
+     "url": "https://services3.arcgis.com/HESxeTbDliKKvec2/arcgis/rest/services/LakeCounty_PoliticalBoundaries/FeatureServer/0?f=json"},
 ]
 
 FAIL, WARN, OK = "FAIL", "WARN", "OK"
