@@ -7,14 +7,20 @@ county clerk, police-district, ward-precinct/police-beat compact, 4c footer
 links) are live. Two additive extensions landed during implementation:
 `renderLinkRow` also accepts `phone`/`email` (office-like rows such as a CAPS
 desk), and `registerPolygonLayer` passes through `opts.primaryLink`.
-**Still on `renderFieldList`** (the wave-3 remainder, all needing an opts
-evolution or a shared-renderer refactor): `polygonCountyEntry` and the
-bespoke county-concept entries (judicial-subcircuit, fire/park/library
-districts, county-precinct), `school-zone-factory` + `cps-network-factory`
-(their `profileHtml` caller-HTML opts can't migrate additively), and the
-generic non-compact `polygon-factory` path. `school-site` keeps its bespoke
-filter card by design. The retirement release stays gated on a fleet-wide
-zero-call-site grep.
+**Wave 3 is also live**: `renderFieldStack` (the generic label-over-value
+stack) joined the helper set and now serves the generic `polygon-factory` /
+`polygonCountyEntry` paths and every county-concept entry (judicial-
+subcircuit, fire/park/library districts, county-precinct — links moved to
+entry-level `primaryLink`); `school-zone-factory` grew the data-only
+`profileLink(id)`/`moreLink` opts (Chicago's CPS zones use them) and
+`cps-network-factory` renders chief + office natively; `renderLinkRow`
+gained a `note` line. **Chicago now has zero `renderFieldList` call sites.**
+The four surviving `renderFieldList` references are deliberate sibling-
+compat legacy branches (polygon-factory, polygonCountyEntry, school-zone
+×2) that fire only for specs still carrying caller-HTML opts — NYC/SF hit
+them until they migrate. `school-site` keeps its bespoke filter card by
+design. The retirement release (delete `render-helper` + the `.result-row`
+CSS + the legacy branches) stays gated on a fleet-wide zero grep.
 
 This is the engineering contract for implementing the card redesign specified in
 `docs/design_handoff_county_board_card/` (Handoff 1, County Board card, design

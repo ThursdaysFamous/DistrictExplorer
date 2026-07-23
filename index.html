@@ -1808,6 +1808,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   .card-linkrow { display: flex; flex-direction: column; gap: 2px; padding: 12px 18px; }
   .card-linkrow-title { font-size: 14.5px; font-weight: 700; color: var(--card-ink); }
+  .card-linkrow-note { font-size: 12px; color: var(--card-muted); }
+  .card-field-stack { display: flex; flex-direction: column; gap: 9px; padding: 12px 18px; }
+  .card-field-label { font-size: 12px; font-weight: 600; color: var(--card-muted); }
+  .card-field-value { font-size: 13px; line-height: 1.5; color: var(--card-body-ink); }
+  .card-field-value.card-field-primary { font-size: 14.5px; font-weight: 700; color: var(--card-ink); }
   /* the outage card composes a link row inside the padded legacy body */
   .layer-card-body > .card-linkrow { padding: 8px 0 0; }
 
@@ -5249,14 +5254,32 @@ function initChiExplorer() {
     return frag;
   }
   function renderLinkRow(spec) {
-    // { title?, phone?, email?, links?: [{label, url}] } — a name + contact
-    // line (Handoff 2 §4c; phone/email serve office-like rows such as a CAPS
-    // desk, rendered under the same rules as a person's contact line).
+    // { title?, note?, phone?, email?, links?: [{label, url}] } — a name +
+    // contact line (Handoff 2 §4c; note is a muted context line under the
+    // title, and phone/email serve office-like rows such as a CAPS desk,
+    // rendered under the same rules as a person's contact line).
     var el = cardEl("div", "card-linkrow card-row-b");
     if (spec.title) el.appendChild(cardEl("div", "card-linkrow-title", spec.title));
+    if (spec.note) el.appendChild(cardEl("div", "card-linkrow-note", spec.note));
     var contact = cardContactLine({ phone: spec.phone, email: spec.email, links: spec.links });
     if (contact) el.appendChild(contact);
     return el;
+  }
+  function renderFieldStack(rows) {
+    // [{ label?, value, primary? }] — the generic left-aligned label-over-
+    // value stack for identity layers with no officeholder (the wave-3
+    // replacement for the right-aligned dt/dd rows). Data only: a link
+    // belongs in the module's primaryLink footer, never in a value.
+    var wrap = cardEl("div", "card-flush");
+    var stack = cardEl("div", "card-field-stack");
+    rows.forEach(function (row) {
+      var field = cardEl("div", "card-field");
+      if (row.label) field.appendChild(cardEl("div", "card-field-label", row.label));
+      field.appendChild(cardEl("div", "card-field-value" + (row.primary ? " card-field-primary" : ""), row.value));
+      stack.appendChild(field);
+    });
+    wrap.appendChild(stack);
+    return wrap;
   }
   /* ==== ENGINE:END card-helpers ==== */
   /* =========================================================================
@@ -5525,7 +5548,7 @@ function initChiExplorer() {
           if (f.when && !f.when(result)) return;
           if (f.keys) {
             var val = result[f.name];
-            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown" });
+            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true });
             else if (val) rows.push({ label: f.label, value: String(val) });
           } else if (f.html !== undefined) {
             rows.push({ label: f.label, html: f.html });
@@ -5533,7 +5556,11 @@ function initChiExplorer() {
             rows.push({ label: f.label, value: f.value });
           }
         });
-        return renderFieldList(rows);
+        // A spec still carrying html fields (caller-certified markup) keeps
+        // the legacy dt/dd card — the redesigned stack is data-only, so the
+        // new look arrives when a fork moves its links to opts.primaryLink.
+        var hasHtml = rows.some(function (r) { return r.html !== undefined; });
+        return hasHtml ? renderFieldList(rows) : renderFieldStack(rows);
       },
       pointOfInterest: opts.pointOfInterest,
       coverage: opts.coverage, // optional location-relevance test (see overlay-cards)
@@ -6297,19 +6324,41 @@ function initChiExplorer() {
   // card-order convention says surface them. Blanks arrive as single spaces
   // in this data, so trim before deciding a row exists; every external string
   // is sanitized (and URLs scheme-checked) before it becomes HTML.
-  function lakeOrgContactRows(result) {
-    function val(v) { return v == null ? "" : String(v).trim(); }
-    var rows = [];
-    var addr = [val(result.addr), [val(result.city), val(result.zip)].filter(Boolean).join(" ")]
-      .filter(Boolean);
-    if (addr.length) rows.push({ label: "Office Address", html: addr.map(sanitize).join("<br>") });
-    if (val(result.phone)) rows.push({ label: "Phone", value: val(result.phone) });
-    if (val(result.email)) {
-      rows.push({ label: "Email", html: '<a href="mailto:' + sanitize(val(result.email)) + '">' + sanitize(val(result.email)) + "</a>" });
+  // Shared special-district org card (Lake + Kane tax-district entries):
+  // district name + county context, the named officer (Kane) as a person row
+  // carrying the office contact, or the contact on the title row where the
+  // GIS names no officer (Lake), and the office address behind the expander.
+  // All data-only — the helpers own sanitization and href construction.
+  function orgEntryCard(title, county, contact) {
+    var wrap = cardEl("div", "card-flush");
+    var links = contact.url ? [{ label: "Website", url: contact.url }] : [];
+    if (contact.officer) {
+      wrap.appendChild(renderLinkRow({ title: title || "Unknown", note: county }));
+      var person = { name: contact.officer, badge: contact.officerTitle || "Officer" };
+      if (contact.phone) person.phone = contact.phone;
+      if (contact.email) person.email = contact.email;
+      if (links.length) person.links = links;
+      wrap.appendChild(renderPersonRows([person]));
+    } else {
+      wrap.appendChild(renderLinkRow({
+        title: title || "Unknown", note: county,
+        phone: contact.phone, email: contact.email, links: links
+      }));
     }
-    var site = safeHttpUrl(val(result.url));
-    if (site) rows.push({ label: "Website", html: '<a href="' + sanitize(site) + '" target="_blank" rel="noopener">' + sanitize(site) + "</a>" });
-    return rows;
+    if (contact.addrLines && contact.addrLines.length) {
+      wrap.appendChild(renderOfficeGroup({ offices: [{ label: "Office", lines: contact.addrLines }] }));
+    }
+    return wrap;
+  }
+  // Lake's GIS carries each district's own office contact on the feature
+  function lakeOrgCard(title, county, result) {
+    function val(v) { return v == null ? "" : String(v).trim(); }
+    return orgEntryCard(title, county, {
+      addrLines: [val(result.addr), [val(result.city), val(result.zip)].filter(Boolean).join(" ")].filter(Boolean),
+      phone: val(result.phone) || null,
+      email: val(result.email) || null,
+      url: safeHttpUrl(val(result.url))
+    });
   }
 
   /* =========================================================================
@@ -6399,24 +6448,23 @@ function initChiExplorer() {
   // (officeholder, then location, then contact, then link). Kane publishes
   // some websites scheme-less ("www.bartlettparks.org"); a bare domain gets a
   // conservative https:// prefix before the scheme check, never anything else.
-  function kaneRepContactRows(result) {
+  function kaneOrgCard(title, county, result) {
     function val(v) { return v == null ? "" : String(v).trim(); }
-    var rows = [];
-    if (val(result.repName)) {
-      rows.push({ label: val(result.repTitle) || "Officer", value: val(result.repName) });
-    }
-    var addr = [val(result.addr),
-      [val(result.city), [val(result.st), val(result.zip)].filter(Boolean).join(" ")].filter(Boolean).join(", ")]
-      .filter(Boolean);
-    if (addr.length) rows.push({ label: "Office Address", html: addr.map(sanitize).join("<br>") });
-    if (val(result.phone)) rows.push({ label: "Phone", value: val(result.phone) });
-    if (val(result.email)) {
-      rows.push({ label: "Email", html: '<a href="mailto:' + sanitize(val(result.email)) + '">' + sanitize(val(result.email)) + "</a>" });
-    }
+    // Kane publishes some websites scheme-less ("www.bartlettparks.org"); a
+    // bare domain gets a conservative https:// prefix before the scheme
+    // check, never anything else.
     var raw = val(result.url);
     var site = safeHttpUrl(raw) || (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(raw) ? safeHttpUrl("https://" + raw) : null);
-    if (site) rows.push({ label: "Website", html: '<a href="' + sanitize(site) + '" target="_blank" rel="noopener">' + sanitize(site) + "</a>" });
-    return rows;
+    return orgEntryCard(title, county, {
+      officer: val(result.repName) || null,
+      officerTitle: val(result.repTitle) || null,
+      addrLines: [val(result.addr),
+        [val(result.city), [val(result.st), val(result.zip)].filter(Boolean).join(" ")].filter(Boolean).join(", ")]
+        .filter(Boolean),
+      phone: val(result.phone) || null,
+      email: val(result.email) || null,
+      url: site
+    });
   }
 
   // query helper shared by the three Kane tax-district entries — same result
@@ -7504,10 +7552,14 @@ function initChiExplorer() {
   /* ==== ENGINE:END int-field ==== */
 
   /* ---------- builds a sanitized cps.edu school-profile link, or null if no id ---------- */
-  function schoolProfileHtml(schoolId) {
+  function schoolProfileLink(schoolId) {
+    // profile URLs are only ever built from a dataset-supplied id, never
+    // guessed from a name (school-zone-factory contract)
     if (!schoolId) return null;
-    var url = "https://www.cps.edu/schools/schoolprofiles/" + encodeURIComponent(String(schoolId));
-    return '<a href="' + sanitize(url) + '" target="_blank" rel="noopener">School profile</a>';
+    return {
+      label: "School profile",
+      url: "https://www.cps.edu/schools/schoolprofiles/" + encodeURIComponent(String(schoolId))
+    };
   }
 
   /* ==== ENGINE:BEGIN school-zone-factory ==== */
@@ -7560,20 +7612,49 @@ function initChiExplorer() {
         });
       },
       render: function (result) {
+        // A fork still supplying the html-string opts (profileHtml/moreHtml)
+        // keeps the legacy dt/dd card; the data-only opts (profileLink(id) ->
+        // {label,url}, moreLink: {label,url}) get the redesigned card with
+        // the link in the footer (primaryLink below).
+        var legacyHtml = (opts.profileHtml || opts.moreHtml) && !(opts.profileLink || opts.moreLink);
         if (result.none) {
-          var f = [{ label: "Zoned school", value: "None" }];
-          if (result.district) f.push({ label: "School district", value: String(result.district) });
-          f.push({ label: "Why", value: opts.emptyNote });
-          if (opts.moreHtml) f.push({ label: "Apply", html: opts.moreHtml });
-          return renderFieldList(f);
+          if (legacyHtml) {
+            var f = [{ label: "Zoned school", value: "None" }];
+            if (result.district) f.push({ label: "School district", value: String(result.district) });
+            f.push({ label: "Why", value: opts.emptyNote });
+            if (opts.moreHtml) f.push({ label: "Apply", html: opts.moreHtml });
+            return renderFieldList(f);
+          }
+          var noneWrap = cardEl("div", "card-flush");
+          noneWrap.appendChild(renderBodyIntro({
+            title: "No zoned school",
+            note: opts.emptyNote + (result.district ? " (district " + String(result.district) + ")" : "")
+          }));
+          return noneWrap;
         }
-        var fields = [{ label: "Zoned school", value: result.name ? String(result.name) : "Unknown" }];
-        if (result.district) fields.push({ label: "School district", value: String(result.district) });
-        if (result.grades) fields.push({ label: "Grades", value: String(result.grades) });
-        if (result.address) fields.push({ label: "Address", value: String(result.address), pin: opts.style.color });
-        var profileHtml = opts.profileHtml ? opts.profileHtml(result.schoolId) : null;
-        if (profileHtml) fields.push({ label: "Profile", html: profileHtml });
-        return renderFieldList(fields);
+        if (legacyHtml) {
+          var fields = [{ label: "Zoned school", value: result.name ? String(result.name) : "Unknown" }];
+          if (result.district) fields.push({ label: "School district", value: String(result.district) });
+          if (result.grades) fields.push({ label: "Grades", value: String(result.grades) });
+          if (result.address) fields.push({ label: "Address", value: String(result.address), pin: opts.style.color });
+          var profileHtml = opts.profileHtml ? opts.profileHtml(result.schoolId) : null;
+          if (profileHtml) fields.push({ label: "Profile", html: profileHtml });
+          return renderFieldList(fields);
+        }
+        var noteBits = [];
+        if (result.address) noteBits.push(String(result.address));
+        if (result.grades) noteBits.push("Grades " + String(result.grades));
+        if (result.district) noteBits.push("District " + String(result.district));
+        var wrap = cardEl("div", "card-flush");
+        wrap.appendChild(renderLinkRow({
+          title: result.name ? String(result.name) : "Unknown",
+          note: noteBits.length ? noteBits.join(" · ") : null
+        }));
+        return wrap;
+      },
+      primaryLink: function (result) {
+        if (result.none) return opts.moreLink || null;
+        return opts.profileLink ? opts.profileLink(result.schoolId) : null;
       },
       pointOfInterest: function (result) {
         if (!result.address) return null;
@@ -7592,7 +7673,7 @@ function initChiExplorer() {
     opts.idKeys = ["school_id", "sch_id", "schoolid", "school_ids"];
     opts.gradeKeys = ["boundarygr", "grade_range", "gradelevel"];
     opts.addressKeys = ["school_add", "address", "location_address"];
-    opts.profileHtml = schoolProfileHtml;
+    opts.profileLink = schoolProfileLink;
     registerSchoolZone(opts);
   }
 
@@ -7656,12 +7737,25 @@ function initChiExplorer() {
         });
       },
       render: function (result) {
-        var fields = [{ label: "Network", value: result.network ? String(result.network) : "Unknown" }];
-        if (result.chief) fields.push({ label: "Network Chief", value: String(result.chief) });
-        // Card convention: office location before contact.
-        if (result.address) fields.push({ label: "Office Address", value: String(result.address), pin: opts.style.color });
-        if (result.phone) fields.push({ label: "Phone", value: String(result.phone) });
-        return renderFieldList(fields);
+        // chief as a person row, the network office as an office block —
+        // the network number itself lives in the header pill (cardIdentifier)
+        var wrap = cardEl("div", "card-flush");
+        if (result.chief) {
+          wrap.appendChild(renderPersonRows([{ name: String(result.chief), badge: "Network Chief" }]));
+        }
+        if (result.address || result.phone) {
+          wrap.appendChild(renderOfficeGroup({
+            offices: [{
+              label: "Network Office",
+              lines: result.address ? [String(result.address)] : [],
+              phone: result.phone ? String(result.phone) : null
+            }]
+          }));
+        }
+        return wrap;
+      },
+      cardIdentifier: function (result) {
+        return result.network ? "Network " + String(result.network) : null;
       },
       pointOfInterest: function (result) {
         if (!result.address) return null;
@@ -9067,7 +9161,7 @@ function initChiExplorer() {
           if (f.when && !f.when(result)) return;
           if (f.keys) {
             var val = result[f.name];
-            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown" });
+            if (f.primary) rows.push({ label: f.label, value: val ? String(val) : "Unknown", primary: true });
             else if (val) rows.push({ label: f.label, value: String(val) });
           } else if (f.html !== undefined) {
             rows.push({ label: f.label, html: f.html });
@@ -9075,8 +9169,13 @@ function initChiExplorer() {
             rows.push({ label: f.label, value: f.value });
           }
         });
-        return renderFieldList(rows);
-      }
+        // same seam as registerPolygonLayer: a spec still carrying html
+        // fields keeps the legacy card; data-only specs get the stack, with
+        // the entry's link in opts.primaryLink (dispatched to the footer)
+        var hasHtml = rows.some(function (r) { return r.html !== undefined; });
+        return hasHtml ? renderFieldList(rows) : renderFieldStack(rows);
+      },
+      primaryLink: opts.primaryLink
     };
   }
 
@@ -9626,7 +9725,7 @@ function initChiExplorer() {
         },
         render: function (result) {
           var fields = [
-            { label: "Subcircuit", value: result.subcircuit != null && result.subcircuit !== "" ? String(result.subcircuit) : "Unknown" },
+            { label: "Subcircuit", value: result.subcircuit != null && result.subcircuit !== "" ? String(result.subcircuit) : "Unknown", primary: true },
             { label: "Court", value: "Circuit Court of Cook County" }
           ];
           if (result.municipalDistrict != null && result.municipalDistrict !== "") {
@@ -9636,9 +9735,12 @@ function initChiExplorer() {
                 (result.courthouse ? " (" + String(result.courthouse) + ")" : "")
             });
           }
-          fields.push({ label: "Judges",
-            html: '<a href="https://www.cookcountycourtil.gov/" target="_blank" rel="noopener">Circuit Court of Cook County (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // judges are elected FROM a subcircuit but sit circuit-wide — the
+          // court's own site is the honest link, not a per-subcircuit roster
+          return { label: "Circuit Court of Cook County (official)", url: "https://www.cookcountycourtil.gov/" };
         }
       },
       polygonCountyEntry({
@@ -9647,10 +9749,11 @@ function initChiExplorer() {
         loader: loadWillJudicial,
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["subdistrict"], primary: true },
-          { label: "Court", value: "12th Judicial Circuit (Will County)" },
-          { label: "Judges",
-            html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
-        ]
+          { label: "Court", value: "12th Judicial Circuit (Will County)" }
+        ],
+        primaryLink: function () {
+          return { label: "Illinois Courts — Circuit Courts (official)", url: "https://www.illinoiscourts.gov/courts/circuit-court" };
+        }
       }),
       polygonCountyEntry({
         key: "dupage",
@@ -9658,10 +9761,11 @@ function initChiExplorer() {
         loader: loadDupageJudicial,
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
-          { label: "Court", value: "18th Judicial Circuit (DuPage County)" },
-          { label: "Judges",
-            html: '<a href="https://www.dupagecourts.gov/" target="_blank" rel="noopener">18th Judicial Circuit Court (official)</a>' }
-        ]
+          { label: "Court", value: "18th Judicial Circuit (DuPage County)" }
+        ],
+        primaryLink: function () {
+          return { label: "18th Judicial Circuit Court (official)", url: "https://www.dupagecourts.gov/" };
+        }
       }),
       polygonCountyEntry({
         key: "lake",
@@ -9669,10 +9773,11 @@ function initChiExplorer() {
         loader: loadLakeJudicial,
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["judicial_sub"], primary: true },
-          { label: "Court", value: "19th Judicial Circuit (Lake County)" },
-          { label: "Judges",
-            html: '<a href="https://www.19thcircuitcourt.state.il.us/" target="_blank" rel="noopener">19th Judicial Circuit Court (official)</a>' }
-        ]
+          { label: "Court", value: "19th Judicial Circuit (Lake County)" }
+        ],
+        primaryLink: function () {
+          return { label: "19th Judicial Circuit Court (official)", url: "https://www.19thcircuitcourt.state.il.us/" };
+        }
       }),
       polygonCountyEntry({
         key: "kane",
@@ -9680,10 +9785,11 @@ function initChiExplorer() {
         loader: loadKaneJudicial,
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
-          { label: "Court", value: "16th Judicial Circuit (Kane County)" },
-          { label: "Judges",
-            html: '<a href="https://www.illinois16thjudicialcircuit.org/" target="_blank" rel="noopener">16th Judicial Circuit Court (official)</a>' }
-        ]
+          { label: "Court", value: "16th Judicial Circuit (Kane County)" }
+        ],
+        primaryLink: function () {
+          return { label: "16th Judicial Circuit Court (official)", url: "https://www.illinois16thjudicialcircuit.org/" };
+        }
       }),
       polygonCountyEntry({
         key: "mchenry",
@@ -9691,10 +9797,11 @@ function initChiExplorer() {
         loader: loadMchenryJudicial,
         fields: [
           { name: "subcircuit", label: "Subcircuit", keys: ["district"], primary: true },
-          { label: "Court", value: "22nd Judicial Circuit (McHenry County)" },
-          { label: "Judges",
-            html: '<a href="https://www.illinoiscourts.gov/courts/circuit-court" target="_blank" rel="noopener">Illinois Courts — Circuit Courts (official)</a>' }
-        ]
+          { label: "Court", value: "22nd Judicial Circuit (McHenry County)" }
+        ],
+        primaryLink: function () {
+          return { label: "Illinois Courts — Circuit Courts (official)", url: "https://www.illinoiscourts.gov/courts/circuit-court" };
+        }
       })
     ]
   });
@@ -9780,11 +9887,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [
-            { label: "Fire District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Lake County" }
-          ];
-          return renderFieldList(fields.concat(lakeOrgContactRows(result)));
+          return lakeOrgCard(result.name ? String(result.name) : null, "Lake County", result);
         }
       },
       // Kane names each district's chief plus the office contact — see the
@@ -9796,11 +9899,7 @@ function initChiExplorer() {
         hoverName: kaneOrgHoverName,
         query: kaneOrgQuery(loadKaneFire),
         render: function (result) {
-          var fields = [
-            { label: "Fire District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Kane County" }
-          ];
-          return renderFieldList(fields.concat(kaneRepContactRows(result)));
+          return kaneOrgCard(result.name ? String(result.name) : null, "Kane County", result);
         }
       },
       // McHenry: name-only (see the loader's filler/municipal filter)
@@ -9905,11 +10004,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [
-            { label: "Park District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Lake County" }
-          ];
-          return renderFieldList(fields.concat(lakeOrgContactRows(result)));
+          return lakeOrgCard(result.name ? String(result.name) : null, "Lake County", result);
         }
       },
       // Kane names each district's board president plus the office contact
@@ -9920,11 +10015,7 @@ function initChiExplorer() {
         hoverName: kaneOrgHoverName,
         query: kaneOrgQuery(loadKaneParks),
         render: function (result) {
-          var fields = [
-            { label: "Park District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Kane County" }
-          ];
-          return renderFieldList(fields.concat(kaneRepContactRows(result)));
+          return kaneOrgCard(result.name ? String(result.name) : null, "Kane County", result);
         }
       },
       // Kendall (all five bodies in the county's park tax tiling are genuine
@@ -10018,13 +10109,13 @@ function initChiExplorer() {
         render: function (result) {
           var fields = [
             { label: result.kind === "fund" ? "Library Fund" : "Library District",
-              value: result.name ? String(result.name).trim() : "Unknown" },
+              value: result.name ? String(result.name).trim() : "Unknown", primary: true },
             { label: "County", value: "Cook County" },
             { label: "Type", value: result.kind === "fund"
                 ? "Municipal library fund — a city/village library financed by its municipality's levy"
                 : "Independent public library district with its own elected board" }
           ];
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
         }
       },
       polygonCountyEntry({
@@ -10078,11 +10169,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [
-            { label: "Library District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Lake County" }
-          ];
-          return renderFieldList(fields.concat(lakeOrgContactRows(result)));
+          return lakeOrgCard(result.name ? String(result.name) : null, "Lake County", result);
         }
       },
       // Kane names each district's board president plus the office contact
@@ -10093,11 +10180,7 @@ function initChiExplorer() {
         hoverName: kaneOrgHoverName,
         query: kaneOrgQuery(loadKaneLibraries),
         render: function (result) {
-          var fields = [
-            { label: "Library District", value: result.name ? String(result.name) : "Unknown" },
-            { label: "County", value: "Kane County" }
-          ];
-          return renderFieldList(fields.concat(kaneRepContactRows(result)));
+          return kaneOrgCard(result.name ? String(result.name) : null, "Kane County", result);
         }
       },
       polygonCountyEntry({
@@ -10190,16 +10273,18 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             // Cook's county legislature calls its seats Commissioner
             // Districts — same row, the county's own terminology
             fields.push({ label: "Commissioner District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.cookcountyclerkil.gov/elections" target="_blank" rel="noopener">Cook County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "Cook County Clerk — Elections (official)", url: "https://www.cookcountyclerkil.gov/elections" };
         }
       },
       {
@@ -10233,14 +10318,16 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.thewillcountyclerk.com/elections/" target="_blank" rel="noopener">Will County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "Will County Clerk — Elections (official)", url: "https://www.thewillcountyclerk.com/elections/" };
         }
       },
       {
@@ -10274,14 +10361,16 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.dupagecounty.gov/elections/" target="_blank" rel="noopener">DuPage County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "DuPage County Clerk — Elections (official)", url: "https://www.dupagecounty.gov/elections/" };
         }
       },
       {
@@ -10315,14 +10404,16 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.lakecountyil.gov/163/Elections" target="_blank" rel="noopener">Lake County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "Lake County Clerk — Elections (official)", url: "https://www.lakecountyil.gov/163/Elections" };
         }
       },
       {
@@ -10352,13 +10443,15 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://clerk.kanecountyil.gov/Elections" target="_blank" rel="noopener">Kane County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "Kane County Clerk — Elections (official)", url: "https://clerk.kanecountyil.gov/Elections" };
         }
       },
       {
@@ -10391,14 +10484,16 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict != null && result.boardDistrict !== "") {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.mchenrycountyil.gov/departments/county-clerk/elections" target="_blank" rel="noopener">McHenry County Clerk — Elections (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "McHenry County Clerk — Elections (official)", url: "https://www.mchenrycountyil.gov/departments/county-clerk/elections" };
         }
       },
       {
@@ -10463,7 +10558,7 @@ function initChiExplorer() {
           });
         },
         render: function (result) {
-          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown" }];
+          var fields = [{ label: "Precinct", value: result.name ? String(result.name) : "Unknown", primary: true }];
           if (result.township) fields.push({ label: "Township", value: String(result.township) });
           if (result.boardDistrict) {
             fields.push({ label: "County Board District", value: String(result.boardDistrict) });
@@ -10472,9 +10567,11 @@ function initChiExplorer() {
             fields.push({ label: "Polling place", value: String(result.pollingPlace) +
               (result.pollingAddress ? " — " + String(result.pollingAddress) : "") });
           }
-          fields.push({ label: "Registration & polling place",
-            html: '<a href="https://www.kendallcountyil.gov/offices/county-clerk-recorder/election-voter-information/precincts-locations" target="_blank" rel="noopener">Kendall County Clerk — Precincts &amp; Locations (official)</a>' });
-          return renderFieldList(fields);
+          return renderFieldStack(fields);
+        },
+        primaryLink: function () {
+          // registration & polling place lookup
+          return { label: "Kendall County Clerk — Precincts & Locations (official)", url: "https://www.kendallcountyil.gov/offices/county-clerk-recorder/election-voter-information/precincts-locations" };
         }
       }
     ],
