@@ -171,9 +171,31 @@ layer** — no new toggle, no worksheet/guidebook/count churn beyond the entry's
    polling-place assignment joined by GlobalID. Kendall also proved the
    second structural-n/a shape: `judicial-subcircuit` has no Kendall entry
    because the 23rd Circuit received no subcircuits under PA 102-0693 —
-   statute, not a gap. A county-specific layer is only ever created for a concept no
+   statute, not a gap. (Kendall's board entry initially shipped
+   district-number-only and gained its weekly-scraped member roster in a
+   follow-up — the lag that motivated rule 4 below.) A county-specific layer
+   is only ever created for a concept no
    consolidated layer covers yet (as `dupage-county-special-police` remains
    today).
+
+4. **Officeholder sourcing is determined AT expansion time, not deferred.**
+   For every concept a new county (or metro) brings in, the same change that
+   ships the boundary decides — and builds — the officeholder story:
+   - **GIS attrs**: the county's own boundary service carries member/contact
+     fields (Lake, Kane) → verify against the published directory and use
+     them; no pipeline needed.
+   - **Official directory, no GIS fields**: the county publishes a member
+     directory (Will, DuPage, Kendall) → the scraper + builder + weekly
+     PR-opening workflow ships IN THE SAME EXPANSION CHANGE, not as a
+     follow-up. Bot-managed sites are not an excuse: the dual-engine
+     pattern (requests → Playwright fallback, cpd_district_scraper.py /
+     kendall_county_board_scraper.py) handles Cloudflare- and
+     Akamai-fronted sites alike.
+   - **No verifiable source**: the card links the official body and the
+     guidebook records the gap — the honesty floor, never the default.
+   McHenry predates this rule and is the recorded retro-debt: its board
+   card links the member directory a scraper should be reading
+   (docs/DATA_LAYER_GUIDEBOOK.md backlog).
 
 ## Verification
 

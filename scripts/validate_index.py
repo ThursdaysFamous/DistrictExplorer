@@ -124,6 +124,7 @@ ROSTER_FILES = {
     "cpd-district-info.json": 0,  # ships as an empty placeholder until its first scrape lands
     "ccpsa-district-councils.json": 20,  # 22 councils (13 & 21 retired); floor guards a partial scrape
     "will-county-board-members.json": 11,  # 11 board districts (2 members each) scraped weekly from willcountyboard.com
+    "kendall-county-board-members.json": 2,  # 2 board districts (5 members each incl. the Chairman) scraped weekly from kendallcountyil.gov (Akamai-fronted; the scraper falls back to Playwright)
     "early-voting-sites.json": 3,  # GeoJSON FeatureCollection (type/metadata/features — key floor is shape-only); hand-curated per election from chicagoelections.gov, network-first so a new election's list is never served stale
     "ccbr-roster.json": 3,
     "il-county-clerks.json": 101,

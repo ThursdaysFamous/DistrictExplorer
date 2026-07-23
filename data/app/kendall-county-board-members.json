@@ -1,0 +1,60 @@
+{
+  "1": {
+    "members": [
+      {
+        "name": "Scott Gengler",
+        "phone": "630.207.7859",
+        "email": "sgengler@kendallcountyil.gov"
+      },
+      {
+        "name": "Brian DeBolt",
+        "phone": "630.552.1975",
+        "email": "BDeBolt@kendallcountyil.gov"
+      },
+      {
+        "name": "Ruben Rodriguez",
+        "email": "rrodriguez@kendallcountyil.gov"
+      },
+      {
+        "name": "Jason Peterson",
+        "phone": "773.469.4245",
+        "email": "jpeterson@kendallcountyil.gov"
+      },
+      {
+        "name": "Seth Wormley",
+        "email": "swormley@kendallcountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.kendallcountyil.gov/county-board/board-members"
+  },
+  "2": {
+    "members": [
+      {
+        "name": "Matt Kellogg",
+        "role": "Chairman",
+        "email": "mkellogg@kendallcountyil.gov"
+      },
+      {
+        "name": "Elizabeth Flowers",
+        "phone": "630.605.4592",
+        "email": "eflowers@kendallcountyil.gov"
+      },
+      {
+        "name": "Dan Koukol",
+        "phone": "630.669.1567",
+        "email": "dkoukol@kendallcountyil.gov"
+      },
+      {
+        "name": "Zach Bachmann",
+        "phone": "630.636.8959",
+        "email": "zbachmann@kendallcountyil.gov"
+      },
+      {
+        "name": "Brooke Shanley",
+        "phone": "630.423.6082",
+        "email": "bshanley@kendallcountyil.gov"
+      }
+    ],
+    "sourceUrl": "https://www.kendallcountyil.gov/county-board/board-members"
+  }
+}

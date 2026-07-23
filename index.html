@@ -3684,7 +3684,7 @@ function initChiExplorer() {
     "township",          // IL county subdivision (1,695 statewide: townships + city/precinct MCDs)
     "municipality",      // IL incorporated place (1,294 statewide; empty card = unincorporated)
     "judicial-subcircuit", // Consolidated judicial-subcircuit layer — Cook (20, live from the county GIS, + the Circuit Court's 6 municipal districts as a card row) + Will 12th-Circuit (5) + DuPage 18th-Circuit (7) + Lake 19th-Circuit (12) + Kane 16th-Circuit (4) + McHenry 22nd-Circuit (4) subcircuits (Kane and McHenry pre-built from the enacted PA 102-0693 shapefile; Kendall's 23rd Circuit received NO subcircuits under the act — structurally n/a, the layer hides there), dispatched by county (docs/COUNTY_LAYER_CONSOLIDATION.md); link-only cards, coverage-gated to the union of its counties
-    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; district-number-only, cards link the member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
+    "county-board",      // Consolidated county-legislature layer — Cook Commissioner (17) + Will (11) + DuPage (6) + Lake (19, members carried on the county GIS) + Kane (24, members carried on the county GIS) + McHenry (9, district-number-only on the county GIS — cards link the county's member directory) + Kendall (2 districts electing the 10-member board — the current line per the county's post-2020-census reapportionment; the GIS is district-number-only, so members incl. the Chairman + phone/email join from a weekly-scraped roster of the county's own member directory) board districts as per-county dispatch entries of one toggle (docs/COUNTY_LAYER_CONSOLIDATION.md); coverage-gated to the union of its counties
     "ccbr",              // Cook County Board of Review district (only 3, county-wide)
     "fire-district",     // Consolidated fire-protection-district layer — Cook (40, the Clerk's fire tax-agency tiling, name-only) + Will (37, trustees in GIS attrs) + DuPage (30, name-only) + Lake (22, district office contact in GIS attrs) + Kane (23 IDOR-coded districts, chief + office contact in GIS attrs) + McHenry (19, name-only — the loader excludes the county's 8 'Z NO FIRE DISTRICT' fillers, the municipal Crystal Lake city-fire row, and the Marengo rescue-squad district that overlays the fire districts) + Kendall (10 FPDs on the county's parcel-derived tax-code tiling, name-only — the municipal Joliet row excluded), county-dispatched; partial coverage inside each county
     "dupage-county-special-police", // DuPage special police district (4; unincorporated-area township police-tax districts that fund supplemental DuPage County Sheriff patrol — Bloomingdale/Milton/Wayne/York townships; partial coverage, live from county GIS, coverage-gated to DuPage). DuPage-specific — no Will analog.
@@ -6023,6 +6023,14 @@ function initChiExplorer() {
   }
   var loadKendallCountyBoard = makeCached(function () {
     return loadKendallLayer("County_Board_2010", 0, "1=1", "district", "Board");
+  });
+  // Weekly-scraped member roster (kendall_county_board_scraper.py +
+  // build_kendall_county_board_roster.py from the county's own member
+  // directory) — the boundary GIS carries only the district number, so the
+  // 10 members' names/roles/contact ride this same-origin file, joined by
+  // district exactly like Will's and DuPage's rosters.
+  var loadKendallBoardMembers = makeCached(function () {
+    return fetchJSONWithRetry("data/app/kendall-county-board-members.json", {}, 2);
   });
   var loadKendallTownships = makeCached(function () {
     return loadKendallLayer("Kendall_County_Political_Townships", 0, "1=1", "township", "townships");
@@ -8680,19 +8688,65 @@ function initChiExplorer() {
       }),
       // Kendall (10 members from just 2 districts — the smallest board map
       // in the metro; the current line per the county's post-2020-census
-      // reapportionment, see the KENDALL COUNTY loader block). District
-      // number only on the GIS, so the card links the member directory.
-      polygonCountyEntry({
+      // reapportionment, see the KENDALL COUNTY loader block). The GIS
+      // carries only the district number; the 5 members per district (and
+      // the Chairman role) join from the weekly-scraped roster file.
+      {
         key: "kendall",
         coverage: kendallCountyCoverage,
-        loader: loadKendallCountyBoard,
-        fields: [
-          { name: "district", label: "District", keys: ["district"], primary: true },
-          { label: "Body", value: "Kendall County Board" },
-          { label: "Official directory",
-            html: '<a href="https://www.kendallcountyil.gov/county-board/" target="_blank" rel="noopener">Kendall County Board members (official)</a>' }
-        ]
-      })
+        loadGeometry: loadKendallCountyBoard,
+        hoverName: function (feature) {
+          var v = findPropCI(feature.properties || {}, ["district"]);
+          return (v == null || v === "") ? null : String(v);
+        },
+        query: function (point, seq) {
+          return Promise.all([
+            loadKendallCountyBoard(),
+            loadKendallBoardMembers().catch(function () { return {}; })
+          ]).then(function (results) {
+            var geojson = results[0], roster = results[1];
+            var feature = findFeatureContaining(geojson, point);
+            if (!feature) return null;
+            var district = findPropCI(feature.properties || {}, ["district"]);
+            var entry = district != null ? roster[String(district)] : null;
+            return { seq: seq, district: district, entry: entry };
+          });
+        },
+        render: function (result) {
+          var fields = [
+            { label: "District", value: result.district != null && result.district !== "" ? String(result.district) : "Unknown" },
+            { label: "Body", value: "Kendall County Board" }
+          ];
+          var members = result.entry && result.entry.members;
+          if (members && members.length) {
+            members.forEach(function (m) {
+              // one rich row per member; every external string sanitized
+              // before it becomes innerHTML (name, role, phone, email)
+              var head = "<strong>" + sanitize(m.name) + "</strong>" +
+                (m.role ? " — " + sanitize(m.role) : "");
+              var contact = [];
+              if (m.phone) contact.push(sanitize(m.phone));
+              if (m.email) contact.push('<a href="mailto:' + sanitize(m.email) + '">' + sanitize(m.email) + "</a>");
+              var lines = [head];
+              if (contact.length) lines.push(contact.join(" · "));
+              fields.push({ label: "Board Member", html: lines.join("<br>") });
+            });
+          }
+          fields.push({ label: "Official directory",
+            html: '<a href="https://www.kendallcountyil.gov/county-board/board-members" target="_blank" rel="noopener">Kendall County Board members (official)</a>' });
+          return renderFieldList(fields);
+        },
+        hoverOfficial: {
+          load: loadKendallBoardMembers,
+          name: function (feature, roster) {
+            if (!roster) return null;
+            var d = findPropCI(feature.properties || {}, ["district"]);
+            var e = d != null ? roster[String(d)] : null;
+            if (!e || !e.members || !e.members.length) return null;
+            return e.members.map(function (m) { return m.name; }).join(", ");
+          }
+        }
+      }
     ]
   });
 

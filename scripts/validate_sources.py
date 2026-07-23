@@ -137,6 +137,13 @@ PROVENANCE = [
      "note": "Same PA 102-0693 enacted-subcircuits shapefile ZIP as Kane "
              "(archived in data/source/raw/). Redrawn ~once a decade; the "
              "county publishes no subcircuit service at all."},
+    {"layer": "Kendall County Board members (roster)",
+     "app_file": "kendall-county-board-members.json",
+     "source_url": "https://www.kendallcountyil.gov/county-board/board-members",
+     "note": "Scraped weekly from the county's own member directory + per-member "
+             "pages (kendall_county_board_scraper.py). The site is Akamai-fronted "
+             "and 403s non-browser clients, so a reachability WARN here is "
+             "expected, not drift — the scraper's Playwright engine handles it."},
     {"layer": "Illinois county clerks (roster)",
      "app_file": "il-county-clerks.json",
      "source_url": "https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx",
