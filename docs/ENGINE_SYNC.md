@@ -140,6 +140,19 @@ stays there until the CHI release ships. The fork PR description must link
 that tracking issue. Discretionary back-porting is dead; the WARN is the
 debt collector.
 
+**Releases that ship NEW blocks need sibling fence seeding first**
+(learned shipping engine-v1.0.10, backlog item 11): `apply_engine.py`
+fills existing fences only — it cannot decide where a brand-new block
+belongs in a fork's file — so before (or immediately after) tagging such a
+release, land a markers-only PR in each sibling adding the empty
+`ENGINE:BEGIN/END` pair at the reference fork's placement; the bump then
+splices the pinned body in. Without it the sibling's `engine-bump` run
+fails with "index.html is missing ENGINE block(s) the manifest requires".
+Note the re-run trap: a failed `repository_dispatch` run RE-RUNS at its
+original head SHA — after fixing the fork's main, trigger a fresh fan-out
+(re-run the CHI release workflow; publish self-skips, dispatch repeats)
+rather than re-running the failed sibling run.
+
 ## Current ENGINE block inventory (50 in index.html + 2 in sw.js)
 
 index.html: `app-token`, `arcgis-loader`, `arcgis-paged-loader`,
@@ -311,3 +324,20 @@ directions, so reconciling means merging features, not overwriting:
    (strict parity, 0 drift). Each fork's `smoke_test.mjs` highlight selector
    moved to `.region-highlight`. The only still-fork-named map classes are the
    genuine marker *art* divIcons (item 6).
+11. **Card-system redesign rollout (engine-v1.0.10, July 2026)** — the first
+   release to ship NEW blocks through the pipeline (`card-helpers`,
+   `styles-card-v2`, + 7 changed blocks; contract in
+   `docs/CARD_RENDER_API.md`). Both siblings are bumped and deployed:
+   **50/50 ENGINE blocks byte-identical across CHI/NYC/SF**, verified
+   against the deployed sites post-rollout. The rollout surfaced three
+   fork-adoption requirements, recorded in
+   `docs/engine-changelog/v1.0.10.md`: seed new-block fence pairs before
+   the bump (NYC #66 / SF #30), adopt the pill-aware smoke card reader
+   where smoke asserts factory-card text (SF #31), and migrate role-label
+   roster assertions to person-row presence (SF #32). **Deliberate
+   residual, not drift:** NYC's and SF's fork-local cards still render via
+   `renderFieldList` inside the new chrome — the recorded transitional
+   state. Each fork migrates its own call sites at its own pace (CHI PRs
+   #172/#173 are the reference), and the retirement release — deleting
+   `render-helper`, the `.result-row` CSS, and the factories' legacy
+   caller-HTML branches — stays gated on a fleet-wide zero-call-site grep.

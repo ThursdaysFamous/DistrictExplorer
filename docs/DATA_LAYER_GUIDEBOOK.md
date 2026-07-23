@@ -165,6 +165,16 @@ Chicago's drop boxes folded into `early-voting` (hosted at the same sites); and 
 battalions are a verified-negative drop (see the fire-boundary note). New GAP cells go
 here as rows until shipped or recorded.
 
+**Recorded rendering debt (not a concept GAP — tracked here so the fleet state is in
+one place):** engine-v1.0.10 (July 2026) shipped the card-system redesign fleet-wide
+and all three deployed sites hold 50/50 engine parity, but only Chicago has migrated
+its fork-local cards onto the card-helpers vocabulary (CHI #172/#173, zero
+`renderFieldList` call sites). NYC's 27-layer and SF's 16-layer fork-local cards
+still render legacy `dt`/`dd` rows inside the new chrome — the accepted transitional
+look per `docs/CARD_RENDER_API.md`. Each fork's migration follows procedure 2b with
+CHI as the reference; the engine's legacy branches retire only when the fleet-wide
+`renderFieldList` grep hits zero.
+
 ## Backlog — researched candidates, deliberately not (yet) built
 
 Every entry cites where it's recorded and the blocker. When one ships, move it into the
@@ -438,6 +448,16 @@ matrix; when one is rejected, move the rationale into a NO HONEST ANALOG footnot
    (nearest-N lists, layers with no elected officer) — and when identity/location/contact
    data exists in the layer's source but isn't on the card yet, record the gap in the
    Backlog rather than shipping it silently.
+2b. **Card construction (engine-v1.0.10+, docs/CARD_RENDER_API.md):** new and edited
+   cards render through the shared card-helpers vocabulary — person rows with
+   badges/notes/committee expanders, office groups, nearest rows, link rows, the
+   generic field stack — with the district identifier in the header pill
+   (`cardIdentifier`), the official link in the footer (`primaryLink`), and name-only
+   layers as `compact` cards. The helpers are data-only by contract: never pass HTML
+   (`renderFieldList` and the factories' caller-HTML opts are legacy paths kept alive
+   only for unmigrated fork call sites, and are scheduled for removal once the
+   fleet-wide grep hits zero). The content order in 2a maps onto the vocabulary as:
+   pill → person rows → office group → contact line → footer link.
 3. If you decide a concept **won't** ship in a metro, add the NO HONEST ANALOG footnote
    with the rationale and source of truth. Silence is the only wrong answer.
 4. The weekly fleet-status run cross-checks the coverage map against every fork's live
